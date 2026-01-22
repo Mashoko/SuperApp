@@ -19,7 +19,7 @@ class DialpadViewModel extends ChangeNotifier {
   String _receivedMessage = '';
   
   // Balance properties
-  String _voiceBalance = '1 hrs 35 mins'; // Placeholder per requirement
+  final String _voiceBalance = '1 hrs 35 mins'; // Placeholder per requirement
   String _accountBalance = '\$0.00';
 
   String get voiceBalance => _voiceBalance;

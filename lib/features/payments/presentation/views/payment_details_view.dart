@@ -23,7 +23,7 @@ class _PaymentDetailsViewState extends State<PaymentDetailsView> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _amountController = TextEditingController();
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   @override
   void dispose() {

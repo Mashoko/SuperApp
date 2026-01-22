@@ -3,7 +3,7 @@ import 'package:sip_ua/sip_ua.dart';
 import '../../features/call/presentation/views/call_view.dart';
 import '../../features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
 import '../../features/recents/data/models/recent_call.dart';
-import '../../core/utils/result.dart';
+
 
 class SipCallManager implements SipUaHelperListener {
   final SIPUAHelper _sipHelper;
@@ -43,7 +43,7 @@ class SipCallManager implements SipUaHelperListener {
          // Check cause for missed detection
          if (callState.cause != null) {
            final code = callState.cause!.cause;
-           if (code == 487 || code == 408) { // 487: Request Terminated (Cancel), 408: Timeout
+           if (code == '487' || code == '408') { // 487: Request Terminated (Cancel), 408: Timeout
              isMissed = true;
            }
          }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mvvm_sip_demo/core/di/inject.dart';
 import 'package:mvvm_sip_demo/features/call/presentation/viewmodels/call_viewmodel.dart';
-import 'package:mvvm_sip_demo/core/theme.dart';
+
 
 class QuickDialerOverlay extends StatefulWidget {
   const QuickDialerOverlay({super.key});

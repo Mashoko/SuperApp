@@ -6,11 +6,11 @@ import 'package:sip_ua/sip_ua.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../viewmodels/dialpad_viewmodel.dart';
 import '../../../../core/di/inject.dart';
-import '../../../../shared/widgets/action_button.dart';
-import '../../../../shared/theme/theme_provider.dart';
+
+
 import '../../../call/presentation/views/call_view.dart';
-import '../../domain/repositories/dialpad_repository.dart';
-import '../../../../core/utils/result.dart';
+
+
 import '../../../recents/presentation/views/recents_view.dart';
 import '../../../contacts/presentation/views/contacts_view.dart';
 import '../../../speed_test/presentation/views/speed_test_view.dart';
@@ -52,15 +52,7 @@ class _DialpadViewState extends State<DialpadView>
     super.dispose();
   }
 
-  Future<void> _loadDestination() async {
-    final repository = getIt<DialpadRepository>();
-    final result = await repository.getSavedDestination();
-    if (result is Success) {
-      final destination = (result as Success<String>).data;
-      _viewModel.setDestination(destination);
-      _textController.text = destination;
-    }
-  }
+
 
   void _updateRegistrationStatus() {
     final state = _sipHelper.registerState.state?.name ?? '';
@@ -139,45 +131,7 @@ class _DialpadViewState extends State<DialpadView>
     });
   }
 
-  List<Widget> _buildNumPad() {
-    final labels = [
-      [
-        {'1': ''},
-        {'2': 'abc'},
-        {'3': 'def'}
-      ],
-      [
-        {'4': 'ghi'},
-        {'5': 'jkl'},
-        {'6': 'mno'}
-      ],
-      [
-        {'7': 'pqrs'},
-        {'8': 'tuv'},
-        {'9': 'wxyz'}
-      ],
-      [
-        {'*': ''},
-        {'0': '+'},
-        {'#': ''}
-      ],
-    ];
 
-    return labels
-        .map((row) => Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: row
-                    .map((label) => ActionButton(
-                          title: label.keys.first,
-                          subTitle: label.values.first,
-                          onPressed: () => _handleNum(label.keys.first),
-                          number: true,
-                        ))
-                    .toList())))
-        .toList();
-  }
 
   // Removed second initState since we merged it into the first one.
 
@@ -272,7 +226,7 @@ class _DialpadViewState extends State<DialpadView>
       value: _viewModel,
       child: Consumer<DialpadViewModel>(
         builder: (context, viewModel, child) {
-          final themeProvider = getIt<ThemeProvider>();
+
           
           return Scaffold(
             backgroundColor: const Color(0xFFF5F7FA),
@@ -380,69 +334,7 @@ class _DialpadViewState extends State<DialpadView>
     );
   }
 
-  Widget _buildRecentItem(String name, String number, bool active) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        gradient: active 
-            ? const LinearGradient(
-                colors: [Color(0xFF00AA99), Color(0xFF00C853)], // Green gradient
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : null,
-        color: active ? null : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: active ? Colors.white.withOpacity(0.2) : Colors.grey[200],
-            child: active 
-                ? const Icon(Icons.person, color: Colors.white)
-                : const Icon(Icons.person, color: Colors.grey),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    color: active ? Colors.white : Colors.black87,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  number,
-                  style: TextStyle(
-                    color: active ? Colors.white.withOpacity(0.8) : Colors.grey,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (active)
-             Container(
-               padding: const EdgeInsets.all(4),
-               decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white)),
-               child: const Icon(Icons.add_call, color: Colors.white, size: 16),
-             )
-        ],
-      ),
-    );
-  }
+
 
   List<Widget> _buildNumPadGrid() {
     final labels = [

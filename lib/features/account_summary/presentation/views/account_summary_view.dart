@@ -88,7 +88,7 @@ class _AccountSummaryViewState extends State<AccountSummaryView> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 20,
                         offset: const Offset(0, 5),
                       ),
@@ -193,7 +193,7 @@ class _AccountSummaryViewState extends State<AccountSummaryView> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFCE4EC).withOpacity(0.5), // Light pink/purple
+                          color: const Color(0xFFFCE4EC).withValues(alpha: 0.5), // Light pink/purple
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: Column(
@@ -300,7 +300,7 @@ class _AccountSummaryViewState extends State<AccountSummaryView> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -323,7 +323,7 @@ class _AccountSummaryViewState extends State<AccountSummaryView> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: iconBgColor.withOpacity(0.3),
+                        color: iconBgColor.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),

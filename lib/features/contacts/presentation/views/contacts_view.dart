@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:permission_handler/permission_handler.dart';
+
 
 import '../../../../core/di/inject.dart';
 import '../../../call/presentation/viewmodels/call_viewmodel.dart';
