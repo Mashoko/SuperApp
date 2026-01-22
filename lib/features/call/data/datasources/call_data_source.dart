@@ -9,7 +9,7 @@ abstract class CallDataSource {
   Future<void> muteVideo(Call call, bool mute);
   Future<void> holdCall(Call call, bool hold);
   Future<void> sendDtmf(Call call, String tone);
-  Future<void> sendDtmf(Call call, String tone);
+
   Future<void> transferCall(Call call, String target);
   Future<void> toggleSpeaker(bool enabled);
 }

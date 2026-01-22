@@ -9,7 +9,7 @@ abstract class CallRepository {
   Future<Result<void>> muteVideo(Call call, bool mute);
   Future<Result<void>> holdCall(Call call, bool hold);
   Future<Result<void>> sendDtmf(Call call, String tone);
-  Future<Result<void>> sendDtmf(Call call, String tone);
+
   Future<Result<void>> transferCall(Call call, String target);
   Future<Result<void>> toggleSpeaker(bool enabled);
 }
