@@ -3,6 +3,7 @@ import 'package:mvvm_sip_demo/features/home/presentation/views/home_view.dart';
 import 'package:mvvm_sip_demo/features/auth/presentation/views/signup_view.dart';
 import 'package:mvvm_sip_demo/features/profile/presentation/views/profile_view.dart';
 import 'package:mvvm_sip_demo/features/calling/presentation/views/calling_view.dart';
+import 'package:mvvm_sip_demo/features/calling/presentation/views/call_history_view.dart';
 import 'package:mvvm_sip_demo/features/dashboard/presentation/views/dashboard_view.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/views/shopping_view.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/views/product_detail_view.dart';
@@ -22,6 +23,7 @@ class Routes {
   static const String home = '/home'; // Maps to HomeView
   static const String dashboard = '/dashboard';
   static const String calling = '/calling';
+  static const String callHistory = '/call-history';
   static const String shopping = '/shopping';
   static const String productDetails = '/shopping-product-details';
   static const String cart = '/shopping-cart';
@@ -43,6 +45,7 @@ class Routes {
         home: (context) => HomeView(),
         dashboard: (context) => DashboardView(),
         calling: (context) => CallingView(),
+        callHistory: (context) => CallHistoryView(),
         shopping: (context) => ShoppingView(),
         productDetails: (context) => ProductDetailView(),
         cart: (context) => CartView(),

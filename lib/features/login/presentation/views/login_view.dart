@@ -4,6 +4,8 @@ import '../../../../core/routes.dart';
 
 import '../../../../core/di/inject.dart';
 import '../viewmodels/login_viewmodel.dart';
+import 'package:mvvm_sip_demo/core/theme.dart';
+import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -49,12 +51,63 @@ class _LoginViewState extends State<LoginView> {
           final error = viewModel.error;
 
           return Scaffold(
-            appBar: AppBar(title: const Text('Login')),
-            body: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  if (error != null)
+            body: Stack(
+              children: [
+                // Global Background
+                Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0xFFE0E7FF), Color(0xFFF3F4F6)],
+                    ),
+                  ),
+                ),
+                 Positioned(
+                  top: -100,
+                  right: -100,
+                  child: Container(
+                    width: 300,
+                    height: 300,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: WunzaColors.indigo.withValues(alpha: 0.2),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 100,
+                  left: -50,
+                  child: Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: WunzaColors.blueAccent.withValues(alpha: 0.15),
+                    ),
+                  ),
+                ),
+
+                // Content
+                Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: GlassContainer(
+                      opacity: 0.8,
+                      borderRadius: 24,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            "Welcome Back",
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: WunzaColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          if (error != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Text(
@@ -124,8 +177,12 @@ class _LoginViewState extends State<LoginView> {
                     },
                     child: const Text('New User? Register with OTP'),
                   ),
-                ],
-              ),
+                  ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         },

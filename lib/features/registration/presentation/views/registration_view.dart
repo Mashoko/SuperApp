@@ -4,6 +4,8 @@ import 'package:sip_ua/sip_ua.dart';
 import '../viewmodels/registration_viewmodel.dart';
 import '../../../../core/routes.dart';
 import '../../../../core/di/inject.dart';
+import 'package:mvvm_sip_demo/core/theme.dart';
+import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
 
 class RegistrationView extends StatefulWidget {
   const RegistrationView({super.key});
@@ -73,10 +75,56 @@ class _RegistrationViewState extends State<RegistrationView>
                     )
                   : null,
             ),
-            body: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: _buildCurrentStep(viewModel),
-            ),
+            body: Stack(
+              children: [
+                 // Global Background
+                Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0xFFE0E7FF), Color(0xFFF3F4F6)],
+                    ),
+                  ),
+                ),
+                 Positioned(
+                  top: -100,
+                  right: -100,
+                  child: Container(
+                    width: 300,
+                    height: 300,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: WunzaColors.indigo.withValues(alpha: 0.2),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 100,
+                  left: -50,
+                  child: Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: WunzaColors.blueAccent.withValues(alpha: 0.15),
+                    ),
+                  ),
+                ),
+
+                // Content
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: GlassContainer(
+                      opacity: 0.9,
+                      borderRadius: 24,
+                      child: _buildCurrentStep(viewModel),
+                    ),
+                  ),
+                ),
+              ],
+             ),
           );
         },
       ),

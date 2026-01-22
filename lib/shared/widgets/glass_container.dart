@@ -7,6 +7,7 @@ class GlassContainer extends StatelessWidget {
   final double blur;
   final double opacity;
   final EdgeInsetsGeometry padding;
+  final Color color;
 
   const GlassContainer({
     super.key,
@@ -15,6 +16,7 @@ class GlassContainer extends StatelessWidget {
     this.blur = 10.0,
     this.opacity = 0.2, // Adjust for "frosted" intensity
     this.padding = const EdgeInsets.all(16.0),
+    this.color = Colors.white,
   });
 
   @override
@@ -26,7 +28,7 @@ class GlassContainer extends StatelessWidget {
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: opacity),
+            color: color.withValues(alpha: opacity),
             borderRadius: BorderRadius.circular(borderRadius),
             border: Border.all(
               color: Colors.white.withValues(alpha: 0.3), // Subtle shine border

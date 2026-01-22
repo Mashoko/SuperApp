@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
 
 class ShoppingSearchBar extends StatelessWidget {
   final VoidCallback? onCartPressed;
@@ -8,7 +9,10 @@ class ShoppingSearchBar extends StatelessWidget {
     super.key, 
     this.onCartPressed,
     this.onBackPressed,
+    this.cartItemCount = 0,
   });
+
+  final int cartItemCount;
 
   @override
   Widget build(BuildContext context) {
@@ -28,18 +32,19 @@ class ShoppingSearchBar extends StatelessWidget {
 
           // Search Field
           Expanded(
-            child: Container(
+            child: SizedBox(
               height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const TextField(
+              child: GlassContainer(
+                opacity: 0.5,
+                borderRadius: 12,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: const TextField(
                 decoration: InputDecoration(
                   hintText: 'Search product',
                   prefixIcon: Icon(Icons.search, color: Colors.grey),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 14),
+                ),
                 ),
               ),
             ),
@@ -48,26 +53,55 @@ class ShoppingSearchBar extends StatelessWidget {
           const SizedBox(width: 12),
 
           // Filter Button
-          Container(
+          SizedBox(
             height: 48,
             width: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: IconButton(
+            child: GlassContainer(
+              opacity: 0.5,
+              borderRadius: 12,
+              child: IconButton(
               icon: const Icon(Icons.filter_list, color: Colors.grey),
               onPressed: () {},
+            ),
             ),
           ),
 
           // Cart Button (Optional/New)
           if (onCartPressed != null) ...[
              const SizedBox(width: 12),
-             IconButton(
-              onPressed: onCartPressed,
-              icon: const Icon(Icons.shopping_cart_outlined),
-            ),
+             Stack(
+               children: [
+                 IconButton(
+                   onPressed: onCartPressed,
+                   icon: const Icon(Icons.shopping_cart_outlined),
+                 ),
+                 if (cartItemCount > 0)
+                   Positioned(
+                     right: 8,
+                     top: 8,
+                     child: Container(
+                       padding: const EdgeInsets.all(4),
+                       decoration: const BoxDecoration(
+                         color: Colors.red,
+                         shape: BoxShape.circle,
+                       ),
+                       constraints: const BoxConstraints(
+                         minWidth: 16,
+                         minHeight: 16,
+                       ),
+                       child: Text(
+                         '$cartItemCount',
+                         style: const TextStyle(
+                           color: Colors.white,
+                           fontSize: 10,
+                           fontWeight: FontWeight.bold,
+                         ),
+                         textAlign: TextAlign.center,
+                       ),
+                     ),
+                   ),
+               ],
+             ),
           ]
         ],
       ),

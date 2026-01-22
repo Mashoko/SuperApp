@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
 import 'package:mvvm_sip_demo/models/shopping/product.dart';
+import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
 
 class ProductListTile extends StatelessWidget {
   final Product product;
@@ -15,13 +16,12 @@ class ProductListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: WunzaColors.surface,
-        borderRadius: BorderRadius.circular(8),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassContainer(
+        padding: const EdgeInsets.all(8),
+        opacity: 0.6,
+        borderRadius: 16,
       child: Row(
         children: [
           // Product Image
@@ -117,6 +117,7 @@ class ProductListTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

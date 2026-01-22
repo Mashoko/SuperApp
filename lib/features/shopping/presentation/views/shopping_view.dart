@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:mvvm_sip_demo/core/routes.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
 
+
+
 import 'package:mvvm_sip_demo/features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/views/widgets/category_sidebar.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/views/widgets/checkout_bar.dart';
@@ -49,9 +51,49 @@ class _ShoppingViewState extends State<ShoppingView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
+      body: Stack(
+        children: [
+          // --- 1. Global Background Gradient & Blobs ---
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFFE0E7FF), // Very light Indigo
+                  Color(0xFFF3F4F6), // Grey/White
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: WunzaColors.indigo.withValues(alpha: 0.2),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 100,
+            left: -50,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: WunzaColors.blueAccent.withValues(alpha: 0.15),
+              ),
+            ),
+          ),
+          
+          SafeArea(
+            child: Stack(
+              children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -73,9 +115,16 @@ class _ShoppingViewState extends State<ShoppingView> {
                   child: Column(
                     children: [
                       // Top Bar
-                      ShoppingSearchBar(
-                        onBackPressed: () => Navigator.pop(context),
-                        onCartPressed: () => Navigator.pushNamed(context, Routes.cart),
+                      // Top Bar
+                      Consumer<ShoppingViewModel>(
+                        builder: (context, viewModel, child) {
+                          final itemCount = viewModel.cart['item_count'] as int? ?? 0;
+                          return ShoppingSearchBar(
+                            onBackPressed: () => Navigator.pop(context),
+                            onCartPressed: () => Navigator.pushNamed(context, Routes.cart),
+                            cartItemCount: itemCount,
+                          );
+                        },
                       ),
                       
                       // Category Header
@@ -159,8 +208,10 @@ class _ShoppingViewState extends State<ShoppingView> {
                 },
               ),
             ),
-          ],
-        ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

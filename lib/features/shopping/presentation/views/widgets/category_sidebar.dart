@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
+import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
 
 class CategorySidebar extends StatelessWidget {
   final List<String> categories;
@@ -15,10 +16,12 @@ class CategorySidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 90,
-      color: WunzaColors.background, // Light grey background
-      child: ListView.builder(
+      child: GlassContainer(
+        opacity: 0.3,
+        borderRadius: 0, // Sidebar doesn't need partial radius usually, or maybe just top-right/bottom-right
+        child: ListView.builder(
         itemCount: categories.length,
         itemBuilder: (context, index) {
           final category = categories[index];
@@ -131,6 +134,7 @@ class CategorySidebar extends StatelessWidget {
             ),
           );
         },
+      ),
       ),
     );
   }

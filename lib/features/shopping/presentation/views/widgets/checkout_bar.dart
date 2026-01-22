@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
+import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
 
 class CheckoutBar extends StatelessWidget {
   final int itemCount;
@@ -22,20 +23,14 @@ class CheckoutBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       child: SafeArea(
-        child: Container(
+        child: SizedBox(
           height: 80, // Taller bar
-          decoration: BoxDecoration(
-            color: WunzaColors.primary, // Orange
-            borderRadius: BorderRadius.circular(40), // More rounded
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Stack(
+          child: GlassContainer(
+             color: WunzaColors.primary.withValues(alpha: 0.9), // Keep it mostly opaque orange
+             borderRadius: 40,
+             blur: 10,
+
+            child: Stack(
             clipBehavior: Clip.none,
             children: [
               // Cheetah Image (Left, overflowing)
@@ -131,6 +126,7 @@ class CheckoutBar extends StatelessWidget {
                 ),
               ),
             ],
+            ),
           ),
         ),
       ),

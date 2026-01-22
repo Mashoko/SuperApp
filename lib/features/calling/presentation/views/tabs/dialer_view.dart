@@ -4,6 +4,7 @@ import 'package:mvvm_sip_demo/features/call/presentation/viewmodels/call_viewmod
 import 'package:mvvm_sip_demo/core/di/inject.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
 import 'package:mvvm_sip_demo/features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
+import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
 
 class DialerView extends StatefulWidget {
   const DialerView({super.key});
@@ -256,26 +257,31 @@ class _DialerViewState extends State<DialerView> {
       child: SizedBox(
         width: isSmallScreen ? 60 : 80,
         height: isSmallScreen ? 60 : 80,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              key,
-              style: TextStyle(
-                fontSize: isSmallScreen ? 28 : 32,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-            if (subtext.isNotEmpty)
+        child: GlassContainer(
+          borderRadius: 40,
+          opacity: 0.3,
+          padding: EdgeInsets.zero,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
               Text(
-                subtext,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
+                key,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 28 : 32,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
-          ],
+              if (subtext.isNotEmpty)
+                Text(
+                  subtext,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.black54,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

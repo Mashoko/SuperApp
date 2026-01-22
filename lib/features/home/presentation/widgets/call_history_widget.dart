@@ -27,7 +27,7 @@ class CallHistoryWidget extends StatelessWidget {
                       color: WunzaColors.textPrimary),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.pushNamed(context, Routes.calling, arguments: 1),
+                  onPressed: () => Navigator.pushNamed(context, Routes.callHistory),
                   child: const Text("View All",
                       style: TextStyle(color: WunzaColors.indigo)),
                 )
