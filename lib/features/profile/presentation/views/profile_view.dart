@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:provider/provider.dart';
 import 'package:mvvm_sip_demo/core/routes.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
@@ -17,58 +18,65 @@ class ProfileView extends StatelessWidget {
         backgroundColor: WunzaColors.primary,
         foregroundColor: Colors.white,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 32),
-            const CircleAvatar(
-              radius: 50,
-              backgroundColor: WunzaColors.primary,
-              child: Icon(
-                Icons.person,
-                size: 60,
-                color: Colors.white,
+      body: Stack(
+        children: [
+          // Blurred Background
+          Positioned.fill(
+            child: Image.asset(
+              'assets/icon/icon.jpg',
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+              child: Container(
+                color: Colors.black.withOpacity(0.2), // Optional overlay for readability
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              user?['name'] ?? 'User Name',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+          ),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 32),
+                const CircleAvatar(
+                  radius: 50,
+                  backgroundColor: WunzaColors.primary,
+                  child: Icon(
+                    Icons.person,
+                    size: 60,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Center(
+                  child: Text(
+                    user?['name'] ?? 'User Name',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white, // Changed for visibility on background
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: Text(
+                    user?['email'] ?? 'email@example.com',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.white70, // Changed for visibility on background
+                    ),
+                  ),
+                ),
+                // Logout button removed
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              user?['email'] ?? 'email@example.com',
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 48),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text(
-                'Logout',
-                style: TextStyle(color: Colors.red, fontSize: 18),
-              ),
-              onTap: () async {
-                final viewModel = Provider.of<AuthViewModel>(context, listen: false);
-                await viewModel.logout();
-                if (context.mounted) {
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    Routes.login,
-                    (route) => false,
-                  );
-                }
-              },
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
