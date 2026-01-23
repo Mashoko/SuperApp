@@ -15,6 +15,12 @@ class AuthViewModel extends ChangeNotifier {
   Map<String, dynamic>? _currentUser;
   Map<String, dynamic>? get currentUser => _currentUser;
 
+  void updateProfileImage(String imagePath) {
+    _currentUser ??= {};
+    _currentUser!['photo'] = imagePath;
+    notifyListeners();
+  }
+
   Future<void> checkLoginStatus() async {
     final isLoggedIn = await _authService.isLoggedIn();
     if (isLoggedIn) {

@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:mvvm_sip_demo/core/routes.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
@@ -10,71 +12,109 @@ class ProfileView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<AuthViewModel>(context).currentUser;
+    return Consumer<AuthViewModel>(
+      builder: (context, authViewModel, child) {
+        final user = authViewModel.currentUser;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        backgroundColor: WunzaColors.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: Stack(
-        children: [
-          // Blurred Background
-          Positioned.fill(
-            child: Image.asset(
-              'assets/icon/icon.jpg',
-              fit: BoxFit.cover,
-            ),
+        return Scaffold(
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            title: const Text('Profile'),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            foregroundColor: Colors.white,
           ),
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-              child: Container(
-                color: Colors.black.withOpacity(0.2), // Optional overlay for readability
+          body: Stack(
+            children: [
+              // Blurred Background
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/icon/icon.jpg',
+                  fit: BoxFit.cover,
+                ),
               ),
-            ),
+              Positioned.fill(
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 12),
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.easeOut,
+                  builder: (context, blur, child) {
+                    return BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+                      child: Container(
+                        color: Colors.black.withOpacity(0.4), // Darker overlay for better contrast
+                      ),
+                    );
+                  },
+                ),
+              ),
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 100), // Adjusted for extended body
+                    _profileAvatar(context, authViewModel),
+                    const SizedBox(height: 24),
+                    Center(
+                      child: Text(
+                        user?['name'] ?? 'Guest User',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        user?['email'] ?? 'Sign in to see your profile',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 32),
-                const CircleAvatar(
-                  radius: 50,
-                  backgroundColor: WunzaColors.primary,
-                  child: Icon(
-                    Icons.person,
-                    size: 60,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Center(
-                  child: Text(
-                    user?['name'] ?? 'User Name',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white, // Changed for visibility on background
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Center(
-                  child: Text(
-                    user?['email'] ?? 'email@example.com',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70, // Changed for visibility on background
-                    ),
-                  ),
-                ),
-                // Logout button removed
-              ],
-            ),
+        );
+      },
+    );
+  }
+
+  Widget _profileAvatar(BuildContext context, AuthViewModel auth) {
+    final imagePath = auth.currentUser?['photo'];
+
+    return GestureDetector(
+      onTap: () async {
+        final picker = ImagePicker();
+        final image = await picker.pickImage(source: ImageSource.gallery);
+
+        if (image != null) {
+          auth.updateProfileImage(image.path);
+        }
+      },
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          CircleAvatar(
+            radius: 55,
+            backgroundColor: WunzaColors.primary,
+            backgroundImage:
+                imagePath != null ? FileImage(File(imagePath)) : null,
+            child: imagePath == null
+                ? const Icon(Icons.person, size: 60, color: Colors.white)
+                : null,
+          ),
+          const CircleAvatar(
+            radius: 16,
+            backgroundColor: Colors.black54,
+            child: Icon(Icons.camera_alt, size: 16, color: Colors.white),
           ),
         ],
       ),

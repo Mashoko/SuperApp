@@ -93,7 +93,15 @@ class _PaymentsViewState extends State<PaymentsView> {
                     childAspectRatio: 0.8,
                     children: [
                       _buildServiceItem(context, "Airtime & Data", Icons.phonelink_ring, Colors.blue, Routes.serviceProviders, {'type': 'Airtime & Data'}),
-                      _buildServiceItem(context, "Internet", Icons.language, Colors.green, Routes.utilityBills, {'type': UtilityBillType.internet}),
+                      _buildServiceItem(
+                        context,
+                        "Africom Internet",
+                        Icons.language,
+                        Colors.green,
+                        Routes.utilityBills,
+                        {'type': UtilityBillType.internet},
+                        imagePath: 'assets/images/africom_logo.png',
+                      ),
                       _buildServiceItem(context, "Utilities", Icons.category, Colors.orange, Routes.utilityBills, {}),
                     ],
                   ),
@@ -157,7 +165,15 @@ class _PaymentsViewState extends State<PaymentsView> {
 
 
 
-  Widget _buildServiceItem(BuildContext context, String label, IconData icon, Color color, String route, Map<String, dynamic> args) {
+  Widget _buildServiceItem(
+    BuildContext context,
+    String label,
+    IconData icon,
+    Color color,
+    String route,
+    Map<String, dynamic> args, {
+    String? imagePath,
+  }) {
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, route, arguments: args),
       child: GlassContainer(
@@ -167,12 +183,19 @@ class _PaymentsViewState extends State<PaymentsView> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: imagePath != null ? const EdgeInsets.all(8) : const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: imagePath != null
+                  ? Image.asset(
+                      imagePath,
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.contain,
+                    )
+                  : Icon(icon, color: color, size: 28),
             ),
             const SizedBox(height: 12),
             Text(

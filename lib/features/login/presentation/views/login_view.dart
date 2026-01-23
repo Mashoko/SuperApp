@@ -18,6 +18,7 @@ class _LoginViewState extends State<LoginView> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   late LoginViewModel _viewModel;
+  bool _isCheckingAutoLogin = true;
 
   @override
   void initState() {
@@ -30,6 +31,10 @@ class _LoginViewState extends State<LoginView> {
           '/home',
           arguments: summary,
         );
+      } else if (mounted) {
+        setState(() {
+          _isCheckingAutoLogin = false;
+        });
       }
     });
   }
@@ -43,6 +48,68 @@ class _LoginViewState extends State<LoginView> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isCheckingAutoLogin) {
+      return Scaffold(
+        body: Stack(
+          children: [
+            // Global Background (Same as Login)
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFE0E7FF), Color(0xFFF3F4F6)],
+                ),
+              ),
+            ),
+            // Blobs
+             Positioned(
+              top: -100,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: WunzaColors.indigo.withValues(alpha: 0.2),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 100,
+              left: -50,
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: WunzaColors.blueAccent.withValues(alpha: 0.15),
+                ),
+              ),
+            ),
+            
+            // Loading Content
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'assets/icon/icon.png',
+                    width: 100,
+                    height: 100,
+                  ),
+                  const SizedBox(height: 24),
+                  const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(WunzaColors.primary),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return ChangeNotifierProvider<LoginViewModel>.value(
       value: _viewModel,
       child: Consumer<LoginViewModel>(
