@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import 'package:mvvm_sip_demo/core/routes.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
@@ -101,6 +102,12 @@ class _PaymentsViewState extends State<PaymentsView> {
                         Routes.utilityBills,
                         {'type': UtilityBillType.internet},
                         imagePath: 'assets/images/africom_logo.png',
+                        onTap: () async {
+                          const url = 'https://selfservice.ai.co.zw/recharge';
+                          if (await canLaunchUrl(Uri.parse(url))) {
+                            await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                          }
+                        },
                       ),
                       _buildServiceItem(context, "Utilities", Icons.category, Colors.orange, Routes.utilityBills, {}),
                     ],
@@ -173,9 +180,10 @@ class _PaymentsViewState extends State<PaymentsView> {
     String route,
     Map<String, dynamic> args, {
     String? imagePath,
+    VoidCallback? onTap,
   }) {
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, route, arguments: args),
+      onTap: onTap ?? () => Navigator.pushNamed(context, route, arguments: args),
       child: GlassContainer(
         padding: const EdgeInsets.all(12),
         opacity: 0.6,

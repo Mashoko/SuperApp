@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
 import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
-import 'package:mvvm_sip_demo/features/payments/presentation/views/payment_details_view.dart';
+
 
 class ServiceProvidersView extends StatelessWidget {
   const ServiceProvidersView({super.key});
@@ -79,14 +79,10 @@ class ServiceProvidersView extends StatelessWidget {
   Widget _buildProviderTile(BuildContext context, String name, String assetPath, Color glowColor) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PaymentDetailsView(
-              providerName: name,
-              providerLogo: assetPath,
-              glowColor: glowColor,
-            ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Feature Coming Soon"),
+            duration: Duration(seconds: 1),
           ),
         );
       },
