@@ -37,6 +37,7 @@ dependencies:
   sdp_transform: ^0.3.2
   uuid: ^4.2.1
   get_it: ^9.1.1
+  mongo_dart: ^0.10.6
   
   # Merged Dependencies
   http: ^1.1.0

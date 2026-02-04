@@ -93,7 +93,20 @@ class _PaymentsViewState extends State<PaymentsView> {
                     mainAxisSpacing: 16,
                     childAspectRatio: 0.8,
                     children: [
-                      _buildServiceItem(context, "Airtime & Data", Icons.phonelink_ring, Colors.blue, Routes.serviceProviders, {'type': 'Airtime & Data'}),
+                      _buildServiceItem(
+                        context,
+                        "Airtime & Data",
+                        Icons.phonelink_ring,
+                        Colors.blue,
+                        Routes.serviceProviders,
+                        {'type': 'Airtime & Data'},
+                        onTap: () async {
+                          const url = 'https://airtime-website.vercel.app/';
+                          if (await canLaunchUrl(Uri.parse(url))) {
+                            await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                          }
+                        },
+                      ),
                       _buildServiceItem(
                         context,
                         "Africom Internet",

@@ -296,7 +296,7 @@ class _ModernDashboardTab extends StatelessWidget {
                         ),
                         const SizedBox(height: 20),
                         const Text(
-                          "Welcome to Super App",
+                          "Welcome",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 22,
