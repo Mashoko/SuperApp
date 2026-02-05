@@ -1,15 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SuperApp Admin</title>
+    <title>Shop Admin</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            display: none;
+        }
+
+        /* Hide body by default to prevent flash of content */
+    </style>
+    <script>
+        if (!localStorage.getItem('token')) {
+            window.location.href = 'login.html';
+        } else {
+            document.addEventListener('DOMContentLoaded', () => {
+                document.body.style.display = 'block';
+            });
+        }
+
+        // Global Logout Function
+        window.logout = () => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        };
+    </script>
 </head>
+
 <body>
     <div class="container">
-        <h1>SuperApp Admin Panel</h1>
-        
+        <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>Shop Admin Panel</h1>
+            <div>
+                <a href="index.html"
+                    style="margin-right: 15px; text-decoration: none; color: #007bff; font-weight: bold;">Products</a>
+                <a href="categories.html"
+                    style="margin-right: 15px; text-decoration: none; color: #007bff;">Categories</a>
+                <a href="shops.html" style="margin-right: 15px; text-decoration: none; color: #007bff;">Shops</a>
+                <span id="user-display" style="margin-right: 15px; font-weight: bold;"></span>
+                <button onclick="logout()"
+                    style="padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Logout</button>
+            </div>
+        </div>
+
+        <script>
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (user) {
+                document.getElementById('user-display').textContent = `Hello, ${user.username} (${user.role})`;
+            }
+        </script>
+
         <div class="card">
             <h2>Add New Product</h2>
             <form id="productForm">
@@ -17,17 +61,35 @@
                     <label for="name">Product Name</label>
                     <input type="text" id="name" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="price">Price ($)</label>
                     <input type="number" id="price" required step="0.01">
                 </div>
 
                 <div class="form-group">
-                    <label for="category">Category</label>
-                    <input type="text" id="category">
+                    <label for="discountPrice">Discount Price ($) (Optional)</label>
+                    <input type="number" id="discountPrice" step="0.01">
                 </div>
-                
+
+                <div class="form-group">
+                    <label for="stock">Stock Quantity</label>
+                    <input type="number" id="stock" value="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="isAvailable" checked> Available for Sale
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <select id="category" required>
+                        <option value="">Select Category</option>
+                    </select>
+                </div>
+
                 <div class="form-group">
                     <label for="imageUrl">Image URL</label>
                     <input type="url" id="imageUrl" placeholder="https://example.com/image.png">
@@ -38,7 +100,9 @@
                     <textarea id="description" rows="3"></textarea>
                 </div>
 
-                <button type="submit" class="btn">Add Product</button>
+                <button type="submit" class="btn" id="submitBtn">Add Product</button>
+                <button type="button" class="btn" id="cancelEdit"
+                    style="display:none; background: #6c757d; margin-top: 10px;">Cancel Edit</button>
             </form>
         </div>
 
@@ -50,6 +114,7 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=2"></script>
 </body>
+
 </html>

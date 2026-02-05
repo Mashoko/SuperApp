@@ -14,16 +14,18 @@ class ShoppingViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
-  String _selectedCategory = 'Popular';
-  final List<String> _categories = ['Popular', 'Produce', 'Butcher', 'Bakery', 'Staples', 'Dairy', 'Infants', 'Beverages', 'Household', 'Snacks', 'Sanitary', 'Pets'];
+  String _selectedCategory = 'All'; // Default to 'All' or first loaded
+  List<String> _categories = [];
+  bool _isCategoriesLoading = false;
   ProductViewMode _viewMode = ProductViewMode.extraSmall;
   List<String> _recentSearches = [];
 
   List<Product> get products {
-    if (_selectedCategory == 'Popular') {
+    if (_selectedCategory == 'All') {
       return _products;
     }
-    return _products.where((p) => p.category == _selectedCategory).toList();
+    // Case-insensitive comparison just in case
+    return _products.where((p) => p.category.toLowerCase() == _selectedCategory.toLowerCase()).toList();
   }
   
   Map<String, dynamic> get cart => _cart;
@@ -83,12 +85,35 @@ class ShoppingViewModel extends ChangeNotifier {
       _setLoading(true);
       _setError(null);
       await _service.fetchProducts();
+      await loadCategories(); // Load categories too
       _products = _service.getProducts(category: category);
       notifyListeners();
     } catch (e) {
       _setError('Failed to load products: $e');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  Future<void> loadCategories() async {
+    try {
+      // _isCategoriesLoading = true;
+      // notifyListeners();
+      final loadedCats = await _service.fetchCategories();
+      if (loadedCats.isNotEmpty) {
+        _categories = ['All', ...loadedCats]; // Add 'All' as the default
+      } else {
+        _categories = ['All']; 
+      }
+      
+      // If selected category is no longer valid, reset to All
+      if (!_categories.contains(_selectedCategory)) {
+        _selectedCategory = 'All';
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      print('VM: Error loading categories $e');
     }
   }
 

@@ -36,6 +36,23 @@ class ShoppingService {
     }
   }
 
+  Future<List<String>> fetchCategories() async {
+    try {
+      final response = await http.get(Uri.parse('http://localhost:5000/api/categories?hasProducts=true'));
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => json['name'].toString()).toList();
+      } else {
+        print('Failed to load categories: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('Error fetching categories: $e');
+      return [];
+    }
+  }
+
   void addProduct(Product product) {
     _products[product.productId] = product;
   }

@@ -21,6 +21,22 @@ const productSchema = new mongoose.Schema({
         type: String,
         required: false,
     },
+    stock: {
+        type: Number,
+        default: 0
+    },
+    discountPrice: {
+        type: Number,
+        required: false
+    },
+    isAvailable: {
+        type: Boolean,
+        default: true
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
     createdAt: {
         type: Date,
         default: Date.now,
