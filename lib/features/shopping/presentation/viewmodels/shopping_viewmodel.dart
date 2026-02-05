@@ -82,6 +82,7 @@ class ShoppingViewModel extends ChangeNotifier {
     try {
       _setLoading(true);
       _setError(null);
+      await _service.fetchProducts();
       _products = _service.getProducts(category: category);
       notifyListeners();
     } catch (e) {

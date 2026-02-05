@@ -40,7 +40,7 @@ dependencies:
   mongo_dart: ^0.10.6
   
   # Merged Dependencies
-  http: ^1.1.0
+  http: ^1.6.0
   json_annotation: ^4.8.1
   cupertino_icons: ^1.0.6
   google_fonts: ^6.3.3

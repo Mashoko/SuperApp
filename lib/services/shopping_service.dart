@@ -2,6 +2,8 @@ import 'package:mvvm_sip_demo/models/shopping/product.dart';
 import 'package:mvvm_sip_demo/models/shopping/cart_item.dart';
 import 'package:mvvm_sip_demo/models/shopping/order.dart';
 import 'package:mvvm_sip_demo/models/shopping/order_status.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ShoppingService {
   final Map<String, Product> _products = {};
@@ -9,106 +11,28 @@ class ShoppingService {
   final List<Order> _orders = [];
 
   ShoppingService() {
-    _initializeSampleProducts();
+    fetchProducts();
   }
 
-  void _initializeSampleProducts() {
-    final sampleProducts = [
-      Product(
-        productId: '1',
-        name: 'Fresh Milk 1L',
-        price: 2.50,
-        imageUrl: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=300&q=80',
-        category: 'Dairy',
-        stock: 50,
-      ),
-      Product(
-        productId: '2',
-        name: 'Whole Wheat Bread',
-        price: 3.00,
-        imageUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=300&q=80',
-        category: 'Bakery',
-        stock: 30,
-      ),
-      Product(
-        productId: '3',
-        name: 'Organic Bananas',
-        price: 1.20,
-        imageUrl: 'https://images.unsplash.com/photo-1603833665858-e61d17a86224?auto=format&fit=crop&w=300&q=80',
-        category: 'Produce',
-        stock: 100,
-      ),
-      Product(
-        productId: '4',
-        name: 'Orange Juice',
-        price: 4.50,
-        imageUrl: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&w=300&q=80',
-        category: 'Beverages',
-        stock: 20,
-      ),
-    ];
-
-    sampleProducts.addAll([
-      Product(
-        productId: '5',
-        name: 'Premium Beef Steak 500g',
-        price: 12.50,
-        imageUrl: 'https://images.unsplash.com/photo-1603048297172-c92544798d5e?auto=format&fit=crop&w=300&q=80',
-        category: 'Butcher',
-        stock: 15,
-      ),
-      Product(
-        productId: '6',
-        name: 'Basmati Rice 2kg',
-        price: 5.00,
-        imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=300&q=80',
-        category: 'Staples',
-        stock: 80,
-      ),
-      Product(
-        productId: '7',
-        name: 'Dishwashing Liquid 750ml',
-        price: 3.20,
-        imageUrl: 'https://images.unsplash.com/photo-1585837575652-267c041d77d4?auto=format&fit=crop&w=300&q=80',
-        category: 'Household',
-        stock: 40,
-      ),
-      Product(
-        productId: '8',
-        name: 'Potato Chips Salted',
-        price: 1.50,
-        imageUrl: 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?auto=format&fit=crop&w=300&q=80',
-        category: 'Snacks',
-        stock: 60,
-      ),
-      Product(
-        productId: '9',
-        name: 'Toothpaste Mint 100g',
-        price: 2.00,
-        imageUrl: 'https://images.unsplash.com/photo-1559586616-361e18714958?auto=format&fit=crop&w=300&q=80',
-        category: 'Sanitary',
-        stock: 100,
-      ),
-      Product(
-        productId: '10',
-        name: 'Dry Dog Food 3kg',
-        price: 15.00,
-        imageUrl: 'https://images.unsplash.com/photo-1589924691195-41432c84c161?auto=format&fit=crop&w=300&q=80',
-        category: 'Pets',
-        stock: 25,
-      ),
-      Product(
-        productId: '11',
-        name: 'Baby Formula 800g',
-        price: 25.00,
-        imageUrl: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=300&q=80',
-        category: 'Infants',
-        stock: 30,
-      ),
-    ]);
-
-    for (final product in sampleProducts) {
-      _products[product.productId] = product;
+  Future<void> fetchProducts() async {
+    try {
+      final response = await http.get(Uri.parse('http://localhost:5000/api/products'));
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> productList = json.decode(response.body);
+        _products.clear();
+        for (final item in productList) {
+          final product = Product.fromJson(item);
+          _products[product.productId] = product;
+        }
+        // Notify listeners or rebuild UI if needed. 
+        // Since this is a simple service, we might need a way to signal updates.
+        print('Fetched ${_products.length} products from API');
+      } else {
+        print('Failed to load products: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching products: $e');
     }
   }
 
