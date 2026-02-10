@@ -43,9 +43,7 @@
     <!-- Main Content -->
     <div class="main-content">
         <div class="top-bar">
-            <div class="user-info" id="userInfo">
-                <!-- Populated by JS -->
-            </div>
+            <div class="user-info" id="userInfo"></div>
             <button onclick="logout()" class="logout-btn">Log out</button>
         </div>
 
@@ -57,13 +55,11 @@
 
                 <form id="productForm">
                     <div class="form-grid">
-                        <!-- Group 1: Basic Info -->
                         <div class="form-group full-width">
                             <label for="name">Product Name</label>
                             <input type="text" id="name" required placeholder="e.g. Premium Wireless Headphones">
                         </div>
 
-                        <!-- Group 2: Pricing -->
                         <div class="form-group">
                             <label for="price">Price ($)</label>
                             <input type="number" id="price" required step="0.01" placeholder="0.00">
@@ -73,7 +69,6 @@
                             <input type="number" id="discountPrice" step="0.01" placeholder="Optional">
                         </div>
 
-                        <!-- Group 3: Inventory & Sorting -->
                         <div class="form-group">
                             <label for="category">Category</label>
                             <select id="category" required>
@@ -85,12 +80,21 @@
                             <input type="number" id="stock" value="0" required>
                         </div>
 
-                        <!-- Group 4: Media & Status -->
+                        <!-- Media Group -->
                         <div class="form-group full-width">
-                            <label for="imageUrl">Product Image</label>
+                            <label>Product Image</label>
+                            <!-- Hidden Input for the actual URL that gets sent to backend -->
+                            <input type="hidden" id="imageUrl">
+
                             <div class="image-input-wrapper">
-                                <input type="url" id="imageUrl" placeholder="https://example.com/image.png"
-                                    oninput="updatePreview(this.value)">
+                                <!-- File Upload Trigger -->
+                                <label for="imageUpload" class="btn btn-secondary" style="margin:0; cursor: pointer;">
+                                    Upload Image
+                                </label>
+                                <input type="file" id="imageUpload" accept="image/*" style="display: none;"
+                                    onchange="uploadImage(this)">
+
+                                <!-- Preview -->
                                 <div class="image-preview" id="previewBox">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                                         xmlns="http://www.w3.org/2000/svg">
@@ -99,6 +103,8 @@
                                             fill="currentColor" />
                                     </svg>
                                 </div>
+                                <span id="uploadStatus" style="font-size: 0.9rem; color: var(--label-color);">No file
+                                    selected</span>
                             </div>
                         </div>
 
@@ -125,33 +131,53 @@
 
             <div class="card">
                 <h2>Current Products</h2>
-                <div id="productList">
-                    <!-- Products loaded here -->
-                </div>
+                <div id="productList"></div>
             </div>
         </div>
     </div>
 
     <script src="config.js"></script>
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
     <script>
-        // User Info Logic
         const user = JSON.parse(localStorage.getItem('user'));
         if (user) {
             const initial = user.username.charAt(0).toUpperCase();
-            document.getElementById('userInfo').innerHTML = `
-                <div class="avatar">${initial}</div>
-                <span>${user.username}</span>
-            `;
+            document.getElementById('userInfo').innerHTML = `<div class="avatar">${initial}</div><span>${user.username}</span>`;
         }
 
-        // Image Preview Logic
-        function updatePreview(url) {
-            const box = document.getElementById('previewBox');
-            if (url) {
-                box.innerHTML = `<img src="${url}" onerror="this.onerror=null;this.parentElement.innerHTML='❌';">`;
-            } else {
-                box.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 19V5C21 3.9 20.1 3 19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19ZM8.5 13.5L11 16.51L14.5 12L19 18H5L8.5 13.5Z" fill="currentColor"/></svg>`;
+        async function uploadImage(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const status = document.getElementById('uploadStatus');
+            const previewBox = document.getElementById('previewBox');
+            const hiddenInput = document.getElementById('imageUrl');
+
+            status.textContent = 'Uploading...';
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Upload failed');
+
+                const data = await response.json();
+
+                // Success
+                hiddenInput.value = data.imageUrl;
+                previewBox.innerHTML = `<img src="${data.imageUrl}" onerror="this.onerror=null;this.parentElement.innerHTML='❌';">`;
+                status.textContent = 'Uploaded successfully!';
+                status.style.color = 'var(--primary-color)';
+            } catch (error) {
+                console.error('Error:', error);
+                status.textContent = 'Upload failed.';
+                status.style.color = 'var(--danger-color)';
+                hiddenInput.value = ''; // Clear on error
             }
         }
     </script>

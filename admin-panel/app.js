@@ -150,6 +150,14 @@ window.populateEditForm = (id) => {
     document.getElementById('discountPrice').value = product.discountPrice || '';
     document.getElementById('isAvailable').checked = product.isAvailable !== undefined ? product.isAvailable : true;
 
+    // Update Image Preview
+    const previewBox = document.getElementById('previewBox');
+    if (product.imageUrl) {
+        previewBox.innerHTML = `<img src="${product.imageUrl}" onerror="this.onerror=null;this.parentElement.innerHTML='❌';">`;
+    } else {
+        previewBox.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 19V5C21 3.9 20.1 3 19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19ZM8.5 13.5L11 16.51L14.5 12L19 18H5L8.5 13.5Z" fill="currentColor"/></svg>`;
+    }
+
     editingProductId = id;
     submitBtn.textContent = 'Update Product';
     cancelEditBtn.style.display = 'inline-block';
@@ -165,6 +173,9 @@ function resetForm() {
     editingProductId = null;
     submitBtn.textContent = 'Add Product';
     cancelEditBtn.style.display = 'none';
+    document.getElementById('imageUrl').value = '';
+    document.getElementById('uploadStatus').textContent = 'No file selected';
+    document.getElementById('previewBox').innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 19V5C21 3.9 20.1 3 19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19ZM8.5 13.5L11 16.51L14.5 12L19 18H5L8.5 13.5Z" fill="currentColor"/></svg>`;
 }
 
 // Delete product
