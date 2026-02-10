@@ -17,7 +17,7 @@ class ShoppingService {
 
   Future<void> fetchProducts() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:5000/api/products'));
+      final response = await http.get(Uri.parse('https://superapp-diht.onrender.com/api/products'));
       
       if (response.statusCode == 200) {
         final List<dynamic> productList = json.decode(response.body);
@@ -39,7 +39,7 @@ class ShoppingService {
 
   Future<List<String>> fetchCategories() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:5000/api/categories?hasProducts=true'));
+      final response = await http.get(Uri.parse('https://superapp-diht.onrender.com/api/categories?hasProducts=true'));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -57,7 +57,7 @@ class ShoppingService {
 
   Future<List<Banner>> fetchBanners() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:5000/api/banners'));
+      final response = await http.get(Uri.parse('https://superapp-diht.onrender.com/api/banners'));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);

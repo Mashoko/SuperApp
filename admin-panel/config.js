@@ -1,6 +1,6 @@
 const CONFIG = {
     // API_URL: 'http://localhost:5000/api'
-    API_URL: 'https://your-backend-url.onrender.com/api'
+    API_URL: 'https://superapp-diht.onrender.com/api'
 };
 
 // Auto-detect local development
