@@ -89,7 +89,7 @@ class CheckoutBar extends StatelessWidget {
                     
                     // Cart Icon Circle
                     Container(
-                      padding: const EdgeInsets.all(10), // Larger padding
+                      padding: const EdgeInsets.all(8), // Reduced padding
                       decoration: const BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
@@ -97,11 +97,11 @@ class CheckoutBar extends StatelessWidget {
                       child: const Icon(
                         Icons.shopping_cart_outlined,
                         color: Colors.black,
-                        size: 24, // Larger icon
+                        size: 24,
                       ),
                     ),
                     
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8), // Reduced spacer
                     
                     // Checkout Button
                     ElevatedButton(
@@ -112,7 +112,7 @@ class CheckoutBar extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14), // Larger button
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Reduced padding
                       ),
                       child: const Text(
                         'Checkout',

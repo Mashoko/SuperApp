@@ -4,6 +4,6 @@ const CONFIG = {
 };
 
 // Auto-detect local development
-if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:') {
     CONFIG.API_URL = 'http://localhost:5000/api';
 }
