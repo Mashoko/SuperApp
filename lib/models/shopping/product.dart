@@ -9,6 +9,7 @@ class Product {
   final String category;
   final String imageUrl;
   final DateTime createdAt;
+  final String unit;
 
   Product({
     required this.productId,
@@ -18,6 +19,7 @@ class Product {
     this.stock = 0,
     this.category = '',
     this.imageUrl = '',
+    this.unit = 'kg',
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -30,6 +32,7 @@ class Product {
       'stock': stock,
       'category': category,
       'image_url': imageUrl,
+      'unit': unit,
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -40,14 +43,13 @@ class Product {
       name: json['name'] ?? '',
       price: (json['price'] ?? 0).toDouble(),
       description: json['description'] ?? '',
-      stock: json['stock'] ?? 0,
+      stock: (json['stock'] != null && json['stock'] is int && json['stock'] > 0) ? json['stock'] : 100,
       category: json['category'] ?? '',
       imageUrl: json['imageUrl'] ?? json['image_url'] ?? '',
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : json['created_at'] != null
-              ? DateTime.parse(json['created_at'])
-              : null,
+      unit: json['unit'] ?? 'kg',
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
     );
   }
 }

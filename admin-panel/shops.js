@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api/shops';
+const API_URL = CONFIG.API_URL + '/shops';
 const token = localStorage.getItem('token');
 const form = document.getElementById('shopForm');
 const list = document.getElementById('shopList');

@@ -13,6 +13,11 @@ class WunzaColors {
   static const Color divider = Color(0xFFBDBDBD);
   static const Color success = Color(0xFF388E3C);
 
+  // --- Premium Grey Palette ---
+  static const Color premiumGrey = Color(0xFFF5F5F7);
+  static const Color premiumSurface = Color(0xFFFFFFFF);
+  static const Color premiumText = Color(0xFF1D1D1F);
+
   // --- NEW: Modern Palette (Added) ---
   static const Color indigo = Color(0xFF4F46E5);
   static const Color blueAccent = Color(0xFF3B82F6);

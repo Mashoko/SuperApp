@@ -1,56 +1,73 @@
 import 'package:flutter/material.dart';
-
+import 'package:mvvm_sip_demo/core/theme.dart';
 
 class QuantitySelector extends StatelessWidget {
   final int quantity;
+  final VoidCallback onAdd;
+  final VoidCallback onRemove;
   final VoidCallback onIncrement;
-  final VoidCallback onDecrement;
-  final double size;
 
   const QuantitySelector({
     super.key,
     required this.quantity,
+    required this.onAdd,
+    required this.onRemove,
     required this.onIncrement,
-    required this.onDecrement,
-    this.size = 40,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildButton(Icons.remove, onDecrement),
-        Container(
-          width: size * 1.5,
-          alignment: Alignment.center,
-          child: Text(
-            '$quantity',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+    if (quantity == 0) {
+      return GestureDetector(
+        onTap: onAdd,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: WunzaColors.premiumText,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Text(
+            "Add",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
           ),
         ),
-        _buildButton(Icons.add, onIncrement),
-      ],
-    );
-  }
+      );
+    }
 
-  Widget _buildButton(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: Colors.grey[200], // Grey background
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          icon,
-          size: size * 0.5,
-          color: Colors.black,
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: WunzaColors.premiumGrey,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: onRemove,
+            icon: const Icon(Icons.remove, size: 16),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            color: WunzaColors.premiumText,
+          ),
+          Text(
+            '$quantity',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+          IconButton(
+            onPressed: onIncrement,
+            icon: const Icon(Icons.add, size: 16),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            color: WunzaColors.premiumText,
+          ),
+        ],
       ),
     );
   }

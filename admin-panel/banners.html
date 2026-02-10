@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banner Admin</title>
+    <link rel="stylesheet" href="style.css">
+    <script>
+        if (!localStorage.getItem('token')) {
+            window.location.href = 'login.html';
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Banner Management</h1>
+            <div>
+                <a href="index.html">Products</a>
+                <a href="categories.html">Categories</a>
+                <a href="shops.html">Shops</a>
+                <a href="banners.html" class="active">Banners</a>
+                <button onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Add / Edit Banner</h2>
+            <form id="bannerForm">
+                <div class="form-group">
+                    <label for="title">Title</label>
+                    <input type="text" id="title" required placeholder="e.g. Fresh Arrivals">
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <input type="text" id="description" required placeholder="e.g. Get 20% off...">
+                </div>
+                <div class="form-group">
+                    <label for="imageUrl">Image URL (Optional)</label>
+                    <input type="url" id="imageUrl" placeholder="https://example.com/banner.jpg">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="isActive" checked> Active
+                    </label>
+                </div>
+                <button type="submit" class="btn" id="submitBtn">Save Banner</button>
+                <button type="button" class="btn" id="cancelEdit"
+                    style="display:none; background: #6c757d;">Cancel</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Active Banners</h2>
+            <div id="bannerList" class="product-list">
+                <!-- Banners loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="banners.js"></script>
+    <script>
+        window.logout = () => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        };
+    </script>
+</body>
+
+</html>

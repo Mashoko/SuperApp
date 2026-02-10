@@ -219,6 +219,51 @@ app.delete('/api/shops/:id', auth, async (req, res) => {
     }
 });
 
+// --- Banner Routes ---
+const Banner = require('./models/banner.model');
+
+// Get active banners
+app.get('/api/banners', async (req, res) => {
+    try {
+        const banners = await Banner.find({ isActive: true });
+        res.json(banners);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Create Banner
+app.post('/api/banners', auth, async (req, res) => {
+    const banner = new Banner(req.body);
+    try {
+        const newBanner = await banner.save();
+        res.status(201).json(newBanner);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// Update Banner
+app.put('/api/banners/:id', auth, async (req, res) => {
+    try {
+        const updatedBanner = await Banner.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        res.json(updatedBanner);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// Delete Banner
+app.delete('/api/banners/:id', auth, async (req, res) => {
+    try {
+        await Banner.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Banner deleted' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

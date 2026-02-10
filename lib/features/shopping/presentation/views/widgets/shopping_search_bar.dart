@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
+import 'package:mvvm_sip_demo/core/theme.dart';
 
 class ShoppingSearchBar extends StatelessWidget {
   final VoidCallback? onCartPressed;
   final VoidCallback? onBackPressed;
-  
+  final int cartItemCount;
+
   const ShoppingSearchBar({
     super.key, 
     this.onCartPressed,
@@ -12,12 +13,10 @@ class ShoppingSearchBar extends StatelessWidget {
     this.cartItemCount = 0,
   });
 
-  final int cartItemCount;
-
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
         children: [
           // Back Button
@@ -27,24 +26,34 @@ class ShoppingSearchBar extends StatelessWidget {
               onPressed: onBackPressed,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
+              color: WunzaColors.premiumText,
             ),
           if (onBackPressed != null) const SizedBox(width: 12),
 
           // Search Field
           Expanded(
-            child: SizedBox(
+            child: Container(
               height: 48,
-              child: GlassContainer(
-                opacity: 0.5,
-                borderRadius: 12,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: const TextField(
+              decoration: BoxDecoration(
+                color: WunzaColors.premiumSurface,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const TextField(
                 decoration: InputDecoration(
                   hintText: 'Search product',
-                  prefixIcon: Icon(Icons.search, color: Colors.grey),
+                  hintStyle: TextStyle(color: WunzaColors.textSecondary),
+                  prefixIcon: Icon(Icons.search, color: WunzaColors.textSecondary),
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 14),
-                ),
                 ),
               ),
             ),
@@ -53,27 +62,34 @@ class ShoppingSearchBar extends StatelessWidget {
           const SizedBox(width: 12),
 
           // Filter Button
-          SizedBox(
+          Container(
             height: 48,
             width: 48,
-            child: GlassContainer(
-              opacity: 0.5,
-              borderRadius: 12,
-              child: IconButton(
-              icon: const Icon(Icons.filter_list, color: Colors.grey),
-              onPressed: () {},
+            decoration: BoxDecoration(
+              color: WunzaColors.premiumSurface,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
+            child: IconButton(
+              icon: const Icon(Icons.filter_list, color: WunzaColors.premiumText),
+              onPressed: () {},
             ),
           ),
 
-          // Cart Button (Optional/New)
+          // Cart Button
           if (onCartPressed != null) ...[
              const SizedBox(width: 12),
              Stack(
                children: [
                  IconButton(
                    onPressed: onCartPressed,
-                   icon: const Icon(Icons.shopping_cart_outlined),
+                   icon: const Icon(Icons.shopping_cart_outlined, color: WunzaColors.premiumText),
                  ),
                  if (cartItemCount > 0)
                    Positioned(

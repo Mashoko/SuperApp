@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mvvm_sip_demo/core/routes.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
-
-
-
 import 'package:mvvm_sip_demo/features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
-import 'package:mvvm_sip_demo/features/shopping/presentation/views/widgets/category_sidebar.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/views/widgets/checkout_bar.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/views/widgets/product_list_tile.dart';
+import 'package:mvvm_sip_demo/features/shopping/presentation/views/widgets/product_grid_item.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/views/widgets/shopping_search_bar.dart';
+import 'package:mvvm_sip_demo/features/shopping/presentation/views/widgets/category_pills.dart';
+import 'package:mvvm_sip_demo/features/shopping/presentation/views/widgets/promotional_banner.dart';
 
 class ShoppingView extends StatefulWidget {
   const ShoppingView({super.key});
@@ -19,175 +18,148 @@ class ShoppingView extends StatefulWidget {
 }
 
 class _ShoppingViewState extends State<ShoppingView> {
+  bool _isGridView = false;
+
   @override
   void initState() {
     super.initState();
-    // Load products if needed, or rely on dummy data for now
-    // Load products if needed, or rely on dummy data for now
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ShoppingViewModel>(context, listen: false).loadProducts();
     });
   }
 
-
-  IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case 'Popular': return Icons.trending_up;
-      case 'Produce': return Icons.local_grocery_store;
-      case 'Butcher': return Icons.kebab_dining;
-      case 'Bakery': return Icons.bakery_dining;
-      case 'Staples': return Icons.rice_bowl;
-      case 'Dairy': return Icons.local_pizza;
-      case 'Infants': return Icons.child_care;
-      case 'Beverages': return Icons.local_drink;
-      case 'Household': return Icons.cleaning_services;
-      case 'Snacks': return Icons.fastfood;
-      case 'Sanitary': return Icons.soap;
-      case 'Pets': return Icons.pets;
-      default: return Icons.category;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // --- 1. Global Background Gradient & Blobs ---
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFFE0E7FF), // Very light Indigo
-                  Color(0xFFF3F4F6), // Grey/White
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: WunzaColors.indigo.withValues(alpha: 0.2),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 100,
-            left: -50,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: WunzaColors.blueAccent.withValues(alpha: 0.15),
-              ),
-            ),
-          ),
-          
-          SafeArea(
-            child: Stack(
+      backgroundColor: WunzaColors.premiumGrey,
+      body: SafeArea(
+        bottom: false,
+        child: Stack(
+          children: [
+            Column(
               children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left Sidebar
+                // Top Bar
                 Consumer<ShoppingViewModel>(
                   builder: (context, viewModel, child) {
-                    return CategorySidebar(
-                      categories: viewModel.categories,
-                      selectedCategory: viewModel.selectedCategory,
-                      onCategorySelected: (category) {
-                        viewModel.selectCategory(category);
-                      },
+                    final itemCount = viewModel.cart['item_count'] as int? ?? 0;
+                    return ShoppingSearchBar(
+                      onBackPressed: () => Navigator.pop(context),
+                      onCartPressed: () => Navigator.pushNamed(context, Routes.cart),
+                      cartItemCount: itemCount,
                     );
                   },
                 ),
-                
-                // Main Content
+
                 Expanded(
-                  child: Column(
-                    children: [
-                      // Top Bar
-                      // Top Bar
-                      Consumer<ShoppingViewModel>(
-                        builder: (context, viewModel, child) {
-                          final itemCount = viewModel.cart['item_count'] as int? ?? 0;
-                          return ShoppingSearchBar(
-                            onBackPressed: () => Navigator.pop(context),
-                            onCartPressed: () => Navigator.pushNamed(context, Routes.cart),
-                            cartItemCount: itemCount,
-                          );
-                        },
-                      ),
-                      
-                      // Category Header
-                      Consumer<ShoppingViewModel>(
-                        builder: (context, viewModel, child) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  _getCategoryIcon(viewModel.selectedCategory),
-                                  color: WunzaColors.primary,
-                                  size: 20,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                         // Promotional Banner
+                        Consumer<ShoppingViewModel>(
+                          builder: (context, viewModel, child) {
+                            return PromotionalBanner(
+                              banner: viewModel.banners.isNotEmpty ? viewModel.banners.first : null,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Categories (Pills)
+                         Consumer<ShoppingViewModel>(
+                          builder: (context, viewModel, child) {
+                            return CategoryPills(
+                              categories: viewModel.categories,
+                              selectedCategory: viewModel.selectedCategory,
+                              onCategorySelected: (category) {
+                                viewModel.selectCategory(category);
+                              },
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Section Header + Toggle
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Popular Products",
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: WunzaColors.premiumText,
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  viewModel.selectedCategory,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  _isGridView ? Icons.view_list : Icons.grid_view,
+                                  color: WunzaColors.premiumText,
                                 ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // Product List
-                      Expanded(
-                        child: Consumer<ShoppingViewModel>(
+                                onPressed: () {
+                                  setState(() {
+                                    _isGridView = !_isGridView;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Product List/Grid
+                        Consumer<ShoppingViewModel>(
                           builder: (context, viewModel, child) {
                             if (viewModel.isLoading) {
                               return const Center(child: CircularProgressIndicator());
                             }
                             
-                            return ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 100), // Bottom padding for checkout bar
-                              itemCount: viewModel.products.length,
-                              itemBuilder: (context, index) {
-                                final product = viewModel.products[index];
-                                return ProductListTile(
-                                  product: product,
-                                  onAddToCart: () {
-                                    viewModel.addToCart('user_id', product.productId);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('${product.name} added to cart')),
-                                    );
-                                  },
-                                );
-                              },
-                            );
+                            // Bottom padding for checkout bar
+                            final bottomPadding = const EdgeInsets.only(bottom: 100, left: 16, right: 16);
+
+                            if (_isGridView) {
+                               return GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                padding: bottomPadding,
+                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  childAspectRatio: 0.75,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 16,
+                                ),
+                                itemCount: viewModel.products.length,
+                                itemBuilder: (context, index) {
+                                  final product = viewModel.products[index];
+                                  return ProductGridItem(
+                                    product: product,
+                                  );
+                                },
+                              );
+                            } else {
+                              return ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                padding: bottomPadding.copyWith(left: 0, right: 0),
+                                itemCount: viewModel.products.length,
+                                itemBuilder: (context, index) {
+                                  final product = viewModel.products[index];
+                                  return ProductListTile(
+                                    product: product,
+                                  );
+                                },
+                              );
+                            }
                           },
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
-            
+
             // Checkout Bar
             Positioned(
               left: 0,
@@ -198,21 +170,22 @@ class _ShoppingViewState extends State<ShoppingView> {
                   final itemCount = viewModel.cart['item_count'] as int? ?? 0;
                   final totalAmount = viewModel.cart['total'] as double? ?? 0.0;
                   
-                  return CheckoutBar(
-                    itemCount: itemCount,
-                    totalAmount: totalAmount,
-                    onCheckout: () {
-                       Navigator.pushNamed(context, Routes.checkout);
-                    },
+                  return SafeArea(
+                    child: CheckoutBar(
+                      itemCount: itemCount,
+                      totalAmount: totalAmount,
+                      onCheckout: () {
+                         Navigator.pushNamed(context, Routes.checkout);
+                      },
+                    ),
                   );
                 },
               ),
             ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
+

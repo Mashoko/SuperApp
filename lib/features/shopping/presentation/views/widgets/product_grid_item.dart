@@ -6,10 +6,10 @@ import 'package:mvvm_sip_demo/models/shopping/product.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/views/widgets/quantity_selector.dart';
 
-class ProductListTile extends StatelessWidget {
+class ProductGridItem extends StatelessWidget {
   final Product product;
 
-  const ProductListTile({
+  const ProductGridItem({
     super.key,
     required this.product,
   });
@@ -17,44 +17,45 @@ class ProductListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12, left: 16, right: 16),
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: WunzaColors.premiumSurface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-             color: Colors.black.withOpacity(0.05),
-             blurRadius: 10,
-             offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Product Image
-          Container(
-            width: 80, 
-            height: 80, 
-            decoration: BoxDecoration(
-              color: WunzaColors.premiumGrey,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.all(8),
-            child: CachedNetworkImage(
-              imageUrl: product.imageUrl,
-              fit: BoxFit.contain,
-              placeholder: (context, url) => Center(
-                 child: Icon(Icons.image, color: Colors.grey[300]),
+          // Image Area
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: WunzaColors.premiumGrey,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
-              errorWidget: (context, url, error) => Center(
-                 child: Icon(Icons.broken_image, color: Colors.grey[300]),
+              child: CachedNetworkImage(
+                imageUrl: product.imageUrl,
+                fit: BoxFit.contain,
+                placeholder: (context, url) => Center(
+                   child: Icon(Icons.image, color: Colors.grey[300]),
+                ),
+                errorWidget: (context, url, error) => Center(
+                   child: Icon(Icons.image_not_supported, color: Colors.grey[300]),
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 16),
-          // Product Details
-          Expanded(
+          
+          // Details Area
+          Padding(
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -63,30 +64,29 @@ class ProductListTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                        color: WunzaColors.premiumText,
-                      ),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: WunzaColors.premiumText,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                // Unit of measure
                 Text(
-                  'per ${product.unit}', 
+                  'per ${product.unit}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: WunzaColors.textSecondary,
-                        fontSize: 12,
-                      ),
+                    color: WunzaColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
+                     Text(
                       '\$${product.price.toStringAsFixed(2)}',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             color: WunzaColors.premiumText,
                             fontWeight: FontWeight.bold,
-                            fontSize: 18, 
+                            fontSize: 16,
                           ),
                     ),
                     Consumer<ShoppingViewModel>(

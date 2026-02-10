@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api/products';
+const API_URL = CONFIG.API_URL + '/products';
 const token = localStorage.getItem('token');
 
 if (!token) {
@@ -192,7 +192,7 @@ window.deleteProduct = async (id) => {
 async function loadCategories() {
     try {
         console.log('Fetching categories...');
-        const response = await authFetch('http://localhost:5000/api/categories');
+        const response = await authFetch(CONFIG.API_URL + '/categories');
         // Note: Using full URL to avoid any relative path issues
 
         if (!response.ok) throw new Error('Failed to fetch categories');

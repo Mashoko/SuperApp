@@ -120,12 +120,17 @@ class _ProductDetailViewState extends State<ProductDetailView> {
                                   _quantity++;
                                 });
                               },
-                              onDecrement: () {
+                              onRemove: () {
                                 if (_quantity > 1) {
                                   setState(() {
                                     _quantity--;
                                   });
                                 }
+                              },
+                              onAdd: () {
+                                setState(() {
+                                  _quantity++;
+                                });
                               },
                             ),
                           ],

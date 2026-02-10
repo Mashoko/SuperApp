@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api/categories';
+const API_URL = CONFIG.API_URL + '/categories';
 const token = localStorage.getItem('token');
 const form = document.getElementById('categoryForm');
 const list = document.getElementById('categoryList');

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:mvvm_sip_demo/models/shopping/product.dart';
 import 'package:mvvm_sip_demo/models/shopping/order.dart';
+import 'package:mvvm_sip_demo/models/shopping/banner.dart';
 import 'package:mvvm_sip_demo/services/shopping_service.dart';
 
 class ShoppingViewModel extends ChangeNotifier {
@@ -86,12 +87,25 @@ class ShoppingViewModel extends ChangeNotifier {
       _setError(null);
       await _service.fetchProducts();
       await loadCategories(); // Load categories too
+      await loadBanners(); // Load banners too
       _products = _service.getProducts(category: category);
       notifyListeners();
     } catch (e) {
       _setError('Failed to load products: $e');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  List<Banner> _banners = [];
+  List<Banner> get banners => _banners;
+
+  Future<void> loadBanners() async {
+    try {
+      _banners = await _service.fetchBanners();
+      notifyListeners();
+    } catch (e) {
+      print('VM: Error loading banners $e');
     }
   }
 
@@ -119,29 +133,56 @@ class ShoppingViewModel extends ChangeNotifier {
 
   Future<void> addToCart(String userId, String productId, {int quantity = 1}) async {
     try {
-      _setLoading(true);
       _setError(null);
       _service.addToCart(userId, productId, quantity: quantity);
       await loadCart(userId);
       notifyListeners();
     } catch (e) {
       _setError('Failed to add to cart: $e');
-    } finally {
-      _setLoading(false);
     }
+  }
+
+
+
+  Future<void> updateCartQuantity(String userId, String productId, int quantity) async {
+    try {
+      _setError(null);
+      _service.updateCartQuantity(userId, productId, quantity);
+      await loadCart(userId);
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to update cart: $e');
+    }
+  }
+  
+  int getProductQuantity(String productId) {
+    if (_cart['items'] == null) return 0;
+    
+    final items = _cart['items'] as List<dynamic>;
+    try {
+      final item = items.firstWhere(
+        (item) => item['product_id'] == productId || item['product']['product_id'] == productId,
+        orElse: () => null,
+      );
+      
+      if (item != null) {
+        return item['quantity'] as int;
+      }
+    } catch (e) {
+      // Handle potential structure mismatch gracefully
+      return 0;
+    }
+    return 0;
   }
 
   Future<void> removeFromCart(String userId, String productId) async {
     try {
-      _setLoading(true);
       _setError(null);
       _service.removeFromCart(userId, productId);
       await loadCart(userId);
       notifyListeners();
     } catch (e) {
       _setError('Failed to remove from cart: $e');
-    } finally {
-      _setLoading(false);
     }
   }
 

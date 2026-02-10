@@ -2,6 +2,7 @@ import 'package:mvvm_sip_demo/models/shopping/product.dart';
 import 'package:mvvm_sip_demo/models/shopping/cart_item.dart';
 import 'package:mvvm_sip_demo/models/shopping/order.dart';
 import 'package:mvvm_sip_demo/models/shopping/order_status.dart';
+import 'package:mvvm_sip_demo/models/shopping/banner.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -50,6 +51,24 @@ class ShoppingService {
     } catch (e) {
       print('Error fetching categories: $e');
       return [];
+      return [];
+    }
+  }
+
+  Future<List<Banner>> fetchBanners() async {
+    try {
+      final response = await http.get(Uri.parse('http://localhost:5000/api/banners'));
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => Banner.fromJson(json)).toList();
+      } else {
+        print('Failed to load banners: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('Error fetching banners: $e');
+      return [];
     }
   }
 
@@ -96,6 +115,28 @@ class ShoppingService {
 
     cart.add(CartItem(product: product, quantity: quantity));
     return 'Added ${quantity}x ${product.name} to cart';
+  }
+
+  String updateCartQuantity(String userId, String productId, int quantity) {
+    if (!_userCarts.containsKey(userId)) return 'Cart not found';
+    
+    final cart = _userCarts[userId]!;
+    final index = cart.indexWhere((item) => item.product.productId == productId);
+    
+    if (index != -1) {
+      if (quantity <= 0) {
+        // Remove item if quantity is zero or less
+        cart.removeAt(index);
+        return 'Removed item from cart';
+      }
+      cart[index].quantity = quantity;
+      return 'Updated quantity to $quantity';
+    } else if (quantity > 0) {
+      // Add if not exists (optional, but good DX)
+      return addToCart(userId, productId, quantity: quantity);
+    }
+    
+    return 'Product not found in cart';
   }
 
   Map<String, dynamic> getCart(String userId) {
