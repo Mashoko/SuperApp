@@ -4,25 +4,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shop Admin</title>
+    <title>Products - Admin</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             display: none;
         }
-
-        /* Hide body by default to prevent flash of content */
     </style>
     <script>
-        if (!localStorage.getItem('token')) {
-            window.location.href = 'login.html';
-        } else {
-            document.addEventListener('DOMContentLoaded', () => {
-                document.body.style.display = 'block';
-            });
-        }
-
-        // Global Logout Function
+        if (!localStorage.getItem('token')) window.location.href = 'login.html';
+        else document.addEventListener('DOMContentLoaded', () => document.body.style.display = 'flex');
         window.logout = () => {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -32,90 +27,134 @@
 </head>
 
 <body>
-    <div class="container">
-        <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
-            <h1>Shop Admin Panel</h1>
-            <div>
-                <a href="index.html"
-                    style="margin-right: 15px; text-decoration: none; color: #007bff; font-weight: bold;">Products</a>
-                <a href="categories.html"
-                    style="margin-right: 15px; text-decoration: none; color: #007bff;">Categories</a>
-                <a href="shops.html" style="margin-right: 15px; text-decoration: none; color: #007bff;">Shops</a>
-                <a href="banners.html" style="margin-right: 15px; text-decoration: none; color: #007bff;">Banners</a>
-                <span id="user-display" style="margin-right: 15px; font-weight: bold;"></span>
-                <button onclick="logout()"
-                    style="padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Logout</button>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">🛒 Shop Admin</div>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html" class="nav-item active">Products</a>
+            <a href="categories.html" class="nav-item">Categories</a>
+            <a href="shops.html" class="nav-item">Shops</a>
+            <a href="banners.html" class="nav-item">Banners</a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="user-info" id="userInfo">
+                <!-- Populated by JS -->
             </div>
+            <button onclick="logout()" class="logout-btn">Log out</button>
         </div>
 
-        <script>
-            const user = JSON.parse(localStorage.getItem('user'));
-            if (user) {
-                document.getElementById('user-display').textContent = `Hello, ${user.username} (${user.role})`;
-            }
-        </script>
-
-        <div class="card">
-            <h2>Add New Product</h2>
-            <form id="productForm">
-                <div class="form-group">
-                    <label for="name">Product Name</label>
-                    <input type="text" id="name" required>
+        <div class="content-wrapper">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h2 style="margin: 0;">Add New Product</h2>
                 </div>
 
-                <div class="form-group">
-                    <label for="price">Price ($)</label>
-                    <input type="number" id="price" required step="0.01">
+                <form id="productForm">
+                    <div class="form-grid">
+                        <!-- Group 1: Basic Info -->
+                        <div class="form-group full-width">
+                            <label for="name">Product Name</label>
+                            <input type="text" id="name" required placeholder="e.g. Premium Wireless Headphones">
+                        </div>
+
+                        <!-- Group 2: Pricing -->
+                        <div class="form-group">
+                            <label for="price">Price ($)</label>
+                            <input type="number" id="price" required step="0.01" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="discountPrice">Discount Price ($)</label>
+                            <input type="number" id="discountPrice" step="0.01" placeholder="Optional">
+                        </div>
+
+                        <!-- Group 3: Inventory & Sorting -->
+                        <div class="form-group">
+                            <label for="category">Category</label>
+                            <select id="category" required>
+                                <option value="">Select Category</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="stock">Stock Quantity</label>
+                            <input type="number" id="stock" value="0" required>
+                        </div>
+
+                        <!-- Group 4: Media & Status -->
+                        <div class="form-group full-width">
+                            <label for="imageUrl">Product Image</label>
+                            <div class="image-input-wrapper">
+                                <input type="url" id="imageUrl" placeholder="https://example.com/image.png"
+                                    oninput="updatePreview(this.value)">
+                                <div class="image-preview" id="previewBox">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <path
+                                            d="M21 19V5C21 3.9 20.1 3 19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19ZM8.5 13.5L11 16.51L14.5 12L19 18H5L8.5 13.5Z"
+                                            fill="currentColor" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width"
+                            style="display: flex; justify-content: flex-end; align-items: center; gap: 15px; padding-top: 10px; border-top: 1px solid var(--border-color);">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="isAvailable" checked>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Status: Active</span>
+                            </label>
+                            <div style="flex: 1;"></div>
+                            <button type="button" class="btn btn-secondary" id="cancelEdit" style="display:none;"
+                                onclick="resetForm()">Cancel</button>
+                            <button type="submit" class="btn" id="submitBtn">Add Product</button>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="description">Description (Optional)</label>
+                            <textarea id="description" rows="3"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Current Products</h2>
+                <div id="productList">
+                    <!-- Products loaded here -->
                 </div>
-
-                <div class="form-group">
-                    <label for="discountPrice">Discount Price ($) (Optional)</label>
-                    <input type="number" id="discountPrice" step="0.01">
-                </div>
-
-                <div class="form-group">
-                    <label for="stock">Stock Quantity</label>
-                    <input type="number" id="stock" value="0" required>
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="isAvailable" checked> Available for Sale
-                    </label>
-                </div>
-
-                <div class="form-group">
-                    <label for="category">Category</label>
-                    <select id="category" required>
-                        <option value="">Select Category</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="imageUrl">Image URL</label>
-                    <input type="url" id="imageUrl" placeholder="https://example.com/image.png">
-                </div>
-
-                <div class="form-group">
-                    <label for="description">Description</label>
-                    <textarea id="description" rows="3"></textarea>
-                </div>
-
-                <button type="submit" class="btn" id="submitBtn">Add Product</button>
-                <button type="button" class="btn" id="cancelEdit"
-                    style="display:none; background: #6c757d; margin-top: 10px;">Cancel Edit</button>
-            </form>
-        </div>
-
-        <div class="card">
-            <h2>Current Products</h2>
-            <div id="productList" class="product-list">
-                <!-- Products will be loaded here -->
             </div>
         </div>
     </div>
 
-    <script src="app.js?v=2"></script>
+    <script src="config.js"></script>
+    <script src="app.js?v=3"></script>
+    <script>
+        // User Info Logic
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user) {
+            const initial = user.username.charAt(0).toUpperCase();
+            document.getElementById('userInfo').innerHTML = `
+                <div class="avatar">${initial}</div>
+                <span>${user.username}</span>
+            `;
+        }
+
+        // Image Preview Logic
+        function updatePreview(url) {
+            const box = document.getElementById('previewBox');
+            if (url) {
+                box.innerHTML = `<img src="${url}" onerror="this.onerror=null;this.parentElement.innerHTML='❌';">`;
+            } else {
+                box.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 19V5C21 3.9 20.1 3 19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19ZM8.5 13.5L11 16.51L14.5 12L19 18H5L8.5 13.5Z" fill="currentColor"/></svg>`;
+            }
+        }
+    </script>
 </body>
 
 </html>

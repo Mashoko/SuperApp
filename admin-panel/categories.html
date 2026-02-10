@@ -4,21 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Categories - Shop Admin</title>
+    <title>Categories - Admin</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             display: none;
         }
     </style>
     <script>
-        if (!localStorage.getItem('token')) {
-            window.location.href = 'login.html';
-        } else {
-            document.addEventListener('DOMContentLoaded', () => {
-                document.body.style.display = 'block';
-            });
-        }
+        if (!localStorage.getItem('token')) window.location.href = 'login.html';
+        else document.addEventListener('DOMContentLoaded', () => document.body.style.display = 'flex');
         window.logout = () => {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -28,43 +24,62 @@
 </head>
 
 <body>
-    <div class="container">
-        <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
-            <h1>Manage Categories</h1>
-            <div>
-                <a href="index.html" style="margin-right: 15px; text-decoration: none; color: #007bff;">Products</a>
-                <a href="categories.html"
-                    style="margin-right: 15px; text-decoration: none; color: #007bff; font-weight: bold;">Categories</a>
-                <a href="shops.html" style="margin-right: 15px; text-decoration: none; color: #007bff;">Shops</a>
-                <a href="banners.html" style="margin-right: 15px; text-decoration: none; color: #007bff;">Banners</a>
-                <button onclick="logout()"
-                    style="padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Logout</button>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">🛒 Shop Admin</div>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html" class="nav-item">Products</a>
+            <a href="categories.html" class="nav-item active">Categories</a>
+            <a href="shops.html" class="nav-item">Shops</a>
+            <a href="banners.html" class="nav-item">Banners</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="user-info" id="userInfo"></div>
+            <button onclick="logout()" class="logout-btn">Log out</button>
+        </div>
+
+        <div class="content-wrapper">
+            <div class="card">
+                <h2>Add New Category</h2>
+                <form id="categoryForm">
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label for="name">Category Name</label>
+                            <input type="text" id="name" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="description">Description</label>
+                            <textarea id="description" rows="3"></textarea>
+                        </div>
+                        <div class="form-group full-width" style="text-align: right;">
+                            <button type="button" class="btn btn-secondary" id="cancelEdit"
+                                style="display:none;">Cancel</button>
+                            <button type="submit" class="btn" id="submitBtn">Add Category</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Existing Categories</h2>
+                <div id="categoryList"></div>
             </div>
         </div>
-
-        <div class="card">
-            <h2>Add New Category</h2>
-            <form id="categoryForm">
-                <div class="form-group">
-                    <label for="name">Category Name</label>
-                    <input type="text" id="name" required>
-                </div>
-                <div class="form-group">
-                    <label for="description">Description</label>
-                    <textarea id="description" rows="2"></textarea>
-                </div>
-                <button type="submit" class="btn" id="submitBtn">Add Category</button>
-                <button type="button" class="btn" id="cancelEdit"
-                    style="display:none; background: #6c757d; margin-top: 10px;">Cancel Edit</button>
-            </form>
-        </div>
-
-        <div class="card">
-            <h2>Existing Categories</h2>
-            <div id="categoryList" class="product-list"></div>
-        </div>
     </div>
+
+    <script src="config.js"></script>
     <script src="categories.js"></script>
+    <script>
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user) {
+            const initial = user.username.charAt(0).toUpperCase();
+            document.getElementById('userInfo').innerHTML = `<div class="avatar">${initial}</div><span>${user.username}</span>`;
+        }
+    </script>
 </body>
 
 </html>

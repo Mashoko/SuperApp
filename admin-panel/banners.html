@@ -4,69 +4,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Banner Admin</title>
+    <title>Banners - Admin</title>
     <link rel="stylesheet" href="style.css">
-    <script>
-        if (!localStorage.getItem('token')) {
-            window.location.href = 'login.html';
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            display: none;
         }
-    </script>
-</head>
-
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Banner Management</h1>
-            <div>
-                <a href="index.html">Products</a>
-                <a href="categories.html">Categories</a>
-                <a href="shops.html">Shops</a>
-                <a href="banners.html" class="active">Banners</a>
-                <button onclick="logout()">Logout</button>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>Add / Edit Banner</h2>
-            <form id="bannerForm">
-                <div class="form-group">
-                    <label for="title">Title</label>
-                    <input type="text" id="title" required placeholder="e.g. Fresh Arrivals">
-                </div>
-                <div class="form-group">
-                    <label for="description">Description</label>
-                    <input type="text" id="description" required placeholder="e.g. Get 20% off...">
-                </div>
-                <div class="form-group">
-                    <label for="imageUrl">Image URL (Optional)</label>
-                    <input type="url" id="imageUrl" placeholder="https://example.com/banner.jpg">
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="isActive" checked> Active
-                    </label>
-                </div>
-                <button type="submit" class="btn" id="submitBtn">Save Banner</button>
-                <button type="button" class="btn" id="cancelEdit"
-                    style="display:none; background: #6c757d;">Cancel</button>
-            </form>
-        </div>
-
-        <div class="card">
-            <h2>Active Banners</h2>
-            <div id="bannerList" class="product-list">
-                <!-- Banners loaded here -->
-            </div>
-        </div>
-    </div>
-
-    <script src="banners.js"></script>
+    </style>
     <script>
+        if (!localStorage.getItem('token')) window.location.href = 'login.html';
+        else document.addEventListener('DOMContentLoaded', () => document.body.style.display = 'flex');
         window.logout = () => {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = 'login.html';
         };
+    </script>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">🛒 Shop Admin</div>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html" class="nav-item">Products</a>
+            <a href="categories.html" class="nav-item">Categories</a>
+            <a href="shops.html" class="nav-item">Shops</a>
+            <a href="banners.html" class="nav-item active">Banners</a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="user-info" id="userInfo"></div>
+            <button onclick="logout()" class="logout-btn">Log out</button>
+        </div>
+
+        <div class="content-wrapper">
+            <div class="card">
+                <h2>Add / Edit Banner</h2>
+                <form id="bannerForm">
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label for="title">Title</label>
+                            <input type="text" id="title" required placeholder="e.g. Fresh Arrivals">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="description">Description</label>
+                            <input type="text" id="description" required placeholder="e.g. Get 20% off...">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="imageUrl">Banner Image URL</label>
+                            <div class="image-input-wrapper">
+                                <input type="url" id="imageUrl" placeholder="https://example.com/banner.jpg"
+                                    oninput="updatePreview(this.value)">
+                                <div class="image-preview" id="previewBox">IMG</div>
+                            </div>
+                        </div>
+                        <div class="form-group full-width"
+                            style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="isActive" checked>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Active</span>
+                            </label>
+                            <div>
+                                <button type="button" class="btn btn-secondary" id="cancelEdit"
+                                    style="display:none;">Cancel</button>
+                                <button type="submit" class="btn" id="submitBtn">Save Banner</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Active Banners</h2>
+                <div id="bannerList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="banners.js"></script>
+    <script>
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user) {
+            const initial = user.username.charAt(0).toUpperCase();
+            document.getElementById('userInfo').innerHTML = `<div class="avatar">${initial}</div><span>${user.username}</span>`;
+        }
+        function updatePreview(url) {
+            const box = document.getElementById('previewBox');
+            if (url) box.innerHTML = `<img src="${url}" onerror="this.onerror=null;this.innerHTML='❌';">`;
+            else box.innerHTML = 'IMG';
+        }
     </script>
 </body>
 
