@@ -22,6 +22,7 @@ import 'package:mvvm_sip_demo/features/home/presentation/widgets/hanging_dialer.
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/quick_dialer_overlay.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/call_history_widget.dart';
 import 'package:mvvm_sip_demo/features/contacts/presentation/views/contacts_view.dart';
+import 'package:mvvm_sip_demo/shared/widgets/shimmer_widget.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -213,7 +214,7 @@ class _ModernDashboardTab extends StatelessWidget {
         final cartCount = cartItemsList.length;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 120), // Extra bottom padding for floating nav
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 140), // Increased bottom padding for floating nav
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -236,10 +237,12 @@ class _ModernDashboardTab extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                           Text(
-                            "User: ${accountViewModel.alias ?? 'Loading...'}",
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: WunzaColors.textPrimary),
-                          ),
+                           accountViewModel.alias == null 
+                               ? const ShimmerWidget.rectangular(height: 20, width: 120)
+                               : Text(
+                                  "User: ${accountViewModel.alias}",
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: WunzaColors.textPrimary),
+                                ),
                            Text(
                             _formatVoiceBalance(accountViewModel.balance ?? 0),
                             style: TextStyle(color: Colors.grey[600], fontSize: 13),
@@ -266,13 +269,17 @@ class _ModernDashboardTab extends StatelessWidget {
                 children: [
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(20), // Reduced padding
                     decoration: BoxDecoration(
-                      gradient: WunzaColors.primaryGradient,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)], // Purple to Blue
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: WunzaColors.indigo.withValues(alpha: 0.3),
+                          color: const Color(0xFF4A00E0).withValues(alpha: 0.3),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -281,36 +288,35 @@ class _ModernDashboardTab extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Glass Tag
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                          ),
-                          child: const Text(
-                            "Overview",
-                            style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          "Welcome",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
                         Text(
-                          "You have $cartCount items in cart and ${calling['missed_calls'] ?? 0} missed calls.",
+                          "Welcome back,",
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 14,
-                            height: 1.5,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _GlassStatsBubble(
+                                icon: Icons.shopping_cart,
+                                label: "Cart",
+                                value: "$cartCount",
+                                color: Colors.orangeAccent,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _GlassStatsBubble(
+                                icon: Icons.phone_missed,
+                                label: "Missed",
+                                value: "${calling['missed_calls'] ?? 0}",
+                                color: Colors.redAccent,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -426,47 +432,47 @@ class _DashboardWidgetCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10), // Slightly larger padding
                 decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.1),
+                  color: accentColor.withOpacity(0.1), // Keep soft background
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: accentColor, size: 20),
+                child: Icon(icon, color: accentColor, size: 28), // Larger icon
               ),
               const Spacer(),
-              Icon(Icons.more_horiz, color: Colors.grey[400]),
+              // Removed more_horiz to clean up
             ],
           ),
           const Spacer(),
           Text(
             subValue,
-            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 4),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 20,
+              fontSize: 22, // Slightly larger
               fontWeight: FontWeight.bold,
               color: WunzaColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            height: 36,
+            height: 40, // Taller button
             child: ElevatedButton(
               onPressed: onTap,
               style: ElevatedButton.styleFrom(
-                backgroundColor: accentColor.withValues(alpha: 0.1),
-                foregroundColor: accentColor,
+                backgroundColor: accentColor, // Solid high-contrast color
+                foregroundColor: Colors.white, // White text
                 elevation: 0,
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: Text(buttonText, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              child: Text(buttonText, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -486,5 +492,64 @@ String _formatVoiceBalance(double nanoseconds) {
     return 'Voice Bal: $hours hrs $minutes m';
   } else {
     return 'Voice Bal: $minutes m $seconds s';
+  }
+}
+
+class _GlassStatsBubble extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _GlassStatsBubble({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.color = Colors.white,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassContainer(
+      opacity: 0.2, // Very subtle glass
+      blur: 10,
+      borderRadius: 16,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

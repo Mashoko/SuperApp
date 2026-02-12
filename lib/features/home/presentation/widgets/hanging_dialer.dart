@@ -33,7 +33,7 @@ class HangingDialerButton extends StatelessWidget {
         ),
         child: const Center(
           child: Icon(
-            Icons.dialpad,
+            Icons.dialpad_outlined,
             color: Colors.white,
             size: 32,
           ),

@@ -59,28 +59,7 @@ class ShoppingSearchBar extends StatelessWidget {
             ),
           ),
           
-          const SizedBox(width: 12),
-
-          // Filter Button
-          Container(
-            height: 48,
-            width: 48,
-            decoration: BoxDecoration(
-              color: WunzaColors.premiumSurface,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.filter_list, color: WunzaColors.premiumText),
-              onPressed: () {},
-            ),
-          ),
+          // Filter Button Removed
 
           // Cart Button
           if (onCartPressed != null) ...[
