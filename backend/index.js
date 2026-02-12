@@ -107,11 +107,31 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 
-// Get all products (excluding deleted)
+// Get all products (with pagination)
 app.get('/api/products', async (req, res) => {
     try {
-        const products = await Product.find({ isDeleted: false });
-        res.json(products);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const filter = { isDeleted: false };
+        if (req.query.category && req.query.category !== 'All') {
+            filter.category = req.query.category;
+        }
+
+        const totalProducts = await Product.countDocuments(filter);
+        const totalPages = Math.ceil(totalProducts / limit);
+
+        const products = await Product.find(filter)
+            .skip(skip)
+            .limit(limit);
+
+        res.json({
+            products,
+            totalPages,
+            currentPage: page,
+            totalProducts
+        });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

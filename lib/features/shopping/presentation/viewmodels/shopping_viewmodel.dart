@@ -21,17 +21,16 @@ class ShoppingViewModel extends ChangeNotifier {
   ProductViewMode _viewMode = ProductViewMode.extraSmall;
   List<String> _recentSearches = [];
 
-  List<Product> get products {
-    if (_selectedCategory == 'All') {
-      return _products;
-    }
-    // Case-insensitive comparison just in case
-    return _products.where((p) => p.category.toLowerCase() == _selectedCategory.toLowerCase()).toList();
-  }
+  int _page = 1;
+  int _totalPages = 1;
+  bool _isMoreLoading = false;
+
+  List<Product> get products => _products;
   
   Map<String, dynamic> get cart => _cart;
   List<Order> get orders => _orders;
   bool get isLoading => _isLoading;
+  bool get isMoreLoading => _isMoreLoading;
   String? get errorMessage => _errorMessage;
   String get selectedCategory => _selectedCategory;
   List<String> get categories => _categories;
@@ -39,8 +38,10 @@ class ShoppingViewModel extends ChangeNotifier {
   List<String> get recentSearches => _recentSearches;
 
   void selectCategory(String category) {
+    if (_selectedCategory == category) return;
     _selectedCategory = category;
     notifyListeners();
+    loadProducts(category: category);
   }
 
   void cycleViewMode() {
@@ -75,6 +76,11 @@ class ShoppingViewModel extends ChangeNotifier {
     _isLoading = value;
     notifyListeners();
   }
+  
+  void _setMoreLoading(bool value) {
+    _isMoreLoading = value;
+    notifyListeners();
+  }
 
   void _setError(String? error) {
     _errorMessage = error;
@@ -85,15 +91,46 @@ class ShoppingViewModel extends ChangeNotifier {
     try {
       _setLoading(true);
       _setError(null);
-      await _service.fetchProducts();
-      await loadCategories(); // Load categories too
-      await loadBanners(); // Load banners too
-      _products = _service.getProducts(category: category);
+      
+      _page = 1;
+      _totalPages = 1; // Reset to ensure we can try fetching
+      
+      // Load dependencies
+      await loadCategories(); 
+      await loadBanners();
+      
+      // Fetch Page 1
+      final result = await _service.fetchProducts(page: 1, category: category ?? _selectedCategory);
+      
+      _products = result.products;
+      _totalPages = result.totalPages;
+      
       notifyListeners();
     } catch (e) {
       _setError('Failed to load products: $e');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  Future<void> loadMoreProducts() async {
+    if (_isLoading || _isMoreLoading || _page >= _totalPages) return;
+    
+    try {
+      _setMoreLoading(true);
+      _page++;
+      
+      final result = await _service.fetchProducts(page: _page, category: _selectedCategory);
+      
+      _products.addAll(result.products);
+      // _totalPages = result.totalPages; // Should be same, but can update
+      
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to load more products: $e');
+      _page--; // Revert page on failure
+    } finally {
+      _setMoreLoading(false);
     }
   }
 

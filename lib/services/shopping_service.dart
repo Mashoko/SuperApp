@@ -15,25 +15,57 @@ class ShoppingService {
     fetchProducts();
   }
 
-  Future<void> fetchProducts() async {
+  Future<({List<Product> products, int totalPages})> fetchProducts({int page = 1, int limit = 10, String? category}) async {
     try {
-      final response = await http.get(Uri.parse('https://superapp-diht.onrender.com/api/products'));
+      String url = 'https://superapp-diht.onrender.com/api/products?page=$page&limit=$limit';
+      if (category != null && category != 'All') {
+        url += '&category=$category';
+      }
+      
+      final response = await http.get(Uri.parse(url));
       
       if (response.statusCode == 200) {
-        final List<dynamic> productList = json.decode(response.body);
-        _products.clear();
+        final dynamic decoded = json.decode(response.body);
+        
+        List<dynamic> productList;
+        int totalPages = 1;
+        
+        if (decoded is List) {
+           // Legacy backend response (List of products)
+           productList = decoded;
+           // If we are on page 1, clear cache? Or just merge?
+           // The legacy endpoint returns ALL products. 
+           // So if we are paging, this is unexpected, but we should handle it.
+           // We'll just assume page 1 contains everything.
+        } else if (decoded is Map<String, dynamic>) {
+           // New backend response (Paginated)
+           productList = decoded['products'];
+           totalPages = decoded['totalPages'] ?? 1;
+        } else {
+           print('Unexpected response format');
+           return (products: <Product>[], totalPages: 0);
+        }
+        
+        if (page == 1) {
+          // Only clear if we are reloading everything or changing category context significantly
+          // But for now, let's just update the cache
+        }
+        
+        final List<Product> newProducts = [];
         for (final item in productList) {
           final product = Product.fromJson(item);
           _products[product.productId] = product;
+          newProducts.add(product);
         }
-        // Notify listeners or rebuild UI if needed. 
-        // Since this is a simple service, we might need a way to signal updates.
-        print('Fetched ${_products.length} products from API');
+        print('Fetched ${newProducts.length} products (Page $page, Cat: $category) from API');
+        return (products: newProducts, totalPages: totalPages);
       } else {
         print('Failed to load products: ${response.statusCode}');
+        return (products: <Product>[], totalPages: 0);
       }
     } catch (e) {
       print('Error fetching products: $e');
+      return (products: <Product>[], totalPages: 0);
     }
   }
 

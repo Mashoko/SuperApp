@@ -17,15 +17,30 @@ class ShoppingView extends StatefulWidget {
   State<ShoppingView> createState() => _ShoppingViewState();
 }
 
-class _ShoppingViewState extends State<ShoppingView> {
+ class _ShoppingViewState extends State<ShoppingView> {
   bool _isGridView = false;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ShoppingViewModel>(context, listen: false).loadProducts();
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      final viewModel = Provider.of<ShoppingViewModel>(context, listen: false);
+      viewModel.loadMoreProducts();
+    }
   }
 
   @override
@@ -52,6 +67,7 @@ class _ShoppingViewState extends State<ShoppingView> {
 
                 Expanded(
                   child: SingleChildScrollView(
+                    controller: _scrollController,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -111,12 +127,12 @@ class _ShoppingViewState extends State<ShoppingView> {
                         // Product List/Grid
                         Consumer<ShoppingViewModel>(
                           builder: (context, viewModel, child) {
-                            if (viewModel.isLoading) {
+                            if (viewModel.isLoading && viewModel.products.isEmpty) {
                               return const Center(child: CircularProgressIndicator());
                             }
                             
                             // Bottom padding for checkout bar
-                            final bottomPadding = const EdgeInsets.only(bottom: 100, left: 16, right: 16);
+                            final bottomPadding = const EdgeInsets.only(bottom: 20, left: 16, right: 16);
 
                             if (_isGridView) {
                                return GridView.builder(
@@ -151,6 +167,18 @@ class _ShoppingViewState extends State<ShoppingView> {
                                 },
                               );
                             }
+                          },
+                        ),
+                        
+                        Consumer<ShoppingViewModel>(
+                          builder: (context, viewModel, child) {
+                            if (viewModel.isMoreLoading) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Center(child: CircularProgressIndicator()),
+                              );
+                            }
+                            return const SizedBox(height: 100); // Space for checkout bar
                           },
                         ),
                       ],
