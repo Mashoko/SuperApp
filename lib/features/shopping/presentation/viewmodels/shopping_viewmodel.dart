@@ -35,7 +35,50 @@ class ShoppingViewModel extends ChangeNotifier {
   String get selectedCategory => _selectedCategory;
   List<String> get categories => _categories;
   ProductViewMode get viewMode => _viewMode;
+
   List<String> get recentSearches => _recentSearches;
+
+  // Discount Logic
+  String? _discountCode;
+  double _discountAmount = 0.0;
+  bool _isCheckingVoucher = false;
+
+  String? get discountCode => _discountCode;
+  double get discountAmount => _discountAmount;
+  double get total => (_cart['total'] ?? 0.0) + 0.0 - _discountAmount; // Mock shipping is 0.0
+  bool get isCheckingVoucher => _isCheckingVoucher;
+  Future<void> applyDiscount(String code) async {
+    try {
+      _isCheckingVoucher = true;
+      _errorMessage = null;
+      notifyListeners();
+
+      final result = await _service.validateVoucher(code, cart['total'] ?? 0.0);
+      
+      if (result['valid'] == true) {
+        _discountCode = result['code'];
+        _discountAmount = (result['discount_amount'] as num).toDouble();
+        notifyListeners();
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      // Clear error after 3 seconds
+      Future.delayed(const Duration(seconds: 3), () {
+        _errorMessage = null;
+        notifyListeners();
+      });
+    } finally {
+      _isCheckingVoucher = false;
+      notifyListeners();
+    }
+  }
+
+  void removeDiscount() {
+    _discountCode = null;
+    _discountAmount = 0.0;
+    notifyListeners();
+  }
 
   void selectCategory(String category) {
     if (_selectedCategory == category) return;
@@ -148,8 +191,6 @@ class ShoppingViewModel extends ChangeNotifier {
 
   Future<void> loadCategories() async {
     try {
-      // _isCategoriesLoading = true;
-      // notifyListeners();
       final loadedCats = await _service.fetchCategories();
       if (loadedCats.isNotEmpty) {
         _categories = ['All', ...loadedCats]; // Add 'All' as the default

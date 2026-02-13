@@ -14,6 +14,15 @@ class CheckoutView extends StatefulWidget {
 }
 
 class _CheckoutViewState extends State<CheckoutView> {
+  bool _isPromoExpanded = false;
+  final TextEditingController _promoController = TextEditingController();
+
+  @override
+  void dispose() {
+    _promoController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -34,8 +43,11 @@ class _CheckoutViewState extends State<CheckoutView> {
         builder: (context, viewModel, child) {
           final List<dynamic> cartItems = viewModel.cart['items'] ?? [];
           final double subtotal = viewModel.cart['total'] ?? 0.0;
-          const double shipping = 0.0; // Mock shipping
-          final double total = subtotal + shipping;
+          // const double shipping = 0.0; // Mock shipping
+          // final double total = subtotal + shipping;
+          // Use total from VM to include discount
+          final double total = viewModel.total;
+          final double discount = viewModel.discountAmount;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -74,48 +86,142 @@ class _CheckoutViewState extends State<CheckoutView> {
                 const SizedBox(height: 16),
                 
                 // Promo Code
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Row(
+                if (viewModel.discountCode != null)
+                   Container(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            '${viewModel.discountCode} Applied',
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => viewModel.removeDiscount(),
+                          child: const Icon(Icons.close, size: 20, color: Colors.green),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Column(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFFF0E6), // Light orange
-                          shape: BoxShape.circle,
+                       InkWell(
+                        onTap: () {
+                          setState(() {
+                            _isPromoExpanded = !_isPromoExpanded;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFFF0E6), // Light orange
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.percent, color: WunzaColors.primary, size: 20),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Have a promo code?',
+                                      style: TextStyle(fontWeight: FontWeight.w600),
+                                    ),
+                                    if (!_isPromoExpanded)
+                                      Text(
+                                        'Use your promo code or voucher',
+                                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                _isPromoExpanded ? "Close" : "Add",
+                                style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: const Icon(Icons.percent, color: WunzaColors.primary, size: 20),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Enter your promo code',
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            Text(
-                              'Use your promo code or voucher',
-                              style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                            ),
-                          ],
+                      if (_isPromoExpanded)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12.0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _promoController,
+                                  decoration: InputDecoration(
+                                    hintText: "Enter voucher",
+                                    filled: true,
+                                    fillColor: Colors.grey[100],
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: () {
+                                  if (_promoController.text.isNotEmpty) {
+                                    viewModel.applyDiscount(_promoController.text);
+                                    setState(() {
+                                      _isPromoExpanded = false;
+                                      _promoController.clear();
+                                    });
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: WunzaColors.primary,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                ),
+                                child: viewModel.isCheckingVoucher 
+                                  ? const SizedBox(
+                                      width: 20, 
+                                      height: 20, 
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                                    )
+                                  : const Text("Apply", style: TextStyle(color: Colors.white)),
+                              )
+                            ],
+                          ),
                         ),
-                      ),
-                      const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                      const SizedBox(height: 24),
                     ],
                   ),
-                ),
-                const SizedBox(height: 24),
 
                 // Summary
                 _buildSummaryRow('Subtotal', subtotal),
-                _buildSummaryRow('Shipping', shipping),
+                // _buildSummaryRow('Shipping', shipping),
+                if (discount > 0)
+                   _buildSummaryRow('Discount (${viewModel.discountCode})', -discount, color: Colors.green),
                 const Divider(height: 32),
                 _buildSummaryRow('Total', total, isTotal: true),
                 
@@ -281,7 +387,7 @@ class _CheckoutViewState extends State<CheckoutView> {
     );
   }
 
-  Widget _buildSummaryRow(String label, double amount, {bool isTotal = false}) {
+  Widget _buildSummaryRow(String label, double amount, {bool isTotal = false, Color? color}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -292,7 +398,7 @@ class _CheckoutViewState extends State<CheckoutView> {
             style: TextStyle(
               fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
               fontSize: isTotal ? 18 : 14,
-              color: isTotal ? Colors.black : Colors.grey[600],
+              color: color ?? (isTotal ? Colors.black : Colors.grey[600]),
             ),
           ),
           Text(
@@ -300,7 +406,7 @@ class _CheckoutViewState extends State<CheckoutView> {
             style: TextStyle(
               fontWeight: isTotal ? FontWeight.bold : FontWeight.bold,
               fontSize: isTotal ? 18 : 14,
-              color: isTotal ? Colors.black : Colors.black,
+              color: color ?? (isTotal ? Colors.black : Colors.black),
             ),
           ),
         ],

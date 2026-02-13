@@ -270,5 +270,23 @@ class ShoppingService {
     }
     return 'Order $orderId not found';
   }
+  Future<Map<String, dynamic>> validateVoucher(String code, double total) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://superapp-diht.onrender.com/api/validate-voucher'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'code': code, 'cart_total': total}),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(error['message'] ?? 'Invalid voucher');
+      }
+    } catch (e) {
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
 }
 

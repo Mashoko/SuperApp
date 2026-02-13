@@ -324,7 +324,81 @@ app.delete('/api/banners/:id', auth, async (req, res) => {
     }
 });
 
+// --- Voucher Routes ---
+const Voucher = require('./models/voucher.model');
 
+// Get all vouchers
+app.get('/api/vouchers', async (req, res) => {
+    try {
+        const vouchers = await Voucher.find().sort({ createdAt: -1 });
+        res.json(vouchers);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Create Voucher
+app.post('/api/vouchers', auth, async (req, res) => { // Auth required for creation
+    const voucher = new Voucher(req.body);
+    try {
+        const newVoucher = await voucher.save();
+        res.status(201).json(newVoucher);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// Validate Voucher
+app.post('/api/validate-voucher', async (req, res) => {
+    try {
+        const { code, cart_total } = req.body;
+        const subtotal = parseFloat(cart_total);
+
+        if (!code) {
+            return res.status(400).json({ message: 'Voucher code is required' });
+        }
+
+        const voucher = await Voucher.findOne({ code: code.toUpperCase() });
+
+        if (!voucher) {
+            return res.status(404).json({ message: 'Invalid voucher code' });
+        }
+
+        if (!voucher.isActive) {
+            return res.status(400).json({ message: 'Voucher is inactive' });
+        }
+
+        if (new Date() > new Date(voucher.expirationDate)) {
+            return res.status(400).json({ message: 'Voucher has expired' });
+        }
+
+        if (voucher.usageLimit !== null && voucher.usedCount >= voucher.usageLimit) {
+            return res.status(400).json({ message: 'Voucher usage limit reached' });
+        }
+
+        let discountAmount = 0.0;
+        if (voucher.discountType === 'PERCENTAGE') {
+            discountAmount = subtotal * (voucher.value / 100);
+        } else {
+            discountAmount = voucher.value;
+        }
+
+        // Ensure discount doesn't exceed subtotal
+        if (discountAmount > subtotal) {
+            discountAmount = subtotal;
+        }
+
+        res.json({
+            valid: true,
+            code: voucher.code,
+            discount_amount: parseFloat(discountAmount.toFixed(2)),
+            message: 'Voucher applied successfully'
+        });
+
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
