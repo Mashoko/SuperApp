@@ -52,7 +52,7 @@ function renderProducts(products) {
                 <p>${product.category || 'No Category'}</p>
             </div>
             <div>
-                <button onclick="populateEditForm('${product._id}')" style="margin-right: 5px; background: #ffc107; color: black; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer;">Edit</button>
+                <button class="btn-edit" onclick="populateEditForm('${product._id}')">Edit</button>
                 <button class="delete-btn" onclick="deleteProduct('${product._id}')">Delete</button>
             </div>
         `;

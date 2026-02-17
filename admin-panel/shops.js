@@ -37,7 +37,7 @@ function renderShops(shops) {
                 <p>Manager: ${shop.manager || 'N/A'}</p>
             </div>
             <div>
-                <button onclick="editShop('${shop._id}', '${shop.name}', '${shop.location}', '${shop.manager || ''}')" style="margin-right: 5px; background: #ffc107; color: black; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer;">Edit</button>
+                <button class="btn-edit" onclick="editShop('${shop._id}', '${shop.name}', '${shop.location}', '${shop.manager || ''}')">Edit</button>
                 <button class="delete-btn" onclick="deleteShop('${shop._id}')">Delete</button>
             </div>
         `;

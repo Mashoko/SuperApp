@@ -36,7 +36,7 @@ function renderCategories(categories) {
                 <p>${cat.description || ''}</p>
             </div>
             <div>
-                <button onclick="editCategory('${cat._id}', '${cat.name}', '${cat.description || ''}')" style="margin-right: 5px; background: #ffc107; color: black; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer;">Edit</button>
+                <button class="btn-edit" onclick="editCategory('${cat._id}', '${cat.name}', '${cat.description || ''}')">Edit</button>
                 <button class="delete-btn" onclick="deleteCategory('${cat._id}')">Delete</button>
             </div>
         `;

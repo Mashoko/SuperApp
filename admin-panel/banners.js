@@ -36,12 +36,12 @@ function renderBanners(banners) {
         div.className = 'product-item';
         div.innerHTML = `
             <div class="product-info">
-                <h3>${banner.title} ${banner.isActive ? '<span style="color:green; font-size: 0.8em;">(Active)</span>' : '<span style="color:red; font-size: 0.8em;">(Inactive)</span>'}</h3>
+                <h3>${banner.title} <span class="${banner.isActive ? 'badge-active' : 'badge-inactive'}">(${banner.isActive ? 'Active' : 'Inactive'})</span></h3>
                 <p>${banner.description}</p>
                 ${banner.imageUrl ? `<img src="${banner.imageUrl}" style="max-height: 50px; margin-top:5px; border-radius:4px;">` : ''}
             </div>
             <div>
-                <button onclick="editBanner('${banner._id}', '${escape(JSON.stringify(banner))}')" style="margin-right: 5px; background: #ffc107; cursor:pointer; border:none; padding:5px 10px; border-radius:4px;">Edit</button>
+                <button class="btn-edit" onclick="editBanner('${banner._id}', '${escape(JSON.stringify(banner))}')">Edit</button>
                 <button onclick="deleteBanner('${banner._id}')" class="delete-btn">Delete</button>
             </div>
         `;

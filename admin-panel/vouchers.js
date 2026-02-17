@@ -75,7 +75,7 @@ function renderVouchers(vouchers) {
     voucherList.innerHTML = vouchers.map(voucher => `
         <div class="product-item" style="display: flex; justify-content: space-between; align-items: center;">
             <div class="product-info">
-                <h3>${voucher.code} <span style="font-size: 0.8em; color: ${voucher.isActive ? 'green' : 'red'}; border: 1px solid ${voucher.isActive ? 'green' : 'red'}; padding: 2px 6px; border-radius: 4px;">${voucher.isActive ? 'Active' : 'Inactive'}</span></h3>
+                <h3>${voucher.code} <span class="${voucher.isActive ? 'badge-active' : 'badge-inactive'}">${voucher.isActive ? 'Active' : 'Inactive'}</span></h3>
                 <p>
                     <strong>${voucher.discountType === 'FIXED' ? '$' + voucher.value : voucher.value + '%'}</strong> off 
                     | Expires: ${new Date(voucher.expirationDate).toLocaleDateString()}
