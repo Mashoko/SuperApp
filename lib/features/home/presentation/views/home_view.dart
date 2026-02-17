@@ -119,7 +119,14 @@ class _HomeViewState extends State<HomeView> {
                       context: context,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
-                      builder: (context) => const QuickDialerOverlay(),
+                      builder: (context) => Container(
+                        height: MediaQuery.of(context).size.height * 0.9, 
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                        ),
+                        child: const DialPadScreen(),
+                      ),
                     );
                   },
                 ),
@@ -138,7 +145,9 @@ class _HomeViewState extends State<HomeView> {
       case 1:
         return const ContactsView();
       case 2:
-        return const ShoppingView();
+        return ShoppingView(
+          onBack: () => _onTabChange(0),
+        );
       case 3:
         return const PaymentsView();
       default:

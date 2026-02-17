@@ -1,163 +1,131 @@
 import 'package:flutter/material.dart';
 import 'package:mvvm_sip_demo/core/di/inject.dart';
 import 'package:mvvm_sip_demo/features/call/presentation/viewmodels/call_viewmodel.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-
-class QuickDialerOverlay extends StatefulWidget {
-  const QuickDialerOverlay({super.key});
+class DialPadScreen extends StatefulWidget {
+  const DialPadScreen({super.key});
 
   @override
-  State<QuickDialerOverlay> createState() => _QuickDialerOverlayState();
+  _DialPadScreenState createState() => _DialPadScreenState();
 }
 
-class _QuickDialerOverlayState extends State<QuickDialerOverlay> {
-  final TextEditingController _controller = TextEditingController();
+class _DialPadScreenState extends State<DialPadScreen> {
+  String phoneNumber = "";
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onKeyPress(String value) {
+  void _onNumberTap(String value) {
     setState(() {
-      _controller.text += value;
+      phoneNumber += value;
     });
   }
 
   void _onBackspace() {
-    if (_controller.text.isNotEmpty) {
+    if (phoneNumber.isNotEmpty) {
       setState(() {
-        _controller.text = _controller.text.substring(0, _controller.text.length - 1);
+        phoneNumber = phoneNumber.substring(0, phoneNumber.length - 1);
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Light Blue background color from image approx
-    const backgroundColor = Color(0xFFE8EEF7);
-
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85, // Fill most of the screen
-      decoration: const BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.grey, size: 30),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      child: Column(
+      body: Column(
         children: [
-          const SizedBox(height: 16),
-          // Drag Handle
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 40),
-
-          // Input Field
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: TextField(
-                controller: _controller,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 24,
+          // 1. THE NUMBER DISPLAY
+          Expanded(
+            flex: 2,
+            child: Center(
+              child: Text(
+                phoneNumber.isEmpty ? "Enter Number" : phoneNumber,
+                style: GoogleFonts.inter(
+                  fontSize: phoneNumber.isEmpty ? 24 : 40, // Grows when typing
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: phoneNumber.isEmpty ? Colors.grey.shade400 : Colors.black,
+                  letterSpacing: 2.0,
                 ),
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Enter number',
-                  hintStyle: TextStyle(color: Colors.grey),
-                ),
-                readOnly: true, // Prevent keyboard from showing
-                showCursor: true,
               ),
             ),
           ),
 
-          const Spacer(),
-
-          // Keypad
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40.0),
-            child: Column(
-              children: [
-                _buildRow(['1', '2', '3'], [' ', 'ABC', 'DEF']),
-                const SizedBox(height: 24),
-                _buildRow(['4', '5', '6'], ['GHI', 'JKL', 'MNO']),
-                const SizedBox(height: 24),
-                _buildRow(['7', '8', '9'], ['PQRS', 'TUV', 'WXYZ']),
-                const SizedBox(height: 24),
-                _buildRow(['*', '0', '#'], ['', '+', '']),
-              ],
+          // 2. THE DIAL GRID
+          Expanded(
+            flex: 5,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildRow(['1', '2', '3'], ['', 'ABC', 'DEF']),
+                  _buildRow(['4', '5', '6'], ['GHI', 'JKL', 'MNO']),
+                  _buildRow(['7', '8', '9'], ['PQRS', 'TUV', 'WXYZ']),
+                  _buildRow(['*', '0', '#'], ['', '+', '']),
+                ],
+              ),
             ),
           ),
 
-          const SizedBox(height: 40),
-
-          // Actions Row (Centered Call Button, Right Backspace)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 50.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(width: 80), // Spacer to balance backspace
-                
-                // Call Button
-                GestureDetector(
-                  onTap: () {
-                    if (_controller.text.isNotEmpty) {
-                       Navigator.pop(context); // Close overlay logic
-                       getIt<CallViewModel>().makeCall(_controller.text, voiceOnly: true);
-                    }
-                  },
-                  child: Container(
-                    width: 72,
-                    height: 72,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF536DFE), // Bright Indigo/Blue
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                         BoxShadow(
-                          color: Colors.black26, 
-                          blurRadius: 10,
-                          offset: Offset(0, 4)
-                        )
-                      ]
-                    ),
-                    child: const Icon(
-                      Icons.phone,
-                      color: Colors.white,
-                      size: 32,
+          // 3. CALL & DELETE ACTIONS
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 30.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Invisible spacer to balance the row
+                  const SizedBox(width: 60), 
+                  
+                  // Main Call Button
+                  InkWell(
+                    onTap: () {
+                      if (phoneNumber.isNotEmpty) {
+                         Navigator.pop(context); // Close overlay
+                         getIt<CallViewModel>().makeCall(phoneNumber, voiceOnly: true);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(40),
+                    child: Container(
+                      height: 70,
+                      width: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.green, // Standard "Call" Green
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(0.4),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          )
+                        ],
+                      ),
+                      child: const Icon(Icons.call, color: Colors.white, size: 32),
                     ),
                   ),
-                ),
-                
-                // Backspace Button
-                SizedBox(
-                  width: 80,
-                  child: IconButton(
-                    padding: const EdgeInsets.only(left: 24),
-                    icon: Icon(Icons.backspace_outlined, color: Colors.grey[500], size: 28),
-                    onPressed: _onBackspace,
+                  
+                  // Delete Button (Only shows when numbers exist)
+                  Container(
+                    width: 60,
+                    alignment: Alignment.center,
+                    child: phoneNumber.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.backspace_outlined, color: Colors.grey),
+                            iconSize: 28,
+                            onPressed: _onBackspace,
+                          )
+                        : const SizedBox(),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -165,41 +133,38 @@ class _QuickDialerOverlayState extends State<QuickDialerOverlay> {
     );
   }
 
-  Widget _buildRow(List<String> keys, List<String> subtexts) {
+  Widget _buildRow(List<String> numbers, List<String> letters) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(3, (index) {
-        return _buildKey(keys[index], subtexts[index]);
+        return _buildDialButton(numbers[index], letters[index]);
       }),
     );
   }
 
-  Widget _buildKey(String key, String subtext) {
+  Widget _buildDialButton(String number, String letters) {
     return InkWell(
-      onTap: () => _onKeyPress(key),
-      customBorder: const CircleBorder(),
-      child: SizedBox(
+      onTap: () => _onNumberTap(number),
+      borderRadius: BorderRadius.circular(50),
+      child: Container(
         width: 80,
         height: 80,
+        alignment: Alignment.center,
+        decoration: const BoxDecoration(
+           shape: BoxShape.circle,
+           // color: Colors.grey.shade50, // Optional: subtle background
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              key,
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w400,
-                color: Colors.black87,
-              ),
+              number,
+              style: GoogleFonts.inter(fontSize: 32, fontWeight: FontWeight.w400, color: Colors.black87),
             ),
-            if (subtext.isNotEmpty)
+            if (letters.isNotEmpty)
               Text(
-                subtext,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
-                ),
+                letters,
+                style: GoogleFonts.inter(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
               ),
           ],
         ),

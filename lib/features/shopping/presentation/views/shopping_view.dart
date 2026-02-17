@@ -11,7 +11,9 @@ import 'package:mvvm_sip_demo/features/shopping/presentation/views/widgets/categ
 import 'package:mvvm_sip_demo/features/shopping/presentation/views/widgets/promotional_banner.dart';
 
 class ShoppingView extends StatefulWidget {
-  const ShoppingView({super.key});
+  final VoidCallback? onBack;
+
+  const ShoppingView({super.key, this.onBack});
 
   @override
   State<ShoppingView> createState() => _ShoppingViewState();
@@ -58,7 +60,7 @@ class ShoppingView extends StatefulWidget {
                   builder: (context, viewModel, child) {
                     final itemCount = viewModel.cart['item_count'] as int? ?? 0;
                     return ShoppingSearchBar(
-                      onBackPressed: () => Navigator.pop(context),
+                      onBackPressed: widget.onBack ?? () => Navigator.pop(context),
                       onCartPressed: () => Navigator.pushNamed(context, Routes.cart),
                       cartItemCount: itemCount,
                     );
