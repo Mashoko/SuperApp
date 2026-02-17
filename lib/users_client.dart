@@ -165,9 +165,14 @@ class UsersClient {
   /// Get alias (CatchApp 86 number) for the user.
   Future<response> getAliasNumber({
     required String username,
+    String? password,
   }) async {
     final req = _baseReq()
       ..username = username;
+
+    if (password != null) {
+      req.password = password;
+    }
 
     return _safe(() => _stub.getAliasNumber(req));
   }

@@ -1,6 +1,7 @@
 import 'package:random_string/random_string.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
+import '../utils/crypto_utils.dart';
 
 import '../../users_client.dart';
 import '../../generated/users.pb.dart' as users;
@@ -142,24 +143,71 @@ class OtpAuthService {
   }
 
   /// Fetch full account summary (alias, balance, domain, status).
-  /// Fetch full account summary (alias, balance, domain, status).
-  Future<Map<String, dynamic>?> fetchAccountSummary(String username) async {
+  Future<Map<String, dynamic>?> fetchAccountSummary(String username, {String? password}) async {
     try {
-      // Fetch balance and status
-      final balanceResp = await client.getAccountBalance(username: username);
-      if (!_didSucceed(balanceResp)) return null;
+      print('--- Account Summary: Fetching for $username (hasPassword: ${password != null}) ---');
+      
+      String? passwordToSend = password;
+      // if (password != null) {
+      //   // Compute SIP Password Hash: MD5(username:domain:password)
+      //   // Using default domain for now. In ideal flow we might query getDomainForPackageID first.
+      //   final domain = AppConstants.sipDomain;
+      //   passwordToSend = CryptoUtils.md5Hash('$username:$domain:$password');
+      //   print('--- Account Summary: Computed MD5 Hash for/using $domain ---');
+      // }
+
+      
+      // Try 1: Fetch balance with original username (and plain password)
+      var balanceResp = await client.getAccountBalance(username: username, password: passwordToSend);
+      print('--- Account Summary: Balance Resp (Original): ${balanceResp.toProto3Json()} ---');
+
+      // Try 2: If failed, try stripping '+' from username
+      if (!_didSucceed(balanceResp) && username.startsWith('+')) {
+         final altUsername = username.replaceFirst('+', '');
+         print('--- Account Summary: Retrying Balance with $altUsername ... ---');
+         final altResp = await client.getAccountBalance(username: altUsername, password: passwordToSend);
+         print('--- Account Summary: Balance Resp (Alt): ${altResp.toProto3Json()} ---');
+         if (_didSucceed(altResp)) {
+           balanceResp = altResp;
+         }
+      }
+
+      if (!_didSucceed(balanceResp)) {
+        print('--- Account Summary: Balance fetch failed (Final) ---');
+        // Continue to try fetching alias anyway to debug auth vs endpoint issue
+      }
 
       // Fetch alias separately to be sure
-      String alias = balanceResp.alias;
-      if (alias.isEmpty) {
-        try {
-          final aliasResp = await client.getAliasNumber(username: username);
+      String alias = balanceResp.alias; 
+      // If we failed balance, alias is likely empty, but let's try getAliasNumber explicitly
+      
+      try {
+          print('--- Account Summary: Fetching Alias explicitly... ---');
+          // Try with original username
+          var aliasResp = await client.getAliasNumber(username: username, password: passwordToSend);
+          print('--- Account Summary: Alias Resp (Original): ${aliasResp.toProto3Json()} ---');
+          
+          // Retry alias with alt username if needed
+          if (aliasResp.alias.isEmpty && username.startsWith('+')) {
+             final altUsername = username.replaceFirst('+', '');
+             print('--- Account Summary: Retrying Alias with $altUsername ... ---');
+             final altAliasResp = await client.getAliasNumber(username: altUsername, password: passwordToSend);
+             print('--- Account Summary: Alias Resp (Alt): ${altAliasResp.toProto3Json()} ---');
+             if (altAliasResp.alias.isNotEmpty) {
+                aliasResp = altAliasResp;
+             }
+          }
+
           if (aliasResp.alias.isNotEmpty) {
             alias = aliasResp.alias;
           }
-        } catch (_) {
-          // Ignore alias fetch failure, fall back to empty
-        }
+      } catch (e) {
+          print('--- Account Summary: Alias fetch error: $e ---');
+      }
+
+      // If both failed, return null
+      if (!_didSucceed(balanceResp) && alias.isEmpty) {
+         return null;
       }
 
       return {

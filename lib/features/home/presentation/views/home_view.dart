@@ -40,6 +40,7 @@ class _HomeViewState extends State<HomeView> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('--- HomeView: Initializing... Calling loadCurrentUser ---');
       Provider.of<DashboardViewModel>(context, listen: false).loadDashboard(_userId);
       // Load real cart data
       Provider.of<ShoppingViewModel>(context, listen: false).loadCart(_userId);
@@ -298,7 +299,7 @@ class _ModernDashboardTab extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Welcome back,",
+                          "Welcome back, ${accountViewModel.alias ?? ''}",
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 16,

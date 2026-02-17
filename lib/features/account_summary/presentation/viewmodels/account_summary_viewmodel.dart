@@ -26,13 +26,13 @@ class AccountSummaryViewModel extends ChangeNotifier {
     return null;
   }
 
-  Future<void> refresh(String username) async {
+  Future<void> refresh(String username, {String? password}) async {
     if (username.isEmpty) return;
     _loading = true;
     _error = null;
     notifyListeners();
 
-    final result = await _authService.fetchAccountSummary(username);
+    final result = await _authService.fetchAccountSummary(username, password: password);
     _loading = false;
 
     if (result == null) {
@@ -44,23 +44,31 @@ class AccountSummaryViewModel extends ChangeNotifier {
   }
 
   Future<void> loadCurrentUser() async {
+    print('--- AccountSummaryViewModel: Loading current user... ---');
     _loading = true;
     notifyListeners();
 
     final creds = await _authService.getStoredCredentials();
+    print('--- AccountSummaryViewModel: Credentials found: ${creds != null} ---');
+    
     if (creds == null) {
       _loading = false;
       _error = 'No user logged in';
+      print('--- AccountSummaryViewModel: No user logged in. ---');
       notifyListeners();
       return;
     }
 
     final username = creds['username'];
+    final password = creds['password']; // Get password
+    print('--- AccountSummaryViewModel: Username: $username ---');
+    
     if (username != null) {
-      await refresh(username);
+      await refresh(username, password: password);
     } else {
       _loading = false;
       _error = 'Invalid user credentials';
+       print('--- AccountSummaryViewModel: Invalid credentials (username null). ---');
       notifyListeners();
     }
   }
