@@ -480,17 +480,44 @@ input:checked+.toggle-slider::before {
     margin: 4px 0;
 }
 
+/* Mobile Menu Button */
+.mobile-menu-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    color: var(--secondary-color);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 8px;
+    margin-right: 16px;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
     .sidebar {
         transform: translateX(-120%);
-        /* Move further out */
-        transition: transform 0.3s;
+        transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+        /* Stronger shadow when active */
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
     }
 
     .main-content {
         margin-left: 20px;
-        /* Reset margins */
+        margin-right: 20px;
+    }
+
+    .top-bar {
+        padding: 0 20px;
+        justify-content: space-between;
+        /* To space menu button and user info */
+    }
+
+    .mobile-menu-btn {
+        display: block;
     }
 
     .form-grid {
@@ -499,5 +526,37 @@ input:checked+.toggle-slider::before {
 
     .full-width {
         grid-column: auto;
+    }
+
+    /* Adjust specific elements for mobile */
+    .product-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .product-item>div:last-child {
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    h2 {
+        font-size: 1.25rem;
+    }
+
+    .card {
+        padding: 20px;
+    }
+
+    /* Stack the search bar area */
+    .card>div[style*="justify-content: space-between"] {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 16px;
+    }
+
+    .card>div>input[type="text"] {
+        width: 100% !important;
     }
 }

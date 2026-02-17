@@ -39,6 +39,7 @@
 
     <div class="main-content">
         <div class="top-bar">
+            <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
             <div class="user-info" id="userInfo"></div>
             <button onclick="logout()" class="logout-btn">Log out</button>
         </div>
@@ -50,7 +51,8 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="code">Voucher Code</label>
-                            <input type="text" id="code" required placeholder="e.g. SUMMER2024" style="text-transform: uppercase;">
+                            <input type="text" id="code" required placeholder="e.g. SUMMER2024"
+                                style="text-transform: uppercase;">
                         </div>
                         <div class="form-group">
                             <label for="discountType">Discount Type</label>
