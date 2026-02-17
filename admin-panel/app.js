@@ -231,6 +231,16 @@ async function loadCategories() {
     }
 }
 
+// Search Functionality
+document.getElementById('searchInput').addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const filteredProducts = allProducts.filter(product =>
+        product.name.toLowerCase().includes(searchTerm) ||
+        (product.category && product.category.toLowerCase().includes(searchTerm))
+    );
+    renderProducts(filteredProducts);
+});
+
 // Initial load
 loadCategories();
 fetchProducts();
