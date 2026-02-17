@@ -115,7 +115,7 @@ class LoginViewModel extends ChangeNotifier {
     // Fetch account summary (alias, balance, etc.) after registration.
     // If fetch fails, still return success with username for navigation.
     debugPrint('--- Login Flow: Fetching Account Summary... ---');
-    final summary = await _authService.fetchAccountSummary(trimmedUsername);
+    final summary = await _authService.fetchAccountSummary(trimmedUsername, password: trimmedPassword);
 
     _setLoading(false);
     

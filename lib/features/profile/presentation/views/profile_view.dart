@@ -29,7 +29,7 @@ class ProfileView extends StatelessWidget {
               // Blurred Background
               Positioned.fill(
                 child: Image.asset(
-                  'assets/icon/icon.jpg',
+                  'assets/icon/icon.png',
                   fit: BoxFit.cover,
                 ),
               ),
