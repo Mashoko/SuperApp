@@ -127,7 +127,8 @@ let allProducts = [];
 async function fetchProducts() {
     try {
         const response = await authFetch(API_URL);
-        allProducts = await response.json();
+        const data = await response.json();
+        allProducts = data.products || [];
         renderProducts(allProducts);
     } catch (error) {
         console.error('Error fetching products:', error);
