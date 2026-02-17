@@ -6,15 +6,24 @@ import 'package:provider/provider.dart';
 import 'package:mvvm_sip_demo/core/routes.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
 import 'package:mvvm_sip_demo/features/auth/presentation/viewmodels/auth_viewmodel.dart';
+import 'package:mvvm_sip_demo/features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
 
 class ProfileView extends StatelessWidget {
   const ProfileView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthViewModel>(
-      builder: (context, authViewModel, child) {
+    return Consumer2<AuthViewModel, AccountSummaryViewModel>(
+      builder: (context, authViewModel, accountSummary, child) {
         final user = authViewModel.currentUser;
+        final sipAlias = accountSummary.alias;
+        final sipUsername = accountSummary.summary?['username'];
+
+        final displayName = (sipAlias != null && sipAlias.isNotEmpty) 
+            ? sipAlias 
+            : (sipUsername ?? user?['name'] ?? 'Guest User');
+        
+        final displaySubtitle = sipUsername ?? user?['email'] ?? 'Sign in to see your profile';
 
         return Scaffold(
           extendBodyBehindAppBar: true,
@@ -59,7 +68,7 @@ class ProfileView extends StatelessWidget {
                     const SizedBox(height: 24),
                     Center(
                       child: Text(
-                        user?['name'] ?? 'Guest User',
+                        displayName,
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -70,7 +79,7 @@ class ProfileView extends StatelessWidget {
                     const SizedBox(height: 8),
                     Center(
                       child: Text(
-                        user?['email'] ?? 'Sign in to see your profile',
+                        displaySubtitle,
                         style: const TextStyle(
                           fontSize: 16,
                           color: Colors.white70,
