@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
+import 'package:mvvm_sip_demo/core/routes.dart';
 import 'package:mvvm_sip_demo/models/shopping/product.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
 import 'package:mvvm_sip_demo/shared/widgets/payment_method_sheet.dart';
-
 
 class CheckoutView extends StatefulWidget {
   const CheckoutView({super.key});
@@ -59,37 +59,41 @@ class _CheckoutViewState extends State<CheckoutView> {
                   final productData = item['product'];
                   final product = Product.fromJson(productData);
                   final quantity = item['quantity'] as int;
-                  
+
                   return _buildCheckoutItem(
                     name: product.name,
                     price: product.price,
                     quantity: quantity,
                     imageUrl: product.imageUrl,
-                    onDelete: () => _confirmDelete(() => viewModel.removeFromCart('user_id', product.productId)),
-                    onIncrement: () => viewModel.addToCart('user_id', product.productId),
+                    onDelete: () => _confirmDelete(() =>
+                        viewModel.removeFromCart('user_id', product.productId)),
+                    onIncrement: () =>
+                        viewModel.addToCart('user_id', product.productId),
                     onDecrement: () {
                       if (quantity > 1) {
-                         viewModel.addToCart('user_id', product.productId, quantity: -1);
+                        viewModel.addToCart('user_id', product.productId,
+                            quantity: -1);
                       } else {
                         viewModel.removeFromCart('user_id', product.productId);
                       }
                     },
                   );
                 }),
-                
+
                 const SizedBox(height: 24),
-                
+
                 const Text(
                   'Payment Details',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Promo Code
                 if (viewModel.discountCode != null)
-                   Container(
+                  Container(
                     margin: const EdgeInsets.only(bottom: 24),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: Colors.green.shade50,
                       borderRadius: BorderRadius.circular(12),
@@ -97,7 +101,8 @@ class _CheckoutViewState extends State<CheckoutView> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                        const Icon(Icons.check_circle,
+                            color: Colors.green, size: 20),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -110,7 +115,8 @@ class _CheckoutViewState extends State<CheckoutView> {
                         ),
                         GestureDetector(
                           onTap: () => viewModel.removeDiscount(),
-                          child: const Icon(Icons.close, size: 20, color: Colors.green),
+                          child: const Icon(Icons.close,
+                              size: 20, color: Colors.green),
                         ),
                       ],
                     ),
@@ -118,14 +124,15 @@ class _CheckoutViewState extends State<CheckoutView> {
                 else
                   Column(
                     children: [
-                       InkWell(
+                      InkWell(
                         onTap: () {
                           setState(() {
                             _isPromoExpanded = !_isPromoExpanded;
                           });
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
@@ -139,7 +146,8 @@ class _CheckoutViewState extends State<CheckoutView> {
                                   color: Color(0xFFFFF0E6), // Light orange
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.percent, color: WunzaColors.primary, size: 20),
+                                child: const Icon(Icons.percent,
+                                    color: WunzaColors.primary, size: 20),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
@@ -148,19 +156,24 @@ class _CheckoutViewState extends State<CheckoutView> {
                                   children: [
                                     const Text(
                                       'Have a promo code?',
-                                      style: TextStyle(fontWeight: FontWeight.w600),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w600),
                                     ),
                                     if (!_isPromoExpanded)
                                       Text(
                                         'Use your promo code or voucher',
-                                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                                        style: TextStyle(
+                                            color: Colors.grey[500],
+                                            fontSize: 12),
                                       ),
                                   ],
                                 ),
                               ),
                               Text(
                                 _isPromoExpanded ? "Close" : "Add",
-                                style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
@@ -182,7 +195,8 @@ class _CheckoutViewState extends State<CheckoutView> {
                                       borderRadius: BorderRadius.circular(8),
                                       borderSide: BorderSide.none,
                                     ),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
                                   ),
                                 ),
                               ),
@@ -190,7 +204,8 @@ class _CheckoutViewState extends State<CheckoutView> {
                               ElevatedButton(
                                 onPressed: () {
                                   if (_promoController.text.isNotEmpty) {
-                                    viewModel.applyDiscount(_promoController.text);
+                                    viewModel
+                                        .applyDiscount(_promoController.text);
                                     setState(() {
                                       _isPromoExpanded = false;
                                       _promoController.clear();
@@ -199,16 +214,20 @@ class _CheckoutViewState extends State<CheckoutView> {
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: WunzaColors.primary,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 24, vertical: 14),
                                 ),
-                                child: viewModel.isCheckingVoucher 
-                                  ? const SizedBox(
-                                      width: 20, 
-                                      height: 20, 
-                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                                    )
-                                  : const Text("Apply", style: TextStyle(color: Colors.white)),
+                                child: viewModel.isCheckingVoucher
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2))
+                                    : const Text("Apply",
+                                        style: TextStyle(color: Colors.white)),
                               )
                             ],
                           ),
@@ -221,22 +240,112 @@ class _CheckoutViewState extends State<CheckoutView> {
                 _buildSummaryRow('Subtotal', subtotal),
                 // _buildSummaryRow('Shipping', shipping),
                 if (discount > 0)
-                   _buildSummaryRow('Discount (${viewModel.discountCode})', -discount, color: Colors.green),
+                  _buildSummaryRow(
+                      'Discount (${viewModel.discountCode})', -discount,
+                      color: Colors.green),
                 const Divider(height: 32),
                 _buildSummaryRow('Total', total, isTotal: true),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Checkout Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () => PaymentMethodSheet.show(
-                      context, 
-                      onSuccess: () {
-                        // After success dialog, maybe navigate home or order history
-                        Navigator.pop(context); // Close checkout
-                      }
+                      context,
+                      onSuccess: () async {
+                        try {
+                          if (!context.mounted) return;
+
+                          // 1️⃣ Place order
+                          final success = await viewModel.placeOrder(
+                            'user_id',
+                            'Default Address',
+                          );
+
+                          if (!context.mounted) return;
+
+                          if (success) {
+                            // 2️⃣ Clear cart locally (extra safety)
+                            viewModel.clearCart();
+
+                            // Optional (Better UX) Instead of instant navigation, show a success dialog for 2 sec
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (BuildContext dialogContext) => Dialog(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(24)),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(32.0),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                              color: Colors.green, width: 4),
+                                        ),
+                                        child: const Icon(Icons.check,
+                                            color: Colors.green, size: 64),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      const Text(
+                                        'Payment\nSuccessful!',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+
+                            await Future.delayed(const Duration(seconds: 2));
+
+                            if (!context.mounted) return;
+
+                            // 3️⃣ Navigate & remove all previous routes
+                            Navigator.of(context).pushNamedAndRemoveUntil(
+                              Routes.shopping,
+                              (route) => false,
+                            );
+
+                            // 4️⃣ Optional success message
+                            Future.delayed(
+                              const Duration(milliseconds: 300),
+                              () {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content:
+                                          Text('Order placed successfully 🎉'),
+                                    ),
+                                  );
+                                }
+                              },
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Failed to place order')),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
+                          }
+                        }
+                      },
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: WunzaColors.primary, // Orange
@@ -296,7 +405,8 @@ class _CheckoutViewState extends State<CheckoutView> {
               width: 80,
               height: 80,
               fit: BoxFit.cover,
-              errorBuilder: (c, o, s) => Container(color: Colors.grey[200], width: 80, height: 80),
+              errorBuilder: (c, o, s) =>
+                  Container(color: Colors.grey[200], width: 80, height: 80),
             ),
           ),
           const SizedBox(width: 16),
@@ -312,7 +422,8 @@ class _CheckoutViewState extends State<CheckoutView> {
                         name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ),
                     const Icon(Icons.more_horiz, color: Colors.grey),
@@ -321,7 +432,9 @@ class _CheckoutViewState extends State<CheckoutView> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Text('Staples', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                    Text('Staples',
+                        style:
+                            TextStyle(color: Colors.grey[600], fontSize: 12)),
                     const SizedBox(width: 4),
                     const Icon(Icons.circle, size: 4, color: Colors.grey),
                     const SizedBox(width: 4),
@@ -344,7 +457,9 @@ class _CheckoutViewState extends State<CheckoutView> {
                           ),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text('$quantity', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            child: Text('$quantity',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
                           ),
                           GestureDetector(
                             onTap: onIncrement,
@@ -356,17 +471,22 @@ class _CheckoutViewState extends State<CheckoutView> {
                     const SizedBox(width: 16),
                     Text(
                       '\$${price.toStringAsFixed(2)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 18),
                     ),
                     const SizedBox(width: 4),
                     const Text(
                       'USD',
-                      style: TextStyle(color: WunzaColors.primary, fontWeight: FontWeight.bold, fontSize: 10),
+                      style: TextStyle(
+                          color: WunzaColors.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10),
                     ),
                     const Spacer(),
                     GestureDetector(
                       onTap: onDelete,
-                      child: const Icon(Icons.delete_outline, color: Colors.red),
+                      child:
+                          const Icon(Icons.delete_outline, color: Colors.red),
                     ),
                   ],
                 ),
@@ -387,7 +507,8 @@ class _CheckoutViewState extends State<CheckoutView> {
     );
   }
 
-  Widget _buildSummaryRow(String label, double amount, {bool isTotal = false, Color? color}) {
+  Widget _buildSummaryRow(String label, double amount,
+      {bool isTotal = false, Color? color}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -414,14 +535,13 @@ class _CheckoutViewState extends State<CheckoutView> {
     );
   }
 
-
-
   void _confirmDelete(VoidCallback onConfirm) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove Item'),
-        content: const Text('Are you sure you want to remove this item from your cart?'),
+        content: const Text(
+            'Are you sure you want to remove this item from your cart?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

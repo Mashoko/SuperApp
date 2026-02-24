@@ -36,7 +36,7 @@ class _PaymentDetailsViewState extends State<PaymentDetailsView> {
     if (_formKey.currentState!.validate()) {
       PaymentMethodSheet.show(
         context,
-        onSuccess: () {
+        onSuccess: () async {
           // Additional success logic if needed, e.g. navigate back twice
           Navigator.pop(context); // Close payment details view to go back to providers
         },

@@ -349,7 +349,7 @@ class _ModernDashboardTab extends StatelessWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 0.85,
+                childAspectRatio: 0.95,
                 children: [
 
                   Builder(
@@ -435,25 +435,27 @@ class _DashboardWidgetCard extends StatelessWidget {
     // Using GlassContainer instead of basic Container/Card
     return GlassContainer(
       opacity: 0.6,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10), // Slightly larger padding
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: accentColor.withOpacity(0.1), // Keep soft background
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: accentColor, size: 28), // Larger icon
+                child: Icon(icon, color: accentColor, size: 24),
               ),
               const Spacer(),
               // Removed more_horiz to clean up
             ],
           ),
-          const Spacer(),
+          const SizedBox(height: 8),
           Text(
             subValue,
             style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w500),
@@ -462,15 +464,15 @@ class _DashboardWidgetCard extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              fontSize: 22, // Slightly larger
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: WunzaColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 6),
           SizedBox(
             width: double.infinity,
-            height: 40, // Taller button
+            height: 34,
             child: ElevatedButton(
               onPressed: onTap,
               style: ElevatedButton.styleFrom(

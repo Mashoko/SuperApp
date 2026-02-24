@@ -8,10 +8,12 @@ import 'package:mvvm_sip_demo/features/shopping/presentation/views/widgets/quant
 
 class ProductListTile extends StatelessWidget {
   final Product product;
+  final VoidCallback? onAddToCart;
 
   const ProductListTile({
     super.key,
     required this.product,
+    this.onAddToCart,
   });
 
   @override
@@ -94,7 +96,13 @@ class ProductListTile extends StatelessWidget {
                         final quantity = viewModel.getProductQuantity(product.productId);
                         return QuantitySelector(
                           quantity: quantity,
-                          onAdd: () => viewModel.addToCart('user_id', product.productId),
+                          onAdd: () {
+                            if (onAddToCart != null) {
+                              onAddToCart!();
+                            } else {
+                              viewModel.addToCart('user_id', product.productId);
+                            }
+                          },
                           onIncrement: () => viewModel.updateCartQuantity('user_id', product.productId, quantity + 1),
                           onRemove: () => viewModel.updateCartQuantity('user_id', product.productId, quantity - 1),
                         );

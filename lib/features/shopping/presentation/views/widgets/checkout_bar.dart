@@ -15,117 +15,115 @@ class CheckoutBar extends StatelessWidget {
     this.onCheckout,
   });
 
-
   @override
   Widget build(BuildContext context) {
     if (itemCount == 0) return const SizedBox.shrink();
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(8),
       child: SafeArea(
         child: SizedBox(
-          height: 80, // Taller bar
+          height: 80,
           child: GlassContainer(
-             color: WunzaColors.primary.withValues(alpha: 0.9), // Keep it mostly opaque orange
-             borderRadius: 40,
-             blur: 10,
-
+            color: WunzaColors.primary.withValues(alpha: 0.9),
+            borderRadius: 40,
+            blur: 10,
             child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // Cheetah Image (Left, overflowing)
-              Positioned(
-                left: 12,
-                bottom: 0,
-                child: SizedBox(
-                  width: 70, // Larger cheetah
-                  height: 95, // Taller to overflow more
-                  child: CachedNetworkImage(
-                    imageUrl: 'https://png.pngtree.com/png-clipart/20230414/original/pngtree-cheetah-animal-png-image_9056372.png',
-                    fit: BoxFit.contain,
-                    placeholder: (context, url) => const SizedBox(),
-                    errorWidget: (context, url, error) => const SizedBox(),
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  left: 12,
+                  bottom: 0,
+                  child: SizedBox(
+                    width: 70,
+                    height: 95,
+                    child: CachedNetworkImage(
+                      imageUrl:
+                          'https://png.pngtree.com/png-clipart/20230414/original/pngtree-cheetah-animal-png-image_9056372.png',
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) => const SizedBox(),
+                      errorWidget: (context, url, error) => const SizedBox(),
+                    ),
                   ),
                 ),
-              ),
-              
-              // Content
-              Padding(
-                padding: const EdgeInsets.only(left: 90, right: 12), // Adjusted padding
-                child: Row(
-                  children: [
-                    // Total Amount
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              '\$${totalAmount.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22, // Larger amount
-                                fontWeight: FontWeight.bold,
+                Padding(
+                  padding: const EdgeInsets.only(left: 90, right: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Total Amount
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '\$${totalAmount.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Text(
-                              'USD',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 12, // Larger currency tag
-                                fontWeight: FontWeight.bold,
+                              const SizedBox(width: 4),
+                              const Text(
+                                'USD',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 4),
+                      // Cart Icon Circle
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.shopping_cart_outlined,
+                          color: Colors.black,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // Checkout Button
+                      SizedBox(
+                        height: 40,
+                        child: ElevatedButton(
+                          onPressed: onCheckout,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    
-                    const Spacer(),
-                    
-                    // Cart Icon Circle
-                    Container(
-                      padding: const EdgeInsets.all(8), // Reduced padding
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.shopping_cart_outlined,
-                        color: Colors.black,
-                        size: 24,
-                      ),
-                    ),
-                    
-                    const SizedBox(width: 8), // Reduced spacer
-                    
-                    // Checkout Button
-                    ElevatedButton(
-                      onPressed: onCheckout,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Reduced padding
-                      ),
-                      child: const Text(
-                        'Checkout',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                          ),
+                          child: const Text(
+                            'Checkout',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
             ),
           ),
         ),

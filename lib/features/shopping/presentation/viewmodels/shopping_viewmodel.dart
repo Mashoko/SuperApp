@@ -26,7 +26,7 @@ class ShoppingViewModel extends ChangeNotifier {
   bool _isMoreLoading = false;
 
   List<Product> get products => _products;
-  
+
   Map<String, dynamic> get cart => _cart;
   List<Order> get orders => _orders;
   bool get isLoading => _isLoading;
@@ -45,7 +45,8 @@ class ShoppingViewModel extends ChangeNotifier {
 
   String? get discountCode => _discountCode;
   double get discountAmount => _discountAmount;
-  double get total => (_cart['total'] ?? 0.0) + 0.0 - _discountAmount; // Mock shipping is 0.0
+  double get total =>
+      (_cart['total'] ?? 0.0) + 0.0 - _discountAmount; // Mock shipping is 0.0
   bool get isCheckingVoucher => _isCheckingVoucher;
   Future<void> applyDiscount(String code) async {
     try {
@@ -54,7 +55,7 @@ class ShoppingViewModel extends ChangeNotifier {
       notifyListeners();
 
       final result = await _service.validateVoucher(code, cart['total'] ?? 0.0);
-      
+
       if (result['valid'] == true) {
         _discountCode = result['code'];
         _discountAmount = (result['discount_amount'] as num).toDouble();
@@ -95,18 +96,18 @@ class ShoppingViewModel extends ChangeNotifier {
 
   void addRecentSearch(String term) {
     if (term.isEmpty) return;
-    
+
     // Remove if exists to move to top
     _recentSearches.remove(term);
-    
+
     // Add to top
     _recentSearches.insert(0, term);
-    
+
     // Limit to 10
     if (_recentSearches.length > 10) {
       _recentSearches = _recentSearches.sublist(0, 10);
     }
-    
+
     notifyListeners();
   }
 
@@ -119,7 +120,7 @@ class ShoppingViewModel extends ChangeNotifier {
     _isLoading = value;
     notifyListeners();
   }
-  
+
   void _setMoreLoading(bool value) {
     _isMoreLoading = value;
     notifyListeners();
@@ -134,20 +135,21 @@ class ShoppingViewModel extends ChangeNotifier {
     try {
       _setLoading(true);
       _setError(null);
-      
+
       _page = 1;
       _totalPages = 1; // Reset to ensure we can try fetching
-      
+
       // Load dependencies
-      await loadCategories(); 
+      await loadCategories();
       await loadBanners();
-      
+
       // Fetch Page 1
-      final result = await _service.fetchProducts(page: 1, category: category ?? _selectedCategory);
-      
+      final result = await _service.fetchProducts(
+          page: 1, category: category ?? _selectedCategory);
+
       _products = result.products;
       _totalPages = result.totalPages;
-      
+
       notifyListeners();
     } catch (e) {
       _setError('Failed to load products: $e');
@@ -158,16 +160,17 @@ class ShoppingViewModel extends ChangeNotifier {
 
   Future<void> loadMoreProducts() async {
     if (_isLoading || _isMoreLoading || _page >= _totalPages) return;
-    
+
     try {
       _setMoreLoading(true);
       _page++;
-      
-      final result = await _service.fetchProducts(page: _page, category: _selectedCategory);
-      
+
+      final result = await _service.fetchProducts(
+          page: _page, category: _selectedCategory);
+
       _products.addAll(result.products);
       // _totalPages = result.totalPages; // Should be same, but can update
-      
+
       notifyListeners();
     } catch (e) {
       _setError('Failed to load more products: $e');
@@ -195,21 +198,22 @@ class ShoppingViewModel extends ChangeNotifier {
       if (loadedCats.isNotEmpty) {
         _categories = ['All', ...loadedCats]; // Add 'All' as the default
       } else {
-        _categories = ['All']; 
+        _categories = ['All'];
       }
-      
+
       // If selected category is no longer valid, reset to All
       if (!_categories.contains(_selectedCategory)) {
         _selectedCategory = 'All';
       }
-      
+
       notifyListeners();
     } catch (e) {
       print('VM: Error loading categories $e');
     }
   }
 
-  Future<void> addToCart(String userId, String productId, {int quantity = 1}) async {
+  Future<void> addToCart(String userId, String productId,
+      {int quantity = 1}) async {
     try {
       _setError(null);
       _service.addToCart(userId, productId, quantity: quantity);
@@ -220,9 +224,8 @@ class ShoppingViewModel extends ChangeNotifier {
     }
   }
 
-
-
-  Future<void> updateCartQuantity(String userId, String productId, int quantity) async {
+  Future<void> updateCartQuantity(
+      String userId, String productId, int quantity) async {
     try {
       _setError(null);
       _service.updateCartQuantity(userId, productId, quantity);
@@ -232,17 +235,19 @@ class ShoppingViewModel extends ChangeNotifier {
       _setError('Failed to update cart: $e');
     }
   }
-  
+
   int getProductQuantity(String productId) {
     if (_cart['items'] == null) return 0;
-    
+
     final items = _cart['items'] as List<dynamic>;
     try {
       final item = items.firstWhere(
-        (item) => item['product_id'] == productId || item['product']['product_id'] == productId,
+        (item) =>
+            item['product_id'] == productId ||
+            item['product']['product_id'] == productId,
         orElse: () => null,
       );
-      
+
       if (item != null) {
         return item['quantity'] as int;
       }
@@ -273,18 +278,31 @@ class ShoppingViewModel extends ChangeNotifier {
     }
   }
 
+  void clearCart() {
+    _cart = {};
+    _discountCode = null;
+    _discountAmount = 0.0;
+    notifyListeners();
+  }
+
   Future<bool> placeOrder(String userId, String shippingAddress) async {
     try {
       _setLoading(true);
       _setError(null);
       final order = _service.placeOrder(userId, shippingAddress);
       if (order != null) {
+        // Clear cart, discount, and state
+        clearCart(); // IMPORTANT
+        _discountCode = null;
+        _discountAmount = 0.0;
+
         await loadCart(userId);
         await loadOrders(userId: userId);
         notifyListeners();
         return true;
       } else {
-        _setError('Failed to place order. Cart may be empty or stock insufficient.');
+        _setError(
+            'Failed to place order. Cart may be empty or stock insufficient.');
         return false;
       }
     } catch (e) {
@@ -308,4 +326,3 @@ class ShoppingViewModel extends ChangeNotifier {
     }
   }
 }
-

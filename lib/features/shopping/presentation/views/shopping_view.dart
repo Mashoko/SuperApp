@@ -19,7 +19,7 @@ class ShoppingView extends StatefulWidget {
   State<ShoppingView> createState() => _ShoppingViewState();
 }
 
- class _ShoppingViewState extends State<ShoppingView> {
+class _ShoppingViewState extends State<ShoppingView> {
   bool _isGridView = false;
   final ScrollController _scrollController = ScrollController();
 
@@ -27,8 +27,8 @@ class ShoppingView extends StatefulWidget {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ShoppingViewModel>(context, listen: false).loadProducts();
+    Future.microtask(() {
+      context.read<ShoppingViewModel>().loadProducts();
     });
   }
 
@@ -39,7 +39,8 @@ class ShoppingView extends StatefulWidget {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       final viewModel = Provider.of<ShoppingViewModel>(context, listen: false);
       viewModel.loadMoreProducts();
     }
@@ -60,8 +61,10 @@ class ShoppingView extends StatefulWidget {
                   builder: (context, viewModel, child) {
                     final itemCount = viewModel.cart['item_count'] as int? ?? 0;
                     return ShoppingSearchBar(
-                      onBackPressed: widget.onBack ?? () => Navigator.pop(context),
-                      onCartPressed: () => Navigator.pushNamed(context, Routes.cart),
+                      onBackPressed:
+                          widget.onBack ?? () => Navigator.pop(context),
+                      onCartPressed: () =>
+                          Navigator.pushNamed(context, Routes.cart),
                       cartItemCount: itemCount,
                     );
                   },
@@ -73,18 +76,20 @@ class ShoppingView extends StatefulWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                         // Promotional Banner
+                        // Promotional Banner
                         Consumer<ShoppingViewModel>(
                           builder: (context, viewModel, child) {
                             return PromotionalBanner(
-                              banner: viewModel.banners.isNotEmpty ? viewModel.banners.first : null,
+                              banner: viewModel.banners.isNotEmpty
+                                  ? viewModel.banners.first
+                                  : null,
                             );
                           },
                         ),
                         const SizedBox(height: 16),
 
                         // Categories (Pills)
-                         Consumer<ShoppingViewModel>(
+                        Consumer<ShoppingViewModel>(
                           builder: (context, viewModel, child) {
                             return CategoryPills(
                               categories: viewModel.categories,
@@ -105,14 +110,19 @@ class ShoppingView extends StatefulWidget {
                             children: [
                               Text(
                                 "Popular Products",
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: WunzaColors.premiumText,
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: WunzaColors.premiumText,
+                                    ),
                               ),
                               IconButton(
                                 icon: Icon(
-                                  _isGridView ? Icons.view_list : Icons.grid_view,
+                                  _isGridView
+                                      ? Icons.view_list
+                                      : Icons.grid_view,
                                   color: WunzaColors.premiumText,
                                 ),
                                 onPressed: () {
@@ -129,19 +139,23 @@ class ShoppingView extends StatefulWidget {
                         // Product List/Grid
                         Consumer<ShoppingViewModel>(
                           builder: (context, viewModel, child) {
-                            if (viewModel.isLoading && viewModel.products.isEmpty) {
-                              return const Center(child: CircularProgressIndicator());
+                            if (viewModel.isLoading &&
+                                viewModel.products.isEmpty) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
                             }
-                            
+
                             // Bottom padding for checkout bar
-                            final bottomPadding = const EdgeInsets.only(bottom: 20, left: 16, right: 16);
+                            final bottomPadding = const EdgeInsets.only(
+                                bottom: 20, left: 16, right: 16);
 
                             if (_isGridView) {
-                               return GridView.builder(
+                              return GridView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 padding: bottomPadding,
-                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 2,
                                   childAspectRatio: 0.75,
                                   crossAxisSpacing: 16,
@@ -159,7 +173,8 @@ class ShoppingView extends StatefulWidget {
                               return ListView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
-                                padding: bottomPadding.copyWith(left: 0, right: 0),
+                                padding:
+                                    bottomPadding.copyWith(left: 0, right: 0),
                                 itemCount: viewModel.products.length,
                                 itemBuilder: (context, index) {
                                   final product = viewModel.products[index];
@@ -171,16 +186,18 @@ class ShoppingView extends StatefulWidget {
                             }
                           },
                         ),
-                        
+
                         Consumer<ShoppingViewModel>(
                           builder: (context, viewModel, child) {
                             if (viewModel.isMoreLoading) {
                               return const Padding(
                                 padding: EdgeInsets.all(16.0),
-                                child: Center(child: CircularProgressIndicator()),
+                                child:
+                                    Center(child: CircularProgressIndicator()),
                               );
                             }
-                            return const SizedBox(height: 100); // Space for checkout bar
+                            return const SizedBox(
+                                height: 100); // Space for checkout bar
                           },
                         ),
                       ],
@@ -199,13 +216,13 @@ class ShoppingView extends StatefulWidget {
                 builder: (context, viewModel, child) {
                   final itemCount = viewModel.cart['item_count'] as int? ?? 0;
                   final totalAmount = viewModel.cart['total'] as double? ?? 0.0;
-                  
+
                   return SafeArea(
                     child: CheckoutBar(
                       itemCount: itemCount,
                       totalAmount: totalAmount,
                       onCheckout: () {
-                         Navigator.pushNamed(context, Routes.checkout);
+                        Navigator.pushNamed(context, Routes.checkout);
                       },
                     ),
                   );
@@ -218,4 +235,3 @@ class ShoppingView extends StatefulWidget {
     );
   }
 }
-

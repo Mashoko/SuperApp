@@ -1,4 +1,4 @@
-package com.example.users_client_example
+package com.glide.superapp
 
 import io.flutter.embedding.android.FlutterActivity
 
