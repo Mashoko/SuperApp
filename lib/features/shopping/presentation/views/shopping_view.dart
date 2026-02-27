@@ -62,7 +62,7 @@ class _ShoppingViewState extends State<ShoppingView> {
                     final itemCount = viewModel.cart['item_count'] as int? ?? 0;
                     return ShoppingSearchBar(
                       onBackPressed:
-                          widget.onBack ?? () => Navigator.pop(context),
+                          widget.onBack ?? () { Future.delayed(Duration.zero, () { if (context.mounted) Navigator.pop(context); }); },
                       onCartPressed: () =>
                           Navigator.pushNamed(context, Routes.cart),
                       cartItemCount: itemCount,

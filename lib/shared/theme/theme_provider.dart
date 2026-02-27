@@ -42,5 +42,15 @@ class ThemeProvider extends ChangeNotifier {
     );
     notifyListeners();
   }
+
+  bool get isDarkMode => currentTheme?.brightness == Brightness.dark;
+
+  void toggleTheme() {
+    if (isDarkMode) {
+      setLightMode();
+    } else {
+      setDarkmode();
+    }
+  }
 }
 

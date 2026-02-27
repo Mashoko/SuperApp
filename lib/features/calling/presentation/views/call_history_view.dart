@@ -9,6 +9,7 @@ import 'package:mvvm_sip_demo/features/calling/presentation/views/widgets/call_h
 import 'package:mvvm_sip_demo/features/recents/data/models/recent_call.dart';
 import 'package:mvvm_sip_demo/features/auth/presentation/viewmodels/auth_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/quick_dialer_overlay.dart';
+import 'package:mvvm_sip_demo/core/routes.dart';
 
 class CallHistoryView extends StatefulWidget {
   const CallHistoryView({super.key});
@@ -53,7 +54,7 @@ class _CallHistoryViewState extends State<CallHistoryView> {
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pushNamedAndRemoveUntil(context, Routes.home, (route) => false),
           ),
         ),
         body: SafeArea(

@@ -17,7 +17,7 @@ class CartView extends StatelessWidget {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () { Future.delayed(Duration.zero, () { if (context.mounted) Navigator.pop(context); }); },
         ),
         actions: [
           IconButton(
@@ -118,7 +118,7 @@ class CartView extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () { Future.delayed(Duration.zero, () { if (context.mounted) Navigator.pop(context); }); },
                 child: const Text('Start Shopping'),
               ),
             ),

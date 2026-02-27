@@ -75,7 +75,7 @@ class MyApp extends StatelessWidget {
             navigatorKey: navigatorKey,
             title: 'Super App',
             debugShowCheckedModeBanner: false,
-            // Use WunzaTheme if preferred, or theme.currentTheme if it wraps it
+        
             // For now, forcing WunzaTheme to ensure source look as requested
             theme: WunzaTheme.lightTheme, 
             initialRoute: Routes.root,

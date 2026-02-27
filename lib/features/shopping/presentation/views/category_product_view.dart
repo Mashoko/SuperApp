@@ -43,7 +43,7 @@ class _CategoryProductViewState extends State<CategoryProductView> {
         child: Column(
           children: [
             ShoppingSearchBar(
-              onBackPressed: () => Navigator.pop(context),
+              onBackPressed: () { Future.delayed(Duration.zero, () { if (context.mounted) Navigator.pop(context); }); },
               onCartPressed: () => Navigator.pushNamed(context, Routes.cart),
             ),
             Expanded(

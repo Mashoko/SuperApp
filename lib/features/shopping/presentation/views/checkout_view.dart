@@ -30,7 +30,7 @@ class _CheckoutViewState extends State<CheckoutView> {
         title: const Text('Checkout'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () { Future.delayed(Duration.zero, () { if (context.mounted) Navigator.pop(context); }); },
         ),
         actions: [
           IconButton(
@@ -544,7 +544,7 @@ class _CheckoutViewState extends State<CheckoutView> {
             'Are you sure you want to remove this item from your cart?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () { Future.delayed(Duration.zero, () { if (context.mounted) Navigator.pop(context); }); },
             child: const Text('Cancel'),
           ),
           TextButton(

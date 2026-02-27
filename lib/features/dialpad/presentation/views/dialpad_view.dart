@@ -168,16 +168,16 @@ class _DialpadViewState extends State<DialpadView>
                 child: Text(
                   _textController.text,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 36,
                     fontWeight: FontWeight.w400,
-                    color: Colors.black87, 
+                    color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black87, 
                   ),
                 ),
               ),
               if (_textController.text.isNotEmpty)
                 IconButton(
-                  icon: const Icon(Icons.backspace, color: Colors.grey),
+                  icon: Icon(Icons.backspace, color: Theme.of(context).iconTheme.color ?? Colors.grey),
                   onPressed: () => _handleBackSpace(),
                 ),
             ],
@@ -205,8 +205,15 @@ class _DialpadViewState extends State<DialpadView>
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFF4CAF50), // Matches screenshot green
+                color: Theme.of(context).primaryColor, // Uses theme primary color
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: const Icon(
                 Icons.call,
@@ -365,21 +372,35 @@ class _DialpadViewState extends State<DialpadView>
   }
 
   Widget _buildKeypadButton(String label, String sub) {
+    final theme = Theme.of(context);
+    
     return InkWell(
       onTap: () => _handleNum(label),
       borderRadius: BorderRadius.circular(40),
-      child: SizedBox(
-        width: 80,
-        height: 80,
+      child: Container(
+        height: 75,
+        width: 75,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: theme.cardColor, 
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w400,
-                color: Color(0xFF333333),
+                color: theme.textTheme.bodyLarge?.color,
               ),
             ),
             if (sub.isNotEmpty)

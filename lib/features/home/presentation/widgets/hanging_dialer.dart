@@ -10,32 +10,29 @@ class HangingDialerButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 64, // Fixed size for the circle
+        width: 64,
         height: 64,
         decoration: BoxDecoration(
-          // Gradient background for the circular shape
+          shape: BoxShape.circle,
           gradient: const LinearGradient(
-            colors: [
-              Color(0xFF2196F3), // Blue
-              Color(0xFF1976D2), // Darker Blue
-            ],
+            colors: [Colors.redAccent, Colors.deepOrange],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.blueAccent.withValues(alpha: 0.4),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
+              color: Colors.redAccent.withValues(alpha: 0.4),
+              blurRadius: 12,
+              spreadRadius: 4,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: const Center(
           child: Icon(
-            Icons.dialpad_outlined,
+            Icons.dialpad,
             color: Colors.white,
-            size: 32,
+            size: 28,
           ),
         ),
       ),

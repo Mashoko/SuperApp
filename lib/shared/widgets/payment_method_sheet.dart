@@ -32,7 +32,7 @@ class _PaymentMethodContent extends StatelessWidget {
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back_ios, size: 20),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () { Future.delayed(Duration.zero, () { if (context.mounted) Navigator.pop(context); }); },
               ),
               const Text(
                 'Pay with Paynow',
@@ -119,7 +119,7 @@ class _PaymentMethodContent extends StatelessWidget {
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back_ios, size: 20),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () { Future.delayed(Duration.zero, () { if (context.mounted) Navigator.pop(context); }); },
                 ),
                 const Text(
                   'E-Wallets',
@@ -169,7 +169,7 @@ class _PaymentMethodContent extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () { Future.delayed(Duration.zero, () { if (context.mounted) Navigator.pop(context); }); },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(

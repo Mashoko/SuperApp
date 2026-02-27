@@ -14,7 +14,6 @@ import 'package:mvvm_sip_demo/features/dialpad/presentation/viewmodels/dialpad_v
 
 
 import 'package:mvvm_sip_demo/features/shopping/presentation/views/shopping_view.dart';
-import 'package:mvvm_sip_demo/features/payments/presentation/views/payments_view.dart';
 import 'package:mvvm_sip_demo/features/auth/presentation/viewmodels/auth_viewmodel.dart';
 // - Import the glass widget
 import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
@@ -22,6 +21,7 @@ import 'package:mvvm_sip_demo/features/home/presentation/widgets/hanging_dialer.
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/quick_dialer_overlay.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/call_history_widget.dart';
 import 'package:mvvm_sip_demo/features/contacts/presentation/views/contacts_view.dart';
+import 'package:mvvm_sip_demo/features/profile/presentation/views/profile_view.dart';
 import 'package:mvvm_sip_demo/shared/widgets/shimmer_widget.dart';
 
 class HomeView extends StatefulWidget {
@@ -52,6 +52,10 @@ class _HomeViewState extends State<HomeView> {
   }
 
   void _onTabChange(int index) {
+    if (index == 3) {
+      Navigator.pushNamed(context, Routes.profile);
+      return;
+    }
     setState(() {
       _currentIndex = index;
     });
@@ -61,6 +65,24 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true, // Allows body to scroll behind the bottom nav
+      floatingActionButton: HangingDialerButton(
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => Container(
+              height: MediaQuery.of(context).size.height * 0.9, 
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+              ),
+              child: const DialPadScreen(),
+            ),
+          );
+        },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       body: Stack(
         children: [
           // --- 1. Global Background Gradient & Blobs ---
@@ -104,35 +126,20 @@ class _HomeViewState extends State<HomeView> {
           // --- 2. Main Content ---
           SafeArea(
             bottom: false, // Let content go behind the floating nav
-            child: _buildCurrentTab(),
-          ),
-
-          // --- 3. Hanging Dialer ---
-          if (_currentIndex == 0)
-            Positioned(
-              bottom: 100, // Positioned above the glass nav
-              left: 0,
-              right: 0,
-              child: Center(
-                child: HangingDialerButton(
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (context) => Container(
-                        height: MediaQuery.of(context).size.height * 0.9, 
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                        ),
-                        child: const DialPadScreen(),
-                      ),
-                    );
-                  },
-                ),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: child,
+                );
+              },
+              child: Container(
+                key: ValueKey<int>(_currentIndex),
+                child: _buildCurrentTab(),
               ),
             ),
+          ),
         ],
       ),
       bottomNavigationBar: _buildModernBottomNav(),
@@ -150,51 +157,87 @@ class _HomeViewState extends State<HomeView> {
           onBack: () => _onTabChange(0),
         );
       case 3:
-        return const PaymentsView();
+        // Profile is now a pushed route, but keep a fallback just in case
+        return _ModernDashboardTab(onTabChange: _onTabChange);
       default:
         return _ModernDashboardTab(onTabChange: _onTabChange);
     }
   }
 
   Widget _buildModernBottomNav() {
-    // Floating Glass Navigation Bar
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      child: GlassContainer(
-        borderRadius: 30,
-        blur: 20,
-        opacity: 0.7, // Slightly more opaque for legibility
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: NavigationBar(
-          height: 60,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedIndex: _currentIndex,
-          onDestinationSelected: _onTabChange,
-          indicatorColor: WunzaColors.indigo.withValues(alpha: 0.2),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined),
-              selectedIcon: Icon(Icons.dashboard, color: WunzaColors.indigo),
-              label: 'Home',
+    final theme = Theme.of(context);
+    
+    return BottomAppBar(
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 8.0,
+      color: theme.scaffoldBackgroundColor,
+      elevation: 10,
+      child: SizedBox(
+        height: 60,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            // Left Side Tabs
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildNavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Home', index: 0),
+                _buildNavItem(icon: Icons.contacts_outlined, activeIcon: Icons.contacts, label: 'Call', index: 1),
+              ],
             ),
-             NavigationDestination(
-              icon: Icon(Icons.contacts_outlined),
-              selectedIcon: Icon(Icons.contacts, color: Colors.blue),
-              label: 'Contacts',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.shopping_bag_outlined),
-              selectedIcon: Icon(Icons.shopping_bag, color: WunzaColors.orangeAccent),
-              label: 'Shop',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.account_balance_wallet_outlined),
-              selectedIcon: Icon(Icons.account_balance_wallet, color: WunzaColors.greenAccent),
-              label: 'Pay',
+            // Right Side Tabs
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                 _buildNavItem(icon: Icons.shopping_bag_outlined, activeIcon: Icons.shopping_bag, label: 'Shop', index: 2),
+                 _buildNavItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', index: 3),
+              ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem({required IconData icon, required IconData activeIcon, required String label, required int index}) {
+    final isSelected = _currentIndex == index;
+    final theme = Theme.of(context);
+    final color = isSelected ? theme.primaryColor : Colors.grey;
+    final currentIcon = isSelected ? activeIcon : icon;
+
+    return MaterialButton(
+      minWidth: 40,
+      onPressed: () => _onTabChange(index),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            currentIcon,
+            color: color,
+            size: isSelected ? 26 : 24,
+          ),
+          if (isSelected) ...[
+            const SizedBox(height: 2),
+            Container(
+              width: 4,
+              height: 4,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ] else ...[
+             const SizedBox(height: 2),
+             Text(
+               label,
+               style: TextStyle(
+                 color: color,
+                 fontSize: 10,
+               ),
+             ),
+          ]
+        ],
       ),
     );
   }

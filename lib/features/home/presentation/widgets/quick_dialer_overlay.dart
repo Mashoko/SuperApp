@@ -36,7 +36,7 @@ class _DialPadScreenState extends State<DialPadScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.grey, size: 30),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () { Future.delayed(Duration.zero, () { if (context.mounted) Navigator.pop(context); }); },
         ),
       ),
       body: Column(

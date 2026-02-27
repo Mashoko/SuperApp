@@ -68,7 +68,7 @@ class _SignupViewState extends State<SignupView> {
             ),
             child: const Icon(Icons.arrow_back, size: 20, color: WunzaColors.textPrimary),
           ),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () { Future.delayed(Duration.zero, () { if (context.mounted) Navigator.pop(context); }); },
         ),
       ),
       body: Stack(
@@ -261,7 +261,7 @@ class _SignupViewState extends State<SignupView> {
                         style: TextStyle(color: Colors.grey[700]),
                       ),
                       GestureDetector(
-                        onTap: () => Navigator.pop(context),
+                        onTap: () { Future.delayed(Duration.zero, () { if (context.mounted) Navigator.pop(context); }); },
                         child: const Text(
                           'Log In',
                           style: TextStyle(
