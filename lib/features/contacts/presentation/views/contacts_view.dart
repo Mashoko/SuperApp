@@ -17,12 +17,37 @@ class ContactsView extends StatefulWidget {
 
 class _ContactsViewState extends State<ContactsView> {
   List<Contact>? _contacts;
+  List<Contact>? _filteredContacts;
   bool _permissionDenied = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _fetchContacts();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase();
+      if (_contacts != null) {
+        _filteredContacts = _contacts!.where((contact) {
+          final nameMatches = contact.displayName.toLowerCase().contains(_searchQuery);
+          final phoneMatches = contact.phones.any((phone) => 
+            phone.number.replaceAll(RegExp(r'[^\d+]'), '').contains(_searchQuery)
+          );
+          return nameMatches || phoneMatches;
+        }).toList();
+      }
+    });
   }
 
   Future<void> _fetchContacts() async {
@@ -49,7 +74,10 @@ class _ContactsViewState extends State<ContactsView> {
       setState(() => _permissionDenied = true);
     } else {
       final contacts = await FlutterContacts.getContacts(withProperties: true, withPhoto: true);
-      setState(() => _contacts = contacts);
+      setState(() {
+        _contacts = contacts;
+        _filteredContacts = contacts;
+      });
     }
   }
 
@@ -139,19 +167,55 @@ class _ContactsViewState extends State<ContactsView> {
         ],
       ),
       backgroundColor: const Color(0xFFF5F7FA),
-      body: ListView.builder(
-        itemCount: _contacts!.length,
-        itemBuilder: (context, index) {
-          final contact = _contacts![index];
-          return ListTile(
-            leading: (contact.photoOrThumbnail != null)
-                ? CircleAvatar(backgroundImage: MemoryImage(contact.photoOrThumbnail!))
-                : const CircleAvatar(child: Icon(Icons.person)),
-            title: Text(contact.displayName),
-            subtitle: contact.phones.isNotEmpty ? Text(contact.phones.first.number) : null,
-            onTap: () => _onContactTapped(contact),
-          );
-        },
+      body: Column(
+        children: [
+          // Search Bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.transparent,
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search contacts...',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                        },
+                      )
+                    : null,
+              ),
+            ),
+          ),
+          
+          Expanded(
+            child: _filteredContacts != null && _filteredContacts!.isEmpty
+                ? const Center(child: Text('No contacts found'))
+                : ListView.builder(
+                    itemCount: _filteredContacts?.length ?? 0,
+                    itemBuilder: (context, index) {
+                      final contact = _filteredContacts![index];
+                      return ListTile(
+                        leading: (contact.photoOrThumbnail != null)
+                            ? CircleAvatar(backgroundImage: MemoryImage(contact.photoOrThumbnail!))
+                            : const CircleAvatar(child: Icon(Icons.person)),
+                        title: Text(contact.displayName),
+                        subtitle: contact.phones.isNotEmpty ? Text(contact.phones.first.number) : null,
+                        onTap: () => _onContactTapped(contact),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
