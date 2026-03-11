@@ -285,11 +285,21 @@ class ShoppingViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> placeOrder(String userId, String shippingAddress) async {
+  Future<bool> placeOrder(
+    String userId,
+    String shippingAddress, {
+    String? transactionId,
+    String paymentStatus = 'pending',
+  }) async {
     try {
       _setLoading(true);
       _setError(null);
-      final order = _service.placeOrder(userId, shippingAddress);
+      final order = _service.placeOrder(
+        userId,
+        shippingAddress,
+        transactionId: transactionId,
+        paymentStatus: paymentStatus,
+      );
       if (order != null) {
         // Clear cart, discount, and state
         clearCart(); // IMPORTANT

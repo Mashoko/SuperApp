@@ -5,6 +5,8 @@ import 'package:mvvm_sip_demo/core/routes.dart';
 import 'package:mvvm_sip_demo/models/shopping/product.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
 import 'package:mvvm_sip_demo/shared/widgets/payment_method_sheet.dart';
+import 'package:mvvm_sip_demo/core/di/inject.dart';
+import 'package:mvvm_sip_demo/services/payment_service.dart';
 
 class CheckoutView extends StatefulWidget {
   const CheckoutView({super.key});
@@ -254,20 +256,54 @@ class _CheckoutViewState extends State<CheckoutView> {
                   child: ElevatedButton(
                     onPressed: () => PaymentMethodSheet.show(
                       context,
-                      onSuccess: () async {
+                      onSuccess: (channel) async {
                         try {
                           if (!context.mounted) return;
 
-                          // 1️⃣ Place order
+                          // 1️⃣ Initiate payment with Africom SuperApp Pay
+                          final paymentService = getIt<AfricomPaymentService>();
+                          final totalAmount = viewModel.total;
+                          final paymentReference =
+                              'SHOP-${DateTime.now().millisecondsSinceEpoch}';
+
+                          // Optionally you can vary the channel depending on what
+                          // the user selected in the sheet; for now we leave it null.
+                          final paymentResult = await paymentService.pay(
+                            amount: totalAmount,
+                            currency: 'USD',
+                            reference: paymentReference,
+                            userId: 'user_id',
+                            channel: channel,
+                          );
+
+                          if (!paymentResult.success) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    paymentResult.message ??
+                                        'Payment was not successful.',
+                                  ),
+                                ),
+                              );
+                            }
+                            return;
+                          }
+
+                          if (!context.mounted) return;
+
+                          // 2️⃣ On payment success, place order locally
                           final success = await viewModel.placeOrder(
                             'user_id',
                             'Default Address',
+                            transactionId: paymentResult.transactionId,
+                            paymentStatus: 'paid',
                           );
 
                           if (!context.mounted) return;
 
                           if (success) {
-                            // 2️⃣ Clear cart locally (extra safety)
+                            // Extra safety: clear cart locally
                             viewModel.clearCart();
 
                             // Optional (Better UX) Instead of instant navigation, show a success dialog for 2 sec

@@ -2,8 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
 
 class PaymentMethodSheet {
-  static void show(BuildContext context,
-      {required Future<void> Function() onSuccess}) {
+  /// Shows the payment method selector.
+  ///
+  /// [onSuccess] receives the selected payment [channel], e.g. "card" or
+  /// "ewallet", once the user has successfully completed the flow for that
+  /// method.
+  static void show(
+    BuildContext context, {
+    required Future<void> Function(String channel) onSuccess,
+  }) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -15,7 +22,7 @@ class PaymentMethodSheet {
 }
 
 class _PaymentMethodContent extends StatelessWidget {
-  final Future<void> Function() onSuccess;
+  final Future<void> Function(String channel) onSuccess;
 
   const _PaymentMethodContent({required this.onSuccess});
 
@@ -49,7 +56,7 @@ class _PaymentMethodContent extends StatelessWidget {
             subtitle: 'Visa, Mastercard, ZimSwitch',
             onTap: () async {
               Navigator.of(context).pop(); // close bottom sheet
-              await onSuccess();
+              await onSuccess('card');
             },
           ),
           const Divider(),
@@ -185,7 +192,7 @@ class _PaymentMethodContent extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () async {
                       Navigator.pop(context);
-                      await onSuccess();
+                      await onSuccess('ewallet');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: WunzaColors.primary,

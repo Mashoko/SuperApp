@@ -9,6 +9,8 @@ class Order {
   final OrderStatus status;
   final DateTime createdAt;
   final double totalAmount;
+  final String? transactionId; // Provider reference for reconciliation
+  final String paymentStatus; // e.g. 'pending', 'paid', 'failed'
 
   Order({
     required this.orderId,
@@ -17,6 +19,8 @@ class Order {
     required this.shippingAddress,
     this.status = OrderStatus.pending,
     DateTime? createdAt,
+    this.transactionId,
+    this.paymentStatus = 'pending',
   })  : createdAt = createdAt ?? DateTime.now(),
         totalAmount = items.fold(0.0, (sum, item) => sum + item.total);
 
@@ -27,6 +31,8 @@ class Order {
       'items': items.map((item) => item.toJson()).toList(),
       'shipping_address': shippingAddress,
       'status': status.value,
+      'transaction_id': transactionId,
+      'payment_status': paymentStatus,
       'total_amount': totalAmount,
       'created_at': createdAt.toIso8601String(),
     };
@@ -45,6 +51,8 @@ class Order {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
+      transactionId: json['transaction_id']?.toString(),
+      paymentStatus: (json['payment_status'] ?? 'pending').toString(),
     );
   }
 }

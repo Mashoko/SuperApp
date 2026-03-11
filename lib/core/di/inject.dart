@@ -28,6 +28,7 @@ import '../../shared/theme/theme_provider.dart';
 // Merged Imports
 import '../../services/calling_service.dart';
 import '../../services/shopping_service.dart';
+import '../../services/payment_service.dart';
 import '../../services/utility_bills_service.dart';
 import '../../services/auth_service.dart'; // New AuthService
 import '../../features/dashboard/presentation/viewmodels/dashboard_viewmodel.dart';
@@ -100,6 +101,8 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<CallingService>(() => CallingService());
   getIt.registerLazySingleton<ShoppingService>(() => ShoppingService());
   getIt.registerLazySingleton<UtilityBillsService>(() => UtilityBillsService());
+  getIt.registerLazySingleton<AfricomPaymentService>(
+      () => const AfricomPaymentService());
   getIt.registerLazySingleton<AuthService>(() => AuthService()); // New AppAuthService
 
   // ViewModels

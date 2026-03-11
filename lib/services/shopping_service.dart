@@ -204,7 +204,12 @@ class ShoppingService {
     _userCarts[userId] = [];
   }
 
-  Order? placeOrder(String userId, String shippingAddress) {
+  Order? placeOrder(
+    String userId,
+    String shippingAddress, {
+    String? transactionId,
+    String paymentStatus = 'pending',
+  }) {
     final cart = _userCarts[userId];
     if (cart == null || cart.isEmpty) {
       return null;
@@ -227,6 +232,8 @@ class ShoppingService {
       items: cartItems,
       shippingAddress: shippingAddress,
       status: OrderStatus.confirmed,
+      transactionId: transactionId,
+      paymentStatus: paymentStatus,
     );
 
     // Update stock
