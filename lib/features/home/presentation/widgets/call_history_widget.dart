@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:mvvm_sip_demo/core/routes.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
-import 'package:mvvm_sip_demo/features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/call/presentation/viewmodels/call_viewmodel.dart';
-import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
+import 'package:mvvm_sip_demo/features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
+import 'package:mvvm_sip_demo/features/recents/data/models/recent_call.dart';
+import 'package:mvvm_sip_demo/shared/widgets/glide_card.dart';
 
+/// Recent telecom activity: type, contact, duration, time, and call-back.
 class CallHistoryWidget extends StatelessWidget {
   const CallHistoryWidget({super.key});
 
@@ -15,93 +17,137 @@ class CallHistoryWidget extends StatelessWidget {
     return Consumer<DialpadViewModel>(
       builder: (context, dialpadViewModel, child) {
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "Recent History",
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: WunzaColors.textPrimary),
+                Text(
+                  'Recent activity',
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 TextButton(
-                  onPressed: () => Navigator.pushNamed(context, Routes.callHistory),
-                  child: const Text("View All",
-                      style: TextStyle(color: WunzaColors.indigo)),
-                )
+                  onPressed: () =>
+                      Navigator.pushNamed(context, Routes.callHistory),
+                  child: const Text(
+                    'View all',
+                    style: TextStyle(
+                      color: WunzaColors.glidePrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 8),
             if (dialpadViewModel.recents.isEmpty)
               _buildEmptyState(context)
             else
-              ListView.builder(
+              ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: dialpadViewModel.recents.take(5).length,
+                itemCount: dialpadViewModel.recents.take(6).length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
                 itemBuilder: (context, index) {
                   final call = dialpadViewModel.recents[index];
-                  final isMissed = call.isMissed;
-                  final formattedDate =
-                      DateFormat('MMM d, h:mm a').format(call.timestamp);
+                  final timeStr =
+                      DateFormat('MMM d · h:mm a').format(call.timestamp);
+                  final durationStr = _formatCallDuration(call);
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: GlassContainer(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      opacity: 0.5,
-                      borderRadius: 16,
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: isMissed
-                                  ? Colors.red.withValues(alpha: 0.1)
-                                  : Colors.green.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              isMissed ? Icons.call_missed : Icons.call_made,
-                              color: isMissed ? Colors.red : Colors.green,
-                              size: 20,
-                            ),
+                  final meta = _callVisuals(call);
+
+                  return GlideCard(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: meta.tint.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  call.name ?? call.number,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: WunzaColors.textPrimary),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  formattedDate,
-                                  style: TextStyle(
-                                      color: Colors.grey[600], fontSize: 12),
-                                ),
-                              ],
-                            ),
+                          child: Icon(
+                            meta.icon,
+                            color: meta.tint,
+                            size: 22,
                           ),
-                            IconButton(
-                            icon: const Icon(Icons.call,
-                                color: WunzaColors.indigo),
-                            onPressed: () {
-                               // Direct call using CallViewModel
-                               final callViewModel = Provider.of<CallViewModel>(context, listen: false);
-                               callViewModel.makeCall(call.number, voiceOnly: true);
-                            },
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                call.name ?? call.number,
+                                style: Theme.of(context).textTheme.titleMedium,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.schedule,
+                                    size: 14,
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.color,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    timeStr,
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Icon(
+                                    Icons.timer_outlined,
+                                    size: 14,
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.color,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    durationStr,
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            final callViewModel =
+                                Provider.of<CallViewModel>(
+                              context,
+                              listen: false,
+                            );
+                            callViewModel.makeCall(
+                              call.number,
+                              voiceOnly: true,
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: WunzaColors.glideAccent,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            'Call back',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 },
@@ -113,27 +159,62 @@ class CallHistoryWidget extends StatelessWidget {
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    return GlassContainer(
+    return GlideCard(
       padding: const EdgeInsets.all(24),
-      opacity: 0.5,
-      borderRadius: 16,
       child: Center(
         child: Column(
           children: [
             Icon(Icons.history, size: 48, color: Colors.grey[400]),
             const SizedBox(height: 12),
             Text(
-              "No recent calls",
-              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+              'No recent activity',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 4),
+            Text(
+              'Calls you make or receive will show up here.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
             TextButton(
-              onPressed: () => Navigator.pushNamed(context, Routes.calling),
-              child: const Text("Start a call", style: TextStyle(color: WunzaColors.indigo)),
-            )
+              onPressed: () =>
+                  Navigator.pushNamed(context, Routes.calling),
+              child: const Text(
+                'Start a call',
+                style: TextStyle(
+                  color: WunzaColors.glidePrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+String _formatCallDuration(RecentCall call) {
+  if (call.isMissed) return 'Missed';
+  final s = call.durationSeconds;
+  if (s == null || s <= 0) return '—';
+  final m = Duration(seconds: s);
+  if (m.inHours >= 1) {
+    return '${m.inHours}h ${m.inMinutes.remainder(60)}m';
+  }
+  if (m.inMinutes >= 1) {
+    return '${m.inMinutes}m ${m.inSeconds.remainder(60)}s';
+  }
+  return '${s}s';
+}
+
+({IconData icon, Color tint}) _callVisuals(RecentCall call) {
+  if (call.isMissed) {
+    return (icon: Icons.call_missed_outgoing, tint: Colors.redAccent);
+  }
+  if (call.direction == 'incoming') {
+    return (icon: Icons.call_received, tint: WunzaColors.glidePrimary);
+  }
+  return (icon: Icons.call_made, tint: const Color(0xFF2E7D32));
 }

@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class WunzaColors {
+  // --- Glide brand (Super App) ---
+  static const Color glidePrimary = Color(0xFF4A148C); // Deep Purple
+  static const Color glideAccent = Color(0xFFFF6D00); // Vibrant Orange
+  static const Color glideNeutral = Color(0xFFF5F5F7); // Light Gray
+
   // --- Existing Colors (Preserved for compatibility) ---
   static const Color primary = Color(0xFF00897B); // Original Teal
   static const Color secondary = Color(0xFF3E3E3E); // Dark Grey
@@ -36,16 +41,16 @@ class WunzaTheme {
     return ThemeData(
       useMaterial3: true,
       
-      // 1. Updated Color Scheme to Indigo (Modern Look)
+      // Glide: Deep Purple primary, Vibrant Orange secondary/accent
         colorScheme: ColorScheme.fromSeed(
-          seedColor: WunzaColors.indigo,
-          primary: WunzaColors.indigo,
-          secondary: WunzaColors.secondary,
+          seedColor: WunzaColors.glidePrimary,
+          primary: WunzaColors.glidePrimary,
+          secondary: WunzaColors.glideAccent,
           surface: WunzaColors.surface,
           error: WunzaColors.error,
         ),
       
-      scaffoldBackgroundColor: WunzaColors.background,
+      scaffoldBackgroundColor: WunzaColors.glideNeutral,
       
       // 2. Modern Transparent App Bar
       appBarTheme: const AppBarTheme(
@@ -58,7 +63,7 @@ class WunzaTheme {
       // 3. Preserved Button Styling (Critical for forms)
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: WunzaColors.indigo, // Updated to use new primary
+          backgroundColor: WunzaColors.glidePrimary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12), // Slightly more rounded
@@ -69,8 +74,8 @@ class WunzaTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: WunzaColors.indigo,
-          side: const BorderSide(color: WunzaColors.indigo),
+          foregroundColor: WunzaColors.glidePrimary,
+          side: const BorderSide(color: WunzaColors.glidePrimary),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -78,7 +83,7 @@ class WunzaTheme {
         ),
       ),
 
-      // 4. Preserved Text Styling
+      // Section headers: bold; card titles: medium; subtitles: lighter gray
       textTheme: GoogleFonts.interTextTheme().copyWith(
         displayLarge: GoogleFonts.inter(
           fontSize: 32,
@@ -95,14 +100,34 @@ class WunzaTheme {
           fontWeight: FontWeight.bold,
           color: WunzaColors.textPrimary,
         ),
+        headlineLarge: GoogleFonts.inter(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: WunzaColors.textPrimary,
+        ),
         headlineMedium: GoogleFonts.inter(
           fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.bold,
+          color: WunzaColors.textPrimary,
+        ),
+        headlineSmall: GoogleFonts.inter(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: WunzaColors.textPrimary,
+        ),
+        titleLarge: GoogleFonts.inter(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
           color: WunzaColors.textPrimary,
         ),
         titleMedium: GoogleFonts.inter(
           fontSize: 16,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
+          color: WunzaColors.textPrimary,
+        ),
+        titleSmall: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
           color: WunzaColors.textPrimary,
         ),
         bodyLarge: GoogleFonts.inter(
@@ -115,6 +140,11 @@ class WunzaTheme {
         ),
         bodySmall: GoogleFonts.inter(
           fontSize: 12,
+          color: WunzaColors.textSecondary,
+        ),
+        labelMedium: GoogleFonts.inter(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
           color: WunzaColors.textSecondary,
         ),
       ),
@@ -133,7 +163,7 @@ class WunzaTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: WunzaColors.indigo, width: 2),
+          borderSide: const BorderSide(color: WunzaColors.glidePrimary, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),

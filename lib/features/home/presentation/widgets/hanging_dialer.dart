@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mvvm_sip_demo/core/theme.dart';
 
 class HangingDialerButton extends StatelessWidget {
   final VoidCallback onTap;
@@ -14,17 +15,13 @@ class HangingDialerButton extends StatelessWidget {
         height: 64,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            colors: [Colors.redAccent, Colors.deepOrange],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: WunzaColors.glideAccent,
           boxShadow: [
             BoxShadow(
-              color: Colors.redAccent.withValues(alpha: 0.4),
-              blurRadius: 12,
-              spreadRadius: 4,
-              offset: const Offset(0, 4),
+              color: WunzaColors.glideAccent.withValues(alpha: 0.45),
+              blurRadius: 14,
+              spreadRadius: 0,
+              offset: const Offset(0, 6),
             ),
           ],
         ),

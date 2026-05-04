@@ -4,6 +4,8 @@ class RecentCall {
   final DateTime timestamp;
   final bool isMissed;
   final String direction; // 'incoming' or 'outgoing'
+  /// Call length in seconds when known (optional for older stored rows).
+  final int? durationSeconds;
 
   RecentCall({
     this.name,
@@ -11,6 +13,7 @@ class RecentCall {
     required this.timestamp,
     this.isMissed = false,
     this.direction = 'outgoing',
+    this.durationSeconds,
   });
 
   Map<String, dynamic> toJson() {
@@ -20,6 +23,7 @@ class RecentCall {
       'timestamp': timestamp.toIso8601String(),
       'isMissed': isMissed,
       'direction': direction,
+      'durationSeconds': durationSeconds,
     };
   }
 
@@ -30,6 +34,11 @@ class RecentCall {
       timestamp: DateTime.parse(json['timestamp']),
       isMissed: json['isMissed'] ?? false,
       direction: json['direction'] ?? 'outgoing',
+      durationSeconds: json['durationSeconds'] is int
+          ? json['durationSeconds'] as int
+          : (json['durationSeconds'] is num
+              ? (json['durationSeconds'] as num).toInt()
+              : null),
     );
   }
 }

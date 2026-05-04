@@ -3,25 +3,20 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mvvm_sip_demo/core/routes.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
-import 'package:mvvm_sip_demo/features/dashboard/presentation/viewmodels/dashboard_viewmodel.dart';
-import 'package:mvvm_sip_demo/features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
+import 'package:mvvm_sip_demo/features/dashboard/presentation/viewmodels/dashboard_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
-
-
-
-
-
-
-import 'package:mvvm_sip_demo/features/shopping/presentation/views/shopping_view.dart';
-import 'package:mvvm_sip_demo/features/auth/presentation/viewmodels/auth_viewmodel.dart';
-// - Import the glass widget
-import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
-import 'package:mvvm_sip_demo/features/home/presentation/widgets/hanging_dialer.dart';
-import 'package:mvvm_sip_demo/features/home/presentation/widgets/quick_dialer_overlay.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/call_history_widget.dart';
-import 'package:mvvm_sip_demo/features/contacts/presentation/views/contacts_view.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/glide_quick_service_card.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/hanging_dialer.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/home_top_bar.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/master_balance_card.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/promotions_carousel.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/quick_dialer_overlay.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/services_hub_tab.dart';
 import 'package:mvvm_sip_demo/features/profile/presentation/views/profile_view.dart';
+import 'package:mvvm_sip_demo/features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
+import 'package:mvvm_sip_demo/features/shopping/presentation/views/shopping_view.dart';
 import 'package:mvvm_sip_demo/shared/widgets/shimmer_widget.dart';
 
 class HomeView extends StatefulWidget {
@@ -33,106 +28,83 @@ class HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<HomeView> {
   int _currentIndex = 0;
-  // TODO: Replace with actual User ID from Auth Service
-  final String _userId = "user1"; 
+  final String _userId = 'user1';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('--- HomeView: Initializing... Calling loadCurrentUser ---');
-      Provider.of<DashboardViewModel>(context, listen: false).loadDashboard(_userId);
-      // Load real cart data
+      Provider.of<DashboardViewModel>(context, listen: false)
+          .loadDashboard(_userId);
       Provider.of<ShoppingViewModel>(context, listen: false).loadCart(_userId);
-      // Load account summary for header
-      Provider.of<AccountSummaryViewModel>(context, listen: false).loadCurrentUser();
-      // Load recent calls
-      Provider.of<DialpadViewModel>(context, listen: false).loadRecents();
+      Provider.of<AccountSummaryViewModel>(context, listen: false)
+          .loadCurrentUser();
+      final dialpad = Provider.of<DialpadViewModel>(context, listen: false);
+      dialpad.loadRecents();
+      dialpad.loadAccountInfo();
     });
   }
 
   void _onTabChange(int index) {
-    if (index == 3) {
-      Navigator.pushNamed(context, Routes.profile);
-      return;
-    }
     setState(() {
       _currentIndex = index;
     });
   }
 
+  void _openDialpadSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.9,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: const DialPadScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true, // Allows body to scroll behind the bottom nav
-      floatingActionButton: HangingDialerButton(
-        onTap: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => Container(
-              height: MediaQuery.of(context).size.height * 0.9, 
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-              ),
-              child: const DialPadScreen(),
-            ),
-          );
-        },
-      ),
+      extendBody: true,
+      floatingActionButton: HangingDialerButton(onTap: _openDialpadSheet),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       body: Stack(
         children: [
-          // --- 1. Global Background Gradient & Blobs ---
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFFE0E7FF), // Very light Indigo
-                  Color(0xFFF3F4F6), // Grey/White
+                  WunzaColors.glideNeutral,
+                  Color(0xFFE8E8ED),
                 ],
               ),
             ),
           ),
           Positioned(
-            top: -100,
-            right: -100,
+            top: -80,
+            right: -60,
             child: Container(
-              width: 300,
-              height: 300,
+              width: 220,
+              height: 220,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: WunzaColors.indigo.withValues(alpha: 0.2),
+                color: WunzaColors.glidePrimary.withValues(alpha: 0.08),
               ),
             ),
           ),
-          Positioned(
-            bottom: 100,
-            left: -50,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: WunzaColors.blueAccent.withValues(alpha: 0.15),
-              ),
-            ),
-          ),
-          
-          // --- 2. Main Content ---
           SafeArea(
-            bottom: false, // Let content go behind the floating nav
+            bottom: false,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              transitionBuilder: (Widget child, Animation<double> animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: child,
-                );
+              transitionBuilder: (child, animation) {
+                return FadeTransition(opacity: animation, child: child);
               },
               child: Container(
                 key: ValueKey<int>(_currentIndex),
@@ -142,55 +114,76 @@ class _HomeViewState extends State<HomeView> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildModernBottomNav(),
+      bottomNavigationBar: _buildGlideBottomNav(context),
     );
   }
 
   Widget _buildCurrentTab() {
     switch (_currentIndex) {
       case 0:
-        return _ModernDashboardTab(onTabChange: _onTabChange);
-      case 1:
-        return const ContactsView();
-      case 2:
-        return ShoppingView(
-          onBack: () => _onTabChange(0),
+        return _GlideHomeTab(
+          onGoShop: () => _onTabChange(2),
+          onGoCart: () => Navigator.pushNamed(context, Routes.cart),
         );
+      case 1:
+        return const ServicesHubTab();
+      case 2:
+        return ShoppingView(onBack: () => _onTabChange(0));
       case 3:
-        // Profile is now a pushed route, but keep a fallback just in case
-        return _ModernDashboardTab(onTabChange: _onTabChange);
+        return const ProfileView(embeddedInMainShell: true);
       default:
-        return _ModernDashboardTab(onTabChange: _onTabChange);
+        return _GlideHomeTab(
+          onGoShop: () => _onTabChange(2),
+          onGoCart: () => Navigator.pushNamed(context, Routes.cart),
+        );
     }
   }
 
-  Widget _buildModernBottomNav() {
+  Widget _buildGlideBottomNav(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
-      notchMargin: 8.0,
-      color: theme.scaffoldBackgroundColor,
-      elevation: 10,
+      notchMargin: 8,
+      color: theme.colorScheme.surface,
+      elevation: 12,
+      shadowColor: Colors.black26,
       child: SizedBox(
-        height: 60,
+        height: 56,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-            // Left Side Tabs
+          children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildNavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Home', index: 0),
-                _buildNavItem(icon: Icons.contacts_outlined, activeIcon: Icons.contacts, label: 'Call', index: 1),
+                _buildNavItem(
+                  icon: Icons.home_outlined,
+                  activeIcon: Icons.home,
+                  label: 'Home',
+                  index: 0,
+                ),
+                _buildNavItem(
+                  icon: Icons.apps_outlined,
+                  activeIcon: Icons.apps,
+                  label: 'Services',
+                  index: 1,
+                ),
               ],
             ),
-            // Right Side Tabs
+            const SizedBox(width: 56),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                 _buildNavItem(icon: Icons.shopping_bag_outlined, activeIcon: Icons.shopping_bag, label: 'Shop', index: 2),
-                 _buildNavItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', index: 3),
+                _buildNavItem(
+                  icon: Icons.storefront_outlined,
+                  activeIcon: Icons.storefront,
+                  label: 'Shop',
+                  index: 2,
+                ),
+                _buildNavItem(
+                  icon: Icons.person_outline,
+                  activeIcon: Icons.person,
+                  label: 'Profile',
+                  index: 3,
+                ),
               ],
             ),
           ],
@@ -199,252 +192,147 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  Widget _buildNavItem({required IconData icon, required IconData activeIcon, required String label, required int index}) {
+  Widget _buildNavItem({
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+    required int index,
+  }) {
     final isSelected = _currentIndex == index;
-    final theme = Theme.of(context);
-    final color = isSelected ? theme.primaryColor : Colors.grey;
+    final color =
+        isSelected ? WunzaColors.glidePrimary : WunzaColors.textSecondary;
     final currentIcon = isSelected ? activeIcon : icon;
 
     return MaterialButton(
-      minWidth: 40,
+      minWidth: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
       onPressed: () => _onTabChange(index),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            currentIcon,
-            color: color,
-            size: isSelected ? 26 : 24,
-          ),
-          if (isSelected) ...[
-            const SizedBox(height: 2),
-            Container(
-              width: 4,
-              height: 4,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+          Icon(currentIcon, color: color, size: isSelected ? 26 : 24),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             ),
-          ] else ...[
-             const SizedBox(height: 2),
-             Text(
-               label,
-               style: TextStyle(
-                 color: color,
-                 fontSize: 10,
-               ),
-             ),
-          ]
+          ),
         ],
       ),
     );
   }
 }
 
+class _GlideHomeTab extends StatelessWidget {
+  const _GlideHomeTab({
+    required this.onGoShop,
+    required this.onGoCart,
+  });
 
-
-class _ModernDashboardTab extends StatelessWidget {
-  final Function(int) onTabChange;
-
-  const _ModernDashboardTab({required this.onTabChange});
+  final VoidCallback onGoShop;
+  final VoidCallback onGoCart;
 
   @override
   Widget build(BuildContext context) {
-    return Consumer5<DashboardViewModel, AuthViewModel, ShoppingViewModel, AccountSummaryViewModel, DialpadViewModel>(
-      builder: (context, viewModel, authViewModel, shoppingViewModel, accountViewModel, dialpadViewModel, child) {
-        final data = viewModel.dashboardData;
-
-        // Use real cart data instead of dashboard snapshot
-        // final shopping = data['shopping'] ?? {}; 
-        final calling = data['calling'] ?? {};
-        
-        // final userName = authViewModel.currentUser?['name'] ?? 'User';
-        
-        // Calculate real cart count
-        final cartItemsList = shoppingViewModel.cart['items'] as List<dynamic>? ?? [];
+    return Consumer3<ShoppingViewModel, AccountSummaryViewModel,
+        DialpadViewModel>(
+      builder: (context, shoppingViewModel, accountViewModel, dialpadViewModel,
+          child) {
+        final cartItemsList =
+            shoppingViewModel.cart['items'] as List<dynamic>? ?? [];
         final cartCount = cartItemsList.length;
 
+        final alias = accountViewModel.alias ?? 'there';
+        final mq = MediaQuery.of(context);
+        final horizontal =
+            (mq.size.width * 0.05).clamp(16.0, 22.0).toDouble();
+
+        final walletKey =
+            '${accountViewModel.balance}_${dialpadViewModel.accountBalance}_$alias';
+        final walletPrimary =
+            _primaryWalletLine(accountViewModel, dialpadViewModel);
+
+        final walletChipText = accountViewModel.loading &&
+                accountViewModel.alias == null
+            ? 'Wallet · …'
+            : 'Wallet · ${dialpadViewModel.accountBalance}';
+
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 140), // Increased bottom padding for floating nav
+          padding: EdgeInsets.fromLTRB(0, 6, 0, 120),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      // Status Dot
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: accountViewModel.balance != null ? WunzaColors.greenAccent : Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                           accountViewModel.alias == null 
-                               ? const ShimmerWidget.rectangular(height: 20, width: 120)
-                               : Text(
-                                  "User: ${accountViewModel.alias}",
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: WunzaColors.textPrimary),
-                                ),
-                           Text(
-                            _formatVoiceBalance(accountViewModel.balance ?? 0),
-                            style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  GlassContainer(
-                    borderRadius: 50,
-                    padding: const EdgeInsets.all(4),
-                    opacity: 0.5,
-                    child: IconButton(
-                      onPressed: () => Navigator.pushNamed(context, Routes.profile),
-                      icon: const Icon(Icons.person, color: WunzaColors.indigo),
-                    ),
-                  )
-                ],
+              HomeTopBar(
+                userName: accountViewModel.alias == null && accountViewModel.loading
+                    ? '…'
+                    : alias,
+                walletChipLabel: accountViewModel.alias == null &&
+                        accountViewModel.loading
+                    ? 'Loading…'
+                    : walletChipText,
+                notificationCount: cartCount,
+                onNotificationsTap: onGoCart,
+                onAvatarTap: () => Navigator.pushNamed(context, Routes.profile),
               ),
-              const SizedBox(height: 24),
-
-              // Hero Card (Gradient + Glass Overlay)
-              Stack(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20), // Reduced padding
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)], // Purple to Blue
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: horizontal),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (accountViewModel.alias == null && accountViewModel.loading)
+                      const ShimmerWidget.rectangular(height: 180, width: double.infinity)
+                    else
+                      MasterBalanceCard(
+                        walletBalanceKey: walletKey,
+                        walletBalanceText: walletPrimary,
+                        voiceChipLabel: _voiceChipLabel(accountViewModel.balance),
+                        dataChipLabel: 'Data — add a bundle',
+                        onTopUp: () => _launchTopUpFor(context),
+                        onManageAccount: () =>
+                            Navigator.pushNamed(context, Routes.profile),
                       ),
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF4A00E0).withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
+                    const SizedBox(height: 28),
+                    Text(
+                      'Quick actions',
+                      style: Theme.of(context).textTheme.headlineSmall,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 14),
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.92,
                       children: [
-                        Text(
-                          "Welcome back, ${accountViewModel.alias ?? ''}",
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        GlideQuickServiceCard(
+                          icon: Icons.shopping_bag_outlined,
+                          title: 'Shop',
+                          subtitle: 'Devices & accessories',
+                          onTap: onGoShop,
                         ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _GlassStatsBubble(
-                                icon: Icons.shopping_cart,
-                                label: "Cart",
-                                value: "$cartCount",
-                                color: Colors.orangeAccent,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _GlassStatsBubble(
-                                icon: Icons.phone_missed,
-                                label: "Missed",
-                                value: "${calling['missed_calls'] ?? 0}",
-                                color: Colors.redAccent,
-                              ),
-                            ),
-                          ],
+                        GlideQuickServiceCard(
+                          icon: Icons.call_outlined,
+                          title: 'Calling',
+                          subtitle: 'Contacts & keypad',
+                          onTap: () =>
+                              Navigator.pushNamed(context, Routes.calling),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 28),
+                    GlidePromotionsCarousel(
+                      onBannerTap: (_) => onGoShop(),
+                    ),
+                    const SizedBox(height: 28),
+                    const CallHistoryWidget(),
+                  ],
+                ),
               ),
-
-              const SizedBox(height: 32),
-              
-              const Text(
-                "Quick Actions",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: WunzaColors.textPrimary),
-              ),
-              const SizedBox(height: 16),
-
-              // Glass Grid
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 0.95,
-                children: [
-
-                  Builder(
-                    builder: (context) {
-                      final hasItems = cartCount > 0;
-                      
-                      return _DashboardWidgetCard(
-                        title: "Shopping",
-                        value: "$cartCount",
-                        subValue: "Cart Items",
-                        icon: Icons.shopping_bag,
-                        accentColor: WunzaColors.orangeAccent,
-                        buttonText: hasItems ? "Proceed to Checkout" : "Start Shopping",
-                        onTap: () {
-                          if (hasItems) {
-                             Navigator.pushNamed(context, Routes.cart);
-                          } else {
-                             onTabChange(2);
-                          }
-                        }, 
-                      );
-                    }
-                  ),
-
-                  _DashboardWidgetCard(
-                    title: "Voice",
-                    value: _formatVoiceBalance(accountViewModel.balance ?? 0).replaceAll("Voice Bal: ", ""),
-                    subValue: "Remaining",
-                    icon: Icons.mic,
-                    accentColor: Colors.purple,
-                    buttonText: "Add Funds",
-                    onTap: () async {
-                      const url = 'https://selfservice.ai.co.zw/';
-                      if (await canLaunchUrl(Uri.parse(url))) {
-                        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                      } else {
-                        if (context.mounted) {
-                           ScaffoldMessenger.of(context).showSnackBar(
-                             const SnackBar(content: Text('Could not launch $url')),
-                           );
-                        }
-                      }
-                    }, 
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 32),
-
-              // --- Recent History Section ---
-              // --- Recent History Section ---
-              const CallHistoryWidget(),
             ],
           ),
         );
@@ -453,85 +341,35 @@ class _ModernDashboardTab extends StatelessWidget {
   }
 }
 
-// Updated Widget Card to use GlassContainer
-class _DashboardWidgetCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subValue;
-  final IconData icon;
-  final Color accentColor;
-  final String buttonText;
-  final VoidCallback onTap;
+String _voiceChipLabel(double? balanceNs) {
+  final raw = _formatVoiceBalance(balanceNs ?? 0);
+  return raw.replaceAll('Voice Bal: ', 'Minutes · ');
+}
 
-  const _DashboardWidgetCard({
-    required this.title,
-    required this.value,
-    required this.subValue,
-    required this.icon,
-    required this.accentColor,
-    required this.buttonText,
-    required this.onTap,
-  });
+String _primaryWalletLine(
+  AccountSummaryViewModel account,
+  DialpadViewModel dialpad,
+) {
+  final d = dialpad.accountBalance.trim();
+  if (d.isNotEmpty && d != r'$0.00') {
+    return d;
+  }
+  if (account.balance != null && account.balance! > 0) {
+    return _formatVoiceBalance(account.balance!)
+        .replaceAll('Voice Bal: ', '')
+        .trim();
+  }
+  return r'$0.00';
+}
 
-  @override
-  Widget build(BuildContext context) {
-    // Using GlassContainer instead of basic Container/Card
-    return GlassContainer(
-      opacity: 0.6,
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: accentColor.withOpacity(0.1), // Keep soft background
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: accentColor, size: 24),
-              ),
-              const Spacer(),
-              // Removed more_horiz to clean up
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subValue,
-            style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: WunzaColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            width: double.infinity,
-            height: 34,
-            child: ElevatedButton(
-              onPressed: onTap,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accentColor, // Solid high-contrast color
-                foregroundColor: Colors.white, // White text
-                elevation: 0,
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(buttonText, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      ),
+Future<void> _launchTopUpFor(BuildContext context) async {
+  const url = 'https://selfservice.ai.co.zw/';
+  final uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } else if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not launch $url')),
     );
   }
 }
@@ -542,69 +380,10 @@ String _formatVoiceBalance(double nanoseconds) {
   final hours = duration.inHours;
   final minutes = duration.inMinutes.remainder(60);
   final seconds = duration.inSeconds.remainder(60);
-  
+
   if (hours > 0) {
     return 'Voice Bal: $hours hrs $minutes m';
   } else {
     return 'Voice Bal: $minutes m $seconds s';
-  }
-}
-
-class _GlassStatsBubble extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _GlassStatsBubble({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.color = Colors.white,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassContainer(
-      opacity: 0.2, // Very subtle glass
-      blur: 10,
-      borderRadius: 16,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: Colors.white, size: 24),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
   }
 }

@@ -13,7 +13,10 @@ import '../../../payments/presentation/views/payments_view.dart';
 import '../../../login/presentation/views/login_view.dart';
 
 class ProfileView extends StatefulWidget {
-  const ProfileView({Key? key}) : super(key: key);
+  const ProfileView({super.key, this.embeddedInMainShell = false});
+
+  /// When true (e.g. main tab), hide back affordance — shell owns navigation.
+  final bool embeddedInMainShell;
 
   @override
   _ProfileViewState createState() => _ProfileViewState();
@@ -64,10 +67,13 @@ class _ProfileViewState extends State<ProfileView> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: !widget.embeddedInMainShell,
+        leading: widget.embeddedInMainShell
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.pop(context),
+              ),
       ),
       body: Stack(
         children: [
