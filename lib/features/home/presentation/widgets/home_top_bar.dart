@@ -76,13 +76,7 @@ class HomeTopBar extends StatelessWidget {
                 child: CircleAvatar(
                   radius: (mq.size.width * 0.055).clamp(20.0, 26.0),
                   backgroundColor: WunzaColors.glidePrimary.withValues(alpha: 0.15),
-                  child: Text(
-                    userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-                    style: const TextStyle(
-                      color: WunzaColors.glidePrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _avatarChild(userName, mq.size.width),
                 ),
               ),
             ),
@@ -91,6 +85,23 @@ class HomeTopBar extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _avatarChild(String userName, double screenWidth) {
+  final initial = userName.isNotEmpty ? userName[0] : '';
+  final isDigit = initial.isNotEmpty && RegExp(r'\d').hasMatch(initial);
+  final iconSize = (screenWidth * 0.055).clamp(20.0, 26.0);
+
+  if (isDigit || initial.isEmpty) {
+    return Icon(Icons.person, color: WunzaColors.glidePrimary, size: iconSize);
+  }
+  return Text(
+    initial.toUpperCase(),
+    style: const TextStyle(
+      color: WunzaColors.glidePrimary,
+      fontWeight: FontWeight.bold,
+    ),
+  );
 }
 
 class _WalletChip extends StatelessWidget {

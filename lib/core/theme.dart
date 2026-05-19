@@ -37,6 +37,98 @@ class WunzaColors {
 }
 
 class WunzaTheme {
+  static ThemeData get darkTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: WunzaColors.glidePrimary,
+        primary: const Color(0xFFCE93D8),   // light purple on dark
+        secondary: WunzaColors.glideAccent,
+        surface: const Color(0xFF1E1E2E),
+        error: WunzaColors.error,
+        brightness: Brightness.dark,
+      ),
+      scaffoldBackgroundColor: const Color(0xFF12121C),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      cardColor: const Color(0xFF1E1E2E),
+      dividerColor: Colors.white12,
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFCE93D8),
+          foregroundColor: Colors.black,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          elevation: 0,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFFCE93D8),
+          side: const BorderSide(color: Color(0xFFCE93D8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+        ),
+      ),
+      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
+        displayLarge: GoogleFonts.inter(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+        displayMedium: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+        headlineLarge: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+        headlineMedium: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+        headlineSmall: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+        titleLarge: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+        titleMedium: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+        bodyLarge: GoogleFonts.inter(fontSize: 16, color: Colors.white),
+        bodyMedium: GoogleFonts.inter(fontSize: 14, color: Colors.white70),
+        bodySmall: GoogleFonts.inter(fontSize: 12, color: Colors.white54),
+        labelMedium: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white54),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF2A2A3E),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.white12),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.white12),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFCE93D8), width: 2),
+        ),
+        hintStyle: const TextStyle(color: Colors.white38),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+      bottomAppBarTheme: const BottomAppBarThemeData(
+        color: Color(0xFF1E1E2E),
+        elevation: 12,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? const Color(0xFFCE93D8)
+              : Colors.white38,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? const Color(0xFFCE93D8).withValues(alpha: 0.4)
+              : Colors.white12,
+        ),
+      ),
+    );
+  }
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,

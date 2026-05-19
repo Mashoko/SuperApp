@@ -94,7 +94,7 @@ Future<void> configureDependencies() async {
   getIt.registerFactory(() => AccountSummaryViewModel(getIt<OtpAuthService>()));
 
   // Theme Provider
-  getIt.registerSingleton<ThemeProvider>(ThemeProvider());
+  getIt.registerSingleton<ThemeProvider>(ThemeProvider(getIt<SharedPreferences>()));
 
   // --- Merged Dependencies ---
   // Services

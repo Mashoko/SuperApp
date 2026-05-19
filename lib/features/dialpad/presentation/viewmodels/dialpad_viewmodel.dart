@@ -19,7 +19,7 @@ class DialpadViewModel extends ChangeNotifier {
   String _receivedMessage = '';
   
   // Balance properties
-  final String _voiceBalance = '1 hrs 35 mins'; // Placeholder per requirement
+  String _voiceBalance = '';
   String _accountBalance = '\$0.00';
 
   String get voiceBalance => _voiceBalance;
@@ -76,12 +76,10 @@ class DialpadViewModel extends ChangeNotifier {
     if (creds != null && creds['username'] != null) {
       final summary = await authService.fetchAccountSummary(creds['username']!);
       if (summary != null) {
-        // Assuming balance is in the summary map as a double or string
         final bal = summary['balance'];
-        _accountBalance = bal != null ? '\$${bal.toString()}' : '\$0.00';
-        
-        // Voice balance placeholder logic or real field if available
-        // _voiceBalance = ... 
+        final balNum = bal is num ? bal.toDouble() : 0.0;
+        _accountBalance = '\$${balNum.toStringAsFixed(2)}';
+        _voiceBalance = _formatVoiceBalance(balNum);
         notifyListeners();
       }
     }
@@ -110,10 +108,18 @@ class DialpadViewModel extends ChangeNotifier {
   }
 
   Future<void> addRecentCall(RecentCall call) async {
-     final result = await repository.addRecent(call);
-     if (result is Success) {
-       await loadRecents();
-     }
+    final result = await repository.addRecent(call);
+    if (result is Success) {
+      await loadRecents();
+    }
+  }
+
+  String _formatVoiceBalance(double nanoseconds) {
+    if (nanoseconds <= 0) return '0 m';
+    final d = Duration(microseconds: (nanoseconds / 1000).round());
+    if (d.inHours >= 1) return '${d.inHours} h ${d.inMinutes.remainder(60)} m';
+    if (d.inMinutes >= 1) return '${d.inMinutes} m ${d.inSeconds.remainder(60)} s';
+    return '${d.inSeconds} s';
   }
 }
 

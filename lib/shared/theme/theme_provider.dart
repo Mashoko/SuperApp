@@ -1,56 +1,33 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider extends ChangeNotifier {
-  ThemeData? currentTheme;
+  static const String _themeKey = 'app_theme_is_dark';
 
-  ThemeProvider() {
-    final brightness = PlatformDispatcher.instance.platformBrightness;
+  final SharedPreferences _prefs;
+  bool _isDark;
 
-    currentTheme =
-        brightness == Brightness.dark ? ThemeData.dark() : ThemeData.light();
-  }
+  ThemeProvider(this._prefs)
+      : _isDark = _prefs.getBool(_themeKey) ??
+            (PlatformDispatcher.instance.platformBrightness == Brightness.dark);
+
+  bool get isDarkMode => _isDark;
+
+  ThemeMode get themeMode => _isDark ? ThemeMode.dark : ThemeMode.light;
 
   void setLightMode() {
-    currentTheme = ThemeData(
-      primarySwatch: Colors.blue,
-      fontFamily: 'Roboto',
-      inputDecorationTheme: InputDecorationTheme(
-        hintStyle: TextStyle(color: Colors.grey),
-        contentPadding: EdgeInsets.all(10.0),
-        border:
-            UnderlineInputBorder(borderSide: BorderSide(color: Colors.black12)),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.all(16),
-          textStyle: TextStyle(fontSize: 18),
-        ),
-      ),
-    );
+    _isDark = false;
+    _prefs.setBool(_themeKey, false);
     notifyListeners();
   }
 
   void setDarkmode() {
-    currentTheme = ThemeData.dark().copyWith(
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.all(16),
-          textStyle: TextStyle(fontSize: 18),
-        ),
-      ),
-    );
+    _isDark = true;
+    _prefs.setBool(_themeKey, true);
     notifyListeners();
   }
 
-  bool get isDarkMode => currentTheme?.brightness == Brightness.dark;
-
-  void toggleTheme() {
-    if (isDarkMode) {
-      setLightMode();
-    } else {
-      setDarkmode();
-    }
-  }
+  void toggleTheme() => _isDark ? setLightMode() : setDarkmode();
 }
 

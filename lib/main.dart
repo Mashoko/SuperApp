@@ -76,8 +76,9 @@ class MyApp extends StatelessWidget {
             title: 'Super App',
             debugShowCheckedModeBanner: false,
         
-            // For now, forcing WunzaTheme to ensure source look as requested
-            theme: WunzaTheme.lightTheme, 
+            theme: WunzaTheme.lightTheme,
+            darkTheme: WunzaTheme.darkTheme,
+            themeMode: theme.themeMode,
             initialRoute: Routes.root,
             routes: Routes.routes,
             onGenerateRoute: (settings) {
