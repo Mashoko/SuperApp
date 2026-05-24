@@ -3,6 +3,7 @@ import 'package:mvvm_sip_demo/core/routes.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/scale_tap_wrapper.dart';
 import 'package:mvvm_sip_demo/shared/widgets/glide_card.dart';
+import 'package:mvvm_sip_demo/shared/widgets/maintenance_screen.dart';
 
 class ServicesHubTab extends StatelessWidget {
   const ServicesHubTab({super.key});
@@ -21,6 +22,7 @@ class ServicesHubTab extends StatelessWidget {
       subtitle: 'ZESA, water, council',
       color: Color(0xFF0288D1),
       route: Routes.utilityBills,
+      underMaintenance: true,
     ),
     _ServiceItem(
       icon: Icons.payments_outlined,
@@ -28,6 +30,7 @@ class ServicesHubTab extends StatelessWidget {
       subtitle: 'Send & receive money',
       color: Color(0xFF2E7D32),
       route: Routes.payments,
+      underMaintenance: true,
     ),
     _ServiceItem(
       icon: Icons.storefront_outlined,
@@ -35,6 +38,7 @@ class ServicesHubTab extends StatelessWidget {
       subtitle: 'Airtime, bundles, partners',
       color: WunzaColors.glideAccent,
       route: Routes.serviceProviders,
+      underMaintenance: true,
     ),
     _ServiceItem(
       icon: Icons.history_toggle_off_outlined,
@@ -88,27 +92,71 @@ class ServicesHubTab extends StatelessWidget {
   }
 }
 
+// ── Card ───────────────────────────────────────────────────────────────────────
+
 class _ServiceCard extends StatelessWidget {
   const _ServiceCard({required this.item});
   final _ServiceItem item;
 
+  void _onTap(BuildContext context) {
+    if (item.underMaintenance) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MaintenanceScreen(
+            label: item.label,
+            icon: item.icon,
+            color: item.color,
+          ),
+        ),
+      );
+    } else {
+      Navigator.pushNamed(context, item.route);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ScaleTapWrapper(
-      onTap: () => Navigator.pushNamed(context, item.route),
+      onTap: () => _onTap(context),
       child: GlideCard(
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: item.color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(item.icon, color: item.color, size: 26),
+            Stack(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: item.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(item.icon, color: item.color, size: 26),
+                ),
+                if (item.underMaintenance)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'Soon',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const Spacer(),
             Text(
@@ -134,6 +182,8 @@ class _ServiceCard extends StatelessWidget {
   }
 }
 
+// ── Model ─────────────────────────────────────────────────────────────────────
+
 class _ServiceItem {
   const _ServiceItem({
     required this.icon,
@@ -141,6 +191,7 @@ class _ServiceItem {
     required this.subtitle,
     required this.color,
     required this.route,
+    this.underMaintenance = false,
   });
 
   final IconData icon;
@@ -148,4 +199,5 @@ class _ServiceItem {
   final String subtitle;
   final Color color;
   final String route;
+  final bool underMaintenance;
 }

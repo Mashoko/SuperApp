@@ -12,6 +12,7 @@ import 'package:mvvm_sip_demo/features/home/presentation/widgets/call_history_wi
 import 'package:mvvm_sip_demo/features/dialpad/presentation/views/dialpad_view.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/hanging_dialer.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/scale_tap_wrapper.dart';
+import 'package:mvvm_sip_demo/shared/widgets/maintenance_screen.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/home_top_bar.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/master_balance_card.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/promotions_carousel.dart';
@@ -335,14 +336,31 @@ class _QuickServicesRow extends StatelessWidget {
         icon: Icons.receipt_long_outlined,
         label: 'Bills',
         color: const Color(0xFF0288D1),
-        onTap: () =>
-            Navigator.pushNamed(context, Routes.utilityBills),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const MaintenanceScreen(
+              label: 'Utility Bills',
+              icon: Icons.receipt_long_outlined,
+              color: Color(0xFF0288D1),
+            ),
+          ),
+        ),
       ),
       _QA(
         icon: Icons.payments_outlined,
         label: 'Pay',
         color: const Color(0xFF2E7D32),
-        onTap: () => Navigator.pushNamed(context, Routes.payments),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const MaintenanceScreen(
+              label: 'Payments',
+              icon: Icons.payments_outlined,
+              color: Color(0xFF2E7D32),
+            ),
+          ),
+        ),
       ),
       _QA(
         icon: Icons.history_outlined,
