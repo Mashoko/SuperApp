@@ -61,7 +61,8 @@ class UsersClient {
   // Convenience getters for SIP / WebSocket
   // ---------------------------------------------------------------------------
 
-  String get websocketUrl => 'wss://$serviceDomain:$sipPort';
+  /// WSS endpoint for SIP (uses API/gRPC host, not the SIP realm domain).
+  String get websocketUrl => 'wss://$host:$sipPort';
   String get originUrl    => 'sip:$serviceDomain';
 
   // ---------------------------------------------------------------------------

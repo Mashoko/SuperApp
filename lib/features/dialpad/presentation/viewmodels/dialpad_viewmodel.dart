@@ -71,6 +71,8 @@ class DialpadViewModel extends ChangeNotifier {
 
   RegistrationState get registrationState => sipHelper.registerState;
 
+  bool get isSipReady => sipHelper.connected && sipHelper.registered;
+
   Future<void> loadAccountInfo() async {
     final creds = await authService.getStoredCredentials();
     if (creds != null && creds['username'] != null) {
@@ -80,9 +82,13 @@ class DialpadViewModel extends ChangeNotifier {
         final balNum = bal is num ? bal.toDouble() : 0.0;
         _accountBalance = '\$${balNum.toStringAsFixed(2)}';
         _voiceBalance = _formatVoiceBalance(balNum);
-        notifyListeners();
+        _scheduleNotify();
       }
     }
+  }
+
+  void _scheduleNotify() {
+    Future.microtask(notifyListeners);
   }
   // Recents
   List<RecentCall> _recents = [];
@@ -94,7 +100,7 @@ class DialpadViewModel extends ChangeNotifier {
     final result = await repository.getRecents();
     if (result is Success<List<RecentCall>>) {
       _recents = result.data;
-      notifyListeners();
+      _scheduleNotify();
     }
   }
 

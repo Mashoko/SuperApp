@@ -125,15 +125,19 @@ class CallHistoryWidget extends StatelessWidget {
                           ),
                         ),
                         TextButton(
-                          onPressed: () {
+                          onPressed: () async {
                             final callViewModel =
                                 Provider.of<CallViewModel>(
                               context,
                               listen: false,
                             );
-                            callViewModel.makeCall(
+                            final error = await callViewModel.makeCall(
                               call.number,
                               voiceOnly: true,
+                            );
+                            if (!context.mounted || error == null) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(error)),
                             );
                           },
                           style: TextButton.styleFrom(

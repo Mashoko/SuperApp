@@ -274,11 +274,13 @@ class _CallHistoryViewState extends State<CallHistoryView> {
                 nameOrNumber: call.name ?? call.number,
                 dateLabel: dateLabel,
                 callType: callType,
-                onTap: () {
+                onTap: () async {
                    final callViewModel = Provider.of<CallViewModel>(context, listen: false);
-                   // final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
-                   // final callerId = authViewModel.currentUser?['username'] ?? 'unknown'; // fallback
-                   callViewModel.makeCall(call.number, voiceOnly: true);
+                   final error = await callViewModel.makeCall(call.number, voiceOnly: true);
+                   if (!context.mounted || error == null) return;
+                   ScaffoldMessenger.of(context).showSnackBar(
+                     SnackBar(content: Text(error)),
+                   );
                 },
               );
             }),

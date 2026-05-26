@@ -87,7 +87,9 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton(() => SaveDestination(getIt()));
 
   // ViewModels
-  getIt.registerFactory(() => RegistrationViewModel(getIt(), getIt(), getIt()));
+  getIt.registerFactory(
+    () => RegistrationViewModel(getIt(), getIt(), getIt(), getIt()),
+  );
   getIt.registerFactory(() => CallViewModel(getIt(), getIt(), getIt(), getIt()));
   getIt.registerLazySingleton(() => DialpadViewModel(getIt(), getIt(), getIt<OtpAuthService>(), getIt<DialpadRepository>()));
   getIt.registerFactory(() => LoginViewModel(getIt<OtpAuthService>(), getIt<RegisterUser>(), getIt<UsersClient>()));

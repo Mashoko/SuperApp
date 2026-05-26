@@ -142,16 +142,7 @@ class _RegistrationViewState extends State<RegistrationView>
       case RegistrationStep.otpInput:
         return _buildOtpInputStep(viewModel);
       case RegistrationStep.registering:
-        return const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 20),
-              Text("Setting up your account..."),
-            ],
-          ),
-        );
+        return _buildRegisteringStep(viewModel);
       case RegistrationStep.completed:
         return _buildCompletedStep(viewModel);
     }
@@ -205,6 +196,48 @@ class _RegistrationViewState extends State<RegistrationView>
           child: const Text("Send Verification Code"),
         ),
       ],
+    );
+  }
+
+  Widget _buildRegisteringStep(RegistrationViewModel viewModel) {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (viewModel.errorMessage == null)
+            const CircularProgressIndicator()
+          else
+            const Icon(Icons.warning_amber_rounded,
+                color: Colors.orange, size: 48),
+          const SizedBox(height: 20),
+          Text(
+            viewModel.statusMessage ?? 'Setting up your account...',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16),
+          ),
+          if (viewModel.errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              viewModel.errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red, fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: viewModel.retrySipRegistration,
+              child: const Text('Retry'),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pushReplacementNamed(Routes.home);
+              },
+              child: const Text('Continue to app'),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -302,7 +335,9 @@ class _RegistrationViewState extends State<RegistrationView>
   void callStateChanged(Call call, CallState state) {}
 
   @override
-  void transportStateChanged(TransportState state) {}
+  void transportStateChanged(TransportState state) {
+    _viewModel.updateTransportState(state);
+  }
 
   @override
   void onNewMessage(SIPMessageRequest msg) {}

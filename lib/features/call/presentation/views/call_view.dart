@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:sip_ua/sip_ua.dart';
 import '../viewmodels/call_viewmodel.dart';
 import '../../../../core/di/inject.dart';
+import '../../../../core/utils/sip_utils.dart';
 import '../../../../shared/widgets/action_button.dart';
 
 class CallView extends StatefulWidget {
@@ -106,21 +107,9 @@ class _CallViewState extends State<CallView> implements SipUaHelperListener {
   }
 
   void _cleanUp() {
-    if (_localStream != null) {
-      try {
-        _localStream!.getTracks().forEach((track) {
-          try {
-            track.stop();
-          } catch (e) {
-            // Ignore track stop errors
-          }
-        });
-        _localStream!.dispose();
-      } catch (e) {
-        debugPrint('Error cleaning up local stream: $e');
-      }
-      _localStream = null;
-    }
+    final stream = _localStream;
+    _localStream = null;
+    SipUtils.safeDisposeMediaStream(stream);
   }
 
   void _backToDialPad() {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mvvm_sip_demo/features/call/presentation/viewmodels/call_viewmodel.dart';
 import 'package:mvvm_sip_demo/core/di/inject.dart';
+import 'package:sip_ua/sip_ua.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
 import 'package:mvvm_sip_demo/features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
 import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
@@ -15,6 +16,29 @@ class DialerView extends StatefulWidget {
 
 class _DialerViewState extends State<DialerView> {
   final TextEditingController _controller = TextEditingController();
+  final SIPUAHelper _sipHelper = getIt<SIPUAHelper>();
+
+  Future<void> _placeCall() async {
+    final number = _controller.text.trim();
+    if (number.isEmpty) return;
+
+    final error =
+        await getIt<CallViewModel>().makeCall(number, voiceOnly: true);
+    if (!mounted || error == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error)),
+    );
+  }
+
+  Color _sipStatusColor() {
+    if (_sipHelper.connected && _sipHelper.registered) {
+      return WunzaColors.greenAccent;
+    }
+    if (_sipHelper.connecting) {
+      return Colors.orange;
+    }
+    return Colors.red;
+  }
 
   @override
   void dispose() {
@@ -71,9 +95,6 @@ class _DialerViewState extends State<DialerView> {
             final balance = accountViewModel.balance;
             final loading = accountViewModel.loading;
             
-            // Assume registered if we have data, logic can be improved with SIP status listener
-            final isRegistered = balance != null; 
-
             return Column(
               children: [
                 // Balance Display
@@ -92,7 +113,7 @@ class _DialerViewState extends State<DialerView> {
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: isRegistered ? WunzaColors.greenAccent : Colors.red, 
+                          color: _sipStatusColor(), 
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -189,12 +210,7 @@ class _DialerViewState extends State<DialerView> {
                 children: [
                   const SizedBox(width: 64), // Spacer to center the call button
                   GestureDetector(
-                    onTap: () {
-                      if (_controller.text.isNotEmpty) {
-                        // Use legacy CallViewModel for real SIP calls
-                        getIt<CallViewModel>().makeCall(_controller.text, voiceOnly: true);
-                      }
-                    },
+                    onTap: _placeCall,
                     child: Container(
                       width: isSmallScreen ? 56 : 64,
                       height: isSmallScreen ? 56 : 64,

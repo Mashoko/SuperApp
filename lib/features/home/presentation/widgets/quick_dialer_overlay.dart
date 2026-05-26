@@ -87,10 +87,16 @@ class _DialPadScreenState extends State<DialPadScreen> {
                   
                   // Main Call Button
                   InkWell(
-                    onTap: () {
-                      if (phoneNumber.isNotEmpty) {
-                         Navigator.pop(context); // Close overlay
-                         getIt<CallViewModel>().makeCall(phoneNumber, voiceOnly: true);
+                    onTap: () async {
+                      if (phoneNumber.isEmpty) return;
+                      final error = await getIt<CallViewModel>()
+                          .makeCall(phoneNumber, voiceOnly: true);
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                      if (error != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error)),
+                        );
                       }
                     },
                     borderRadius: BorderRadius.circular(40),

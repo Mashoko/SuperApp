@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:sip_ua/sip_ua.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../viewmodels/dialpad_viewmodel.dart';
 import '../../../../core/di/inject.dart';
+import '../../../../core/utils/result.dart';
+import '../../../../core/utils/sip_utils.dart';
 
 
 import '../../../call/presentation/views/call_view.dart';
@@ -59,36 +58,31 @@ class _DialpadViewState extends State<DialpadView>
     _viewModel.updateRegistrationStatus(state);
   }
 
+  Color _sipStatusColor(DialpadViewModel viewModel) {
+    if (viewModel.isSipReady) return Colors.green;
+    if (_sipHelper.connecting) {
+      return Colors.orange;
+    }
+    return Colors.red;
+  }
+
   Future<void> _handleCall(bool voiceOnly) async {
     final dest = _textController.text;
-    if (defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS) {
-      // Only request microphone permission for voice calls
-      final micStatus = await Permission.microphone.request();
-      if (!micStatus.isGranted) {
-        _showAlert('Permission Required', 'Microphone permission is required to make calls.');
-        return;
-      }
-    }
     if (dest.isEmpty) {
       _showAlert('Target is empty.', 'Please enter a SIP URI or username!');
       return;
     }
 
     await _viewModel.saveDestination(dest);
-    await _viewModel.addToRecents(dest); // Add to recents
-    
-    // Make voice-only call using SIPUAHelper
-    var mediaConstraints = <String, dynamic>{
-      'audio': true,
-      'video': false, // Always voice-only for outgoing calls
-    };
+    await _viewModel.addToRecents(dest);
 
-    try {
-      final mediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-      _sipHelper.call(dest, voiceOnly: true, mediaStream: mediaStream); // Always voice-only
-    } catch (e) {
-      _showAlert('Error', 'Failed to start call: $e');
+    final result = await SipUtils.placeOutgoingCall(
+      _sipHelper,
+      dest,
+      voiceOnly: voiceOnly,
+    );
+    if (result is Failure && mounted) {
+      _showAlert('Cannot place call', result.message);
     }
   }
 
@@ -252,8 +246,12 @@ class _DialpadViewState extends State<DialpadView>
                      mainAxisAlignment: MainAxisAlignment.center,
                      children: [
                        Container(
-                         width: 8, height: 8,
-                         decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+                         width: 8,
+                         height: 8,
+                         decoration: BoxDecoration(
+                           color: _sipStatusColor(viewModel),
+                           shape: BoxShape.circle,
+                         ),
                        ),
                        const SizedBox(width: 8),
                        Text(
@@ -421,6 +419,7 @@ class _DialpadViewState extends State<DialpadView>
   @override
   void registrationStateChanged(RegistrationState state) {
     _viewModel.updateRegistrationStatus(state.state?.name ?? '');
+    if (mounted) setState(() {});
   }
 
   @override

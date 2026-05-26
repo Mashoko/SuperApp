@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:sip_ua/sip_ua.dart';
 import '../../domain/entities/sip_user.dart';
@@ -7,6 +9,7 @@ import '../../../../core/services/otp_auth_service.dart';
 import '../../../../users_client.dart';
 import '../../../../core/utils/crypto_utils.dart';
 import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/sip_utils.dart';
 
 enum RegistrationStep {
   phoneInput,
@@ -19,25 +22,36 @@ class RegistrationViewModel extends ChangeNotifier {
   final RegisterUser registerUserUseCase;
   final OtpAuthService authService;
   final UsersClient usersClient;
+  final SIPUAHelper sipHelper;
 
   RegistrationViewModel(
     this.registerUserUseCase,
     this.authService,
     this.usersClient,
+    this.sipHelper,
   );
 
   RegistrationState? _registrationState;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _statusMessage;
   SipUser? _currentUser;
   RegistrationStep _currentStep = RegistrationStep.phoneInput;
   String? _tempPhone;
+  Timer? _registrationTimeout;
 
   RegistrationState? get registrationState => _registrationState;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get statusMessage => _statusMessage;
   SipUser? get currentUser => _currentUser;
   RegistrationStep get currentStep => _currentStep;
+
+  @override
+  void dispose() {
+    _registrationTimeout?.cancel();
+    super.dispose();
+  }
 
   // Step 1: Send OTP
   Future<void> sendOtp(String phone) async {
@@ -70,12 +84,12 @@ class RegistrationViewModel extends ChangeNotifier {
 
     _isLoading = true;
     _errorMessage = null;
+    _statusMessage = null;
     notifyListeners();
 
-    // 1. Verify OTP
     debugPrint('--- Registration Flow: Verifying OTP ---');
     final credentials = await authService.verifyOtp(_tempPhone!, otp);
-    
+
     if (credentials == null) {
       debugPrint('--- Registration Flow: OTP Verification Failed ---');
       _isLoading = false;
@@ -83,73 +97,47 @@ class RegistrationViewModel extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    debugPrint('--- Registration Flow: OTP Verified. Username: ${credentials['username']} ---');
+    debugPrint(
+        '--- Registration Flow: OTP Verified. Username: ${credentials['username']} ---');
 
     final username = credentials['username']!;
     final password = credentials['password']!;
 
     try {
-      // 2. Fetch SIP Configuration
       _currentStep = RegistrationStep.registering;
+      _statusMessage = 'Connecting to phone service...';
       notifyListeners();
 
-      // Fetch Domain
-      debugPrint('--- Registration Flow: Fetching SIP Domain... ---');
-      final domainResp = await usersClient.getDomainForPackageID();
-      final domain = domainResp.domain.isNotEmpty ? domainResp.domain : AppConstants.sipDomain;
+      debugPrint('--- Registration Flow: Fetching SIP config... ---');
+      final sipConfig = await SipUtils.fetchSipConfig(usersClient);
+      final domain = sipConfig.domain;
+      final wsUrl = sipConfig.wsUrl;
+      final originUrl = sipConfig.originUrl;
       debugPrint('--- Registration Flow: Domain: $domain ---');
-
-      // Fetch WebSocket URL
-      debugPrint('--- Registration Flow: Fetching WebSocket URL... ---');
-      await usersClient.getWebsocketUrlFromApi();
-      // Parse WSS URL from response info or use default if empty
-      // Assuming the response puts the URL in 'info.information' or similar if not explicit field
-      // The proto definition has 'info' field. Let's assume it returns in a standard way or we use default.
-      // Actually the proto response has 'info' and 'success' fields. 
-      // The user requirement says: "Use the returned WSS URL like: wss://sip.africom.net:7443/ws"
-      // Let's assume for now we use the one from constants if API fails or returns empty, 
-      // but ideally we should parse it. 
-      // For now, let's use the AppConstants.websocketUrl as fallback.
-      final wsUrl = AppConstants.websocketUrl; 
       debugPrint('--- Registration Flow: WebSocket URL: $wsUrl ---');
-
-      // Fetch Origin URL
-      debugPrint('--- Registration Flow: Fetching Origin URL... ---');
-      final originResp = await usersClient.getOriginUrlFromApi();
-      final originUrl = originResp.info.information.isNotEmpty 
-          ? originResp.info.information 
-          : 'https://$domain'; // Fallback
       debugPrint('--- Registration Flow: Origin URL: $originUrl ---');
 
-      // 3. Compute MD5 Hash for SIP Password
-      // SIP password = MD5("username:domain:password")
-      // NOTE: Standard SIP auth (Digest) requires the plain password to compute the response.
-      // Passing the hash as the password to sip_ua will cause double-hashing if the server expects standard auth.
-      // We will compute it for logging/verification but pass the plain password to sip_ua.
       debugPrint('--- Registration Flow: Computing MD5 Hash... ---');
-      final sipPasswordHash = CryptoUtils.md5Hash('$username:$domain:$password');
+      final sipPasswordHash =
+          CryptoUtils.md5Hash('$username:$domain:$password');
       debugPrint('--- Registration Flow: MD5 Hash Computed: $sipPasswordHash ---');
 
-      // 4. Construct SIP User
       final sipUri = '$username@$domain';
       debugPrint('--- Registration Flow: Constructing SIP User: $sipUri ---');
-      
+
       final user = SipUser(
         wsUrl: wsUrl,
         selectedTransport: TransportType.WS,
         wsExtraHeaders: {
           'Origin': originUrl,
-          // 'Host': domain, // REMOVED: Do not override Host header in WS handshake. 
-          // The WS stack will set it to the WSS URL host automatically.
         },
         sipUri: sipUri,
         port: AppConstants.port,
         displayName: username,
-        password: password, // Use plain password for sip_ua to handle Digest Auth
+        password: password,
         authUser: username,
       );
 
-      // 5. Register SIP Account
       debugPrint('--- Registration Flow: Initiating SIP Registration... ---');
       final result = await registerUserUseCase.call(user);
 
@@ -158,13 +146,14 @@ class RegistrationViewModel extends ChangeNotifier {
       if (result is Success) {
         debugPrint('--- Registration Flow: Registration Initiated Successfully ---');
         _currentUser = user;
-        // Do NOT transition to completed yet. Wait for registrationStateChanged.
-        // _currentStep = RegistrationStep.completed; 
         _errorMessage = null;
+        _statusMessage = 'Registering your line...';
+        _beginSipRegistrationWatch();
       } else if (result is Failure) {
-        debugPrint('--- Registration Flow: Registration Failed: ${result.message} ---');
+        debugPrint(
+            '--- Registration Flow: Registration Failed: ${result.message} ---');
         _errorMessage = result.message;
-        _currentStep = RegistrationStep.otpInput; // Go back to allow retry? Or stay?
+        _currentStep = RegistrationStep.otpInput;
       }
     } catch (e) {
       debugPrint('--- Registration Flow: Exception: $e ---');
@@ -176,19 +165,98 @@ class RegistrationViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _beginSipRegistrationWatch() {
+    _registrationTimeout?.cancel();
+
+    if (sipHelper.registered) {
+      _completeSipRegistration();
+      return;
+    }
+
+    _registrationTimeout = Timer(const Duration(seconds: 45), () {
+      if (_currentStep != RegistrationStep.registering) return;
+      _errorMessage ??=
+          'Phone service setup is taking too long. Check your network, then tap Retry.';
+      _statusMessage = 'Connection timed out.';
+      notifyListeners();
+    });
+  }
+
+  void _completeSipRegistration() {
+    _registrationTimeout?.cancel();
+    _currentStep = RegistrationStep.completed;
+    _errorMessage = null;
+    _statusMessage = null;
+    notifyListeners();
+  }
+
+  Future<void> retrySipRegistration() async {
+    final user = _currentUser;
+    if (user == null) {
+      _errorMessage = 'Missing account details. Please verify OTP again.';
+      _currentStep = RegistrationStep.otpInput;
+      notifyListeners();
+      return;
+    }
+
+    _errorMessage = null;
+    _statusMessage = 'Retrying phone service connection...';
+    _currentStep = RegistrationStep.registering;
+    notifyListeners();
+
+    final result = await registerUserUseCase.call(user);
+    if (result is Success) {
+      _beginSipRegistrationWatch();
+    } else if (result is Failure) {
+      _errorMessage = result.message;
+      notifyListeners();
+    }
+  }
+
+  void skipToApp() {
+    _registrationTimeout?.cancel();
+    _currentStep = RegistrationStep.completed;
+    _statusMessage = null;
+    notifyListeners();
+  }
+
   void updateRegistrationState(RegistrationState state) {
     _registrationState = state;
-    
+
     if (state.state == RegistrationStateEnum.REGISTERED) {
       debugPrint('--- Registration Flow: SIP Registered! ---');
-      _currentStep = RegistrationStep.completed;
+      _completeSipRegistration();
     } else if (state.state == RegistrationStateEnum.REGISTRATION_FAILED) {
       debugPrint('--- Registration Flow: SIP Registration Failed! ---');
-      _errorMessage = 'SIP Registration Failed. Please check your network or credentials.';
-      // Optionally go back to a previous step or stay in registering to allow retry
-      // _currentStep = RegistrationStep.otpInput;
+      if (_currentStep == RegistrationStep.registering) {
+        _errorMessage =
+            'Could not register for calls. Check your network and tap Retry, or continue to the app.';
+        _statusMessage = 'Phone registration failed.';
+        notifyListeners();
+      }
     }
-    
+  }
+
+  void updateTransportState(TransportState state) {
+    if (_currentStep != RegistrationStep.registering) return;
+
+    switch (state.state) {
+      case TransportStateEnum.CONNECTING:
+        _statusMessage = 'Connecting to phone server...';
+        break;
+      case TransportStateEnum.CONNECTED:
+        _statusMessage = 'Connected. Registering your line...';
+        break;
+      case TransportStateEnum.DISCONNECTED:
+        _statusMessage = 'Disconnected from phone server.';
+        if (state.cause != null) {
+          _errorMessage =
+              'Could not connect to the phone server. Check your network and tap Retry.';
+        }
+        break;
+      default:
+        break;
+    }
     notifyListeners();
   }
 
@@ -196,13 +264,14 @@ class RegistrationViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
-  
+
   void reset() {
+    _registrationTimeout?.cancel();
     _currentStep = RegistrationStep.phoneInput;
     _tempPhone = null;
     _errorMessage = null;
+    _statusMessage = null;
     _isLoading = false;
     notifyListeners();
   }
 }
-

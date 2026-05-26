@@ -2,6 +2,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:sip_ua/sip_ua.dart';
 import '../../domain/repositories/call_repository.dart';
 import '../../../../core/utils/result.dart';
+import '../../../../core/utils/sip_utils.dart';
 import '../datasources/call_data_source.dart';
 
 class CallRepositoryImpl implements CallRepository {
@@ -13,32 +14,11 @@ class CallRepositoryImpl implements CallRepository {
   @override
   Future<Result<void>> makeCall(String destination,
       {required bool voiceOnly}) async {
-    try {
-      var mediaConstraints = <String, dynamic>{
-        'audio': true,
-        'video': voiceOnly
-            ? false
-            : {
-                'mandatory': <String, dynamic>{
-                  'minWidth': '640',
-                  'minHeight': '480',
-                  'minFrameRate': '30',
-                },
-                'facingMode': 'user',
-              }
-      };
-
-      MediaStream mediaStream =
-          await navigator.mediaDevices.getUserMedia(mediaConstraints);
-
-      sipHelper.call(destination,
-          voiceOnly: voiceOnly, mediaStream: mediaStream);
-      // Note: sipHelper.call returns void, the call object is managed by SIPUAHelper
-      // The call object will be available through the SipUaHelperListener
-      return const Success(null);
-    } catch (e) {
-      return Failure('Failed to make call: ${e.toString()}');
-    }
+    return SipUtils.placeOutgoingCall(
+      sipHelper,
+      destination,
+      voiceOnly: voiceOnly,
+    );
   }
 
   @override
@@ -58,7 +38,7 @@ class CallRepositoryImpl implements CallRepository {
             : false
       };
 
-      MediaStream mediaStream =
+      final mediaStream =
           await navigator.mediaDevices.getUserMedia(mediaConstraints);
 
       call.answer(sipHelper.buildCallOptions(!hasVideo),
@@ -139,4 +119,3 @@ class CallRepositoryImpl implements CallRepository {
     }
   }
 }
-

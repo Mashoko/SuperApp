@@ -108,10 +108,14 @@ class _ContactsViewState extends State<ContactsView> {
               ListTile(
                 leading: const Icon(Icons.call),
                 title: Text('Call $number'),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
-                  // Use CallViewModel to make call
-                  getIt<CallViewModel>().makeCall(number, voiceOnly: true);
+                  final error = await getIt<CallViewModel>()
+                      .makeCall(number, voiceOnly: true);
+                  if (!context.mounted || error == null) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(error)),
+                  );
                 },
               ),
               ListTile(

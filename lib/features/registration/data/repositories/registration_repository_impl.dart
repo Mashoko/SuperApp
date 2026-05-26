@@ -2,6 +2,7 @@ import '../../domain/entities/sip_user.dart';
 import '../../domain/repositories/registration_repository.dart';
 import '../../../../core/utils/result.dart';
 import '../datasources/registration_local_data_source.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sip_ua/sip_ua.dart';
 
 class RegistrationRepositoryImpl implements RegistrationRepository {
@@ -26,18 +27,14 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
     }
 
     try {
-      // Unregister first if already registered
-      // Unregister first if already registered
+      // Only unregister when actually registered (unregister() asserts registered).
       try {
-        if (sipHelper.registerState.state != RegistrationStateEnum.NONE && 
-            sipHelper.registerState.state != RegistrationStateEnum.UNREGISTERED) {
-          sipHelper.unregister();
-          // Wait a bit for unregistration to complete
+        if (sipHelper.registered) {
+          await sipHelper.unregister();
           await Future.delayed(const Duration(milliseconds: 500));
         }
       } catch (e) {
-        // Ignore unregister error as we are about to register anyway
-        print('Error during unregister: $e');
+        debugPrint('Error during unregister: $e');
       }
 
       final host = user.sipUri?.split('@')[1];

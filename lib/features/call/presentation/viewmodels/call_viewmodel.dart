@@ -39,13 +39,18 @@ class CallViewModel extends ChangeNotifier {
   String? get remoteIdentity => _remoteIdentity;
   String get callDuration => _callDuration;
 
-  Future<void> makeCall(String destination, {required bool voiceOnly}) async {
+  /// Returns an error message on failure, or null on success.
+  Future<String?> makeCall(String destination, {required bool voiceOnly}) async {
     final result = await makeCallUseCase.call(destination, voiceOnly: voiceOnly);
     if (result is Success) {
       _isVoiceOnly = voiceOnly;
-      // Call object will be set via listener
       notifyListeners();
+      return null;
     }
+    if (result is Failure) {
+      return result.message;
+    }
+    return 'Failed to start call.';
   }
 
   void setCall(Call call) {
