@@ -239,7 +239,7 @@ class _GlideHomeTab extends StatelessWidget {
         final walletChipText =
             accountVM.loading && accountVM.alias == null
                 ? 'Wallet · …'
-                : 'Wallet · ${dialpadVM.accountBalance}';
+                : 'Wallet · ${dialpadVM.accountBalance.isEmpty ? '—' : dialpadVM.accountBalance}';
 
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(0, 6, 0, 120),
@@ -291,6 +291,7 @@ class _GlideHomeTab extends StatelessWidget {
 
                     // ── Promotions ──────────────────────────────────
                     GlidePromotionsCarousel(
+                        apiBanners: shoppingVM.banners,
                         onBannerTap: (_) => onGoShop()),
 
                     const SizedBox(height: 28),
@@ -479,13 +480,11 @@ String _primaryWalletLine(
   DialpadViewModel dialpad,
 ) {
   final d = dialpad.accountBalance.trim();
-  if (d.isNotEmpty && d != r'$0.00') return d;
-  if (account.balance != null && account.balance! > 0) {
-    return _formatVoiceBalance(account.balance!)
-        .replaceAll('Voice Bal: ', '')
-        .trim();
+  if (d.isNotEmpty) return d;
+  if (account.balance != null) {
+    return '\$${account.balance!.toStringAsFixed(2)}';
   }
-  return r'$0.00';
+  return '—';
 }
 
 Future<void> _launchTopUp(BuildContext context) async {

@@ -94,9 +94,9 @@ class ProductGridItem extends StatelessWidget {
                         final quantity = viewModel.getProductQuantity(product.productId);
                         return QuantitySelector(
                           quantity: quantity,
-                          onAdd: () => viewModel.addToCart('user_id', product.productId),
-                          onIncrement: () => viewModel.updateCartQuantity('user_id', product.productId, quantity + 1),
-                          onRemove: () => viewModel.updateCartQuantity('user_id', product.productId, quantity - 1),
+                          onAdd: () => viewModel.addToCart(viewModel.userId, product.productId),
+                          onIncrement: () => viewModel.updateCartQuantity(viewModel.userId, product.productId, quantity + 1),
+                          onRemove: () => viewModel.updateCartQuantity(viewModel.userId, product.productId, quantity - 1),
                         );
                       },
                     ),

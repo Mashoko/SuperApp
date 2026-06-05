@@ -13,7 +13,12 @@ class CartView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Cart (2)'), // Mock count for now
+        title: Consumer<ShoppingViewModel>(
+          builder: (_, vm, __) {
+            final count = (vm.cart['items'] as List?)?.length ?? 0;
+            return Text(count == 0 ? 'My Cart' : 'My Cart ($count)');
+          },
+        ),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, size: 20),
@@ -54,7 +59,7 @@ class CartView extends StatelessWidget {
                     return CartItemTile(
                       product: product,
                       quantity: quantity,
-                      onIncrement: () => viewModel.addToCart('user_id', product.productId),
+                      onIncrement: () => viewModel.addToCart(viewModel.userId, product.productId),
                       onDecrement: () {
                         if (quantity > 1) {
                           // For now, we don't have a direct updateQuantity, so we add -1? 
@@ -64,12 +69,12 @@ class CartView extends StatelessWidget {
                           // Wait, addToCart adds. To decrement we need a different method or pass negative?
                           // Service: cart[existingItemIndex].quantity += quantity;
                           // So passing -1 should work!
-                          viewModel.addToCart('user_id', product.productId, quantity: -1);
+                          viewModel.addToCart(viewModel.userId, product.productId, quantity: -1);
                         } else {
-                          viewModel.removeFromCart('user_id', product.productId);
+                          viewModel.removeFromCart(viewModel.userId, product.productId);
                         }
                       },
-                      onDelete: () => viewModel.removeFromCart('user_id', product.productId),
+                      onDelete: () => viewModel.removeFromCart(viewModel.userId, product.productId),
                     );
                   },
                 ),

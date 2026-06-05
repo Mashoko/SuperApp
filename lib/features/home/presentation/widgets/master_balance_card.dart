@@ -83,37 +83,43 @@ class MasterBalanceCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: FilledButton(
-                  onPressed: onTopUp,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: WunzaColors.glideAccent,
-                    foregroundColor: Colors.white,
+                child: GestureDetector(
+                  onTap: onTopUp,
+                  child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
+                    decoration: BoxDecoration(
+                      color: WunzaColors.glideAccent,
                       borderRadius: BorderRadius.circular(14),
                     ),
-                  ),
-                  child: const Text(
-                    'Top Up',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'Top Up',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: OutlinedButton(
-                  onPressed: onManageAccount,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white54),
+                child: GestureDetector(
+                  onTap: onManageAccount,
+                  child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
+                    decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white54),
                     ),
-                  ),
-                  child: const Text(
-                    'Manage Account',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'Manage Account',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ),

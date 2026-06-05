@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:mvvm_sip_demo/core/di/inject.dart';
+import 'package:mvvm_sip_demo/core/routes.dart';
+import 'package:mvvm_sip_demo/core/services/otp_auth_service.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
 import 'package:mvvm_sip_demo/features/dashboard/presentation/viewmodels/dashboard_viewmodel.dart';
-import 'package:mvvm_sip_demo/core/routes.dart';
 
 class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
@@ -12,12 +14,16 @@ class DashboardView extends StatefulWidget {
 }
 
 class _DashboardViewState extends State<DashboardView> {
-  final TextEditingController _userIdController = TextEditingController(text: 'user1');
+  final TextEditingController _userIdController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final creds = await getIt<OtpAuthService>().getStoredCredentials();
+      final userId = creds?['username'] ?? '';
+      if (!mounted) return;
+      _userIdController.text = userId;
       _loadDashboard();
     });
   }

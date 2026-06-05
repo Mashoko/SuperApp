@@ -175,7 +175,7 @@ class _ProductDetailViewState extends State<ProductDetailView> {
                                 );
                               },
                               onAddToCart: (p) {
-                                viewModel.addToCart('user_id', p.productId);
+                                viewModel.addToCart(viewModel.userId, p.productId);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text('${p.name} added to cart')),
                                 );
@@ -211,7 +211,7 @@ class _ProductDetailViewState extends State<ProductDetailView> {
                     child: ElevatedButton(
                       onPressed: () {
                         Provider.of<ShoppingViewModel>(context, listen: false)
-                            .addToCart('user_id', product.productId, quantity: _quantity);
+                            .addToCart(Provider.of<ShoppingViewModel>(context, listen: false).userId, product.productId, quantity: _quantity);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('${product.name} added to cart')),
                         );
@@ -233,7 +233,7 @@ class _ProductDetailViewState extends State<ProductDetailView> {
                       onPressed: () {
                         // Add to cart and go to checkout
                         Provider.of<ShoppingViewModel>(context, listen: false)
-                            .addToCart('user_id', product.productId, quantity: _quantity);
+                            .addToCart(Provider.of<ShoppingViewModel>(context, listen: false).userId, product.productId, quantity: _quantity);
                         Navigator.pushNamed(context, Routes.cart);
                       },
                       style: ElevatedButton.styleFrom(

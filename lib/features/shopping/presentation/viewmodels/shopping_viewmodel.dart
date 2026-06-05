@@ -15,6 +15,9 @@ class ShoppingViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
+  String _userId = '';
+  String get userId => _userId;
+
   String _selectedCategory = 'All'; // Default to 'All' or first loaded
   List<String> _categories = [];
   bool _isCategoriesLoading = false;
@@ -271,6 +274,7 @@ class ShoppingViewModel extends ChangeNotifier {
 
   Future<void> loadCart(String userId) async {
     try {
+      _userId = userId;
       _cart = _service.getCart(userId);
       notifyListeners();
     } catch (e) {

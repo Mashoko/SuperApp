@@ -26,14 +26,16 @@ class CallHistoryWidget extends StatelessWidget {
                   'Recent activity',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
-                TextButton(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, Routes.callHistory),
-                  child: const Text(
-                    'View all',
-                    style: TextStyle(
-                      color: WunzaColors.glidePrimary,
-                      fontWeight: FontWeight.w600,
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, Routes.callHistory),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Text(
+                      'View all',
+                      style: TextStyle(
+                        color: WunzaColors.glidePrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -140,15 +142,15 @@ class CallHistoryWidget extends StatelessWidget {
                               SnackBar(content: Text(error)),
                             );
                           },
-                          style: TextButton.styleFrom(
-                            foregroundColor: WunzaColors.glideAccent,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text(
-                            'Call back',
-                            style: TextStyle(fontWeight: FontWeight.w600),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            child: Text(
+                              'Call back',
+                              style: TextStyle(
+                                color: WunzaColors.glideAccent,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -181,14 +183,16 @@ class CallHistoryWidget extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
-            TextButton(
-              onPressed: () =>
-                  Navigator.pushNamed(context, Routes.calling),
-              child: const Text(
-                'Start a call',
-                style: TextStyle(
-                  color: WunzaColors.glidePrimary,
-                  fontWeight: FontWeight.w600,
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, Routes.calling),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Text(
+                  'Start a call',
+                  style: TextStyle(
+                    color: WunzaColors.glidePrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),

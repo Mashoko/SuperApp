@@ -68,15 +68,15 @@ class _CheckoutViewState extends State<CheckoutView> {
                     quantity: quantity,
                     imageUrl: product.imageUrl,
                     onDelete: () => _confirmDelete(() =>
-                        viewModel.removeFromCart('user_id', product.productId)),
+                        viewModel.removeFromCart(viewModel.userId, product.productId)),
                     onIncrement: () =>
-                        viewModel.addToCart('user_id', product.productId),
+                        viewModel.addToCart(viewModel.userId, product.productId),
                     onDecrement: () {
                       if (quantity > 1) {
-                        viewModel.addToCart('user_id', product.productId,
+                        viewModel.addToCart(viewModel.userId, product.productId,
                             quantity: -1);
                       } else {
-                        viewModel.removeFromCart('user_id', product.productId);
+                        viewModel.removeFromCart(viewModel.userId, product.productId);
                       }
                     },
                   );
@@ -272,7 +272,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                             amount: totalAmount,
                             currency: 'USD',
                             reference: paymentReference,
-                            userId: 'user_id',
+                            userId: viewModel.userId,
                             channel: channel,
                           );
 
@@ -294,7 +294,7 @@ class _CheckoutViewState extends State<CheckoutView> {
 
                           // 2️⃣ On payment success, place order locally
                           final success = await viewModel.placeOrder(
-                            'user_id',
+                            viewModel.userId,
                             'Default Address',
                             transactionId: paymentResult.transactionId,
                             paymentStatus: 'paid',

@@ -72,7 +72,7 @@ Future<void> configureDependencies() async {
   // Use cases
   // API clients
   getIt.registerLazySingleton<UsersClient>(
-    () => UsersClient(packageId: 'org.africom.catchapp', secure: false),
+    () => UsersClient(packageId: 'org.duri.maswerasei', secure: false),
   );
 
   // Auth service for WhatsApp OTP

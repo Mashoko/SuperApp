@@ -1,6 +1,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:mvvm_sip_demo/core/di/inject.dart';
+import 'package:mvvm_sip_demo/core/services/otp_auth_service.dart';
 import 'package:mvvm_sip_demo/models/utility_bills/bill_type.dart';
 import 'package:mvvm_sip_demo/features/utility_bills/presentation/viewmodels/utility_bills_viewmodel.dart';
 
@@ -12,8 +14,7 @@ class UtilityBillsView extends StatefulWidget {
 }
 
 class _UtilityBillsViewState extends State<UtilityBillsView> {
-  final TextEditingController _userIdController =
-      TextEditingController(text: 'user1');
+  final TextEditingController _userIdController = TextEditingController();
   final TextEditingController _accountController = TextEditingController();
   final TextEditingController _providerController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
@@ -37,10 +38,13 @@ class _UtilityBillsViewState extends State<UtilityBillsView> {
       }
     }
     
-    // Load payments after frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final vm = Provider.of<UtilityBillsViewModel>(context, listen: false);
-      vm.loadPayments(_userIdController.text);
+    // Load real user and payments after frame
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final creds = await getIt<OtpAuthService>().getStoredCredentials();
+      final userId = creds?['username'] ?? '';
+      if (!mounted) return;
+      _userIdController.text = userId;
+      Provider.of<UtilityBillsViewModel>(context, listen: false).loadPayments(userId);
     });
   }
 

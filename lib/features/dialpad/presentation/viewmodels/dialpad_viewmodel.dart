@@ -20,7 +20,7 @@ class DialpadViewModel extends ChangeNotifier {
   
   // Balance properties
   String _voiceBalance = '';
-  String _accountBalance = '\$0.00';
+  String _accountBalance = '';
 
   String get voiceBalance => _voiceBalance;
   String get accountBalance => _accountBalance;

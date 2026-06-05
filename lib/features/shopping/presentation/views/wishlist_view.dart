@@ -38,7 +38,7 @@ class WishlistView extends StatelessWidget {
               return WishlistTile(
                 product: product,
                 onAddToCart: () {
-                  viewModel.addToCart('user_id', product.productId);
+                  viewModel.addToCart(viewModel.userId, product.productId);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('${product.name} added to cart')),
                   );

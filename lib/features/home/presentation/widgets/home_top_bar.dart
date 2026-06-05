@@ -58,10 +58,15 @@ class HomeTopBar extends StatelessWidget {
               badgeColor: WunzaColors.glideAccent,
               padding: EdgeInsets.all(4),
             ),
-            child: IconButton(
-              onPressed: onNotificationsTap,
-              icon: const Icon(Icons.notifications_outlined),
-              color: WunzaColors.glidePrimary,
+            child: GestureDetector(
+              onTap: onNotificationsTap,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Icon(
+                  Icons.notifications_outlined,
+                  color: WunzaColors.glidePrimary,
+                ),
+              ),
             ),
           ),
           Material(

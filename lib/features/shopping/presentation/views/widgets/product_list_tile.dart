@@ -100,11 +100,11 @@ class ProductListTile extends StatelessWidget {
                             if (onAddToCart != null) {
                               onAddToCart!();
                             } else {
-                              viewModel.addToCart('user_id', product.productId);
+                              viewModel.addToCart(viewModel.userId, product.productId);
                             }
                           },
-                          onIncrement: () => viewModel.updateCartQuantity('user_id', product.productId, quantity + 1),
-                          onRemove: () => viewModel.updateCartQuantity('user_id', product.productId, quantity - 1),
+                          onIncrement: () => viewModel.updateCartQuantity(viewModel.userId, product.productId, quantity + 1),
+                          onRemove: () => viewModel.updateCartQuantity(viewModel.userId, product.productId, quantity - 1),
                         );
                       },
                     ),

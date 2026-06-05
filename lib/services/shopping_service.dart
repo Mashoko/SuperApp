@@ -22,8 +22,10 @@ class ShoppingService {
         url += '&category=$category';
       }
       
+      print('[HTTP] → GET $url');
       final response = await http.get(Uri.parse(url));
-      
+      print('[HTTP] ← GET $url | status: ${response.statusCode} | body: ${response.body}');
+
       if (response.statusCode == 200) {
         final dynamic decoded = json.decode(response.body);
         
@@ -71,8 +73,11 @@ class ShoppingService {
 
   Future<List<String>> fetchCategories() async {
     try {
-      final response = await http.get(Uri.parse('https://superapp-diht.onrender.com/api/categories?hasProducts=true'));
-      
+      const categoriesUrl = 'https://superapp-diht.onrender.com/api/categories?hasProducts=true';
+      print('[HTTP] → GET $categoriesUrl');
+      final response = await http.get(Uri.parse(categoriesUrl));
+      print('[HTTP] ← GET $categoriesUrl | status: ${response.statusCode} | body: ${response.body}');
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => json['name'].toString()).toList();
@@ -83,14 +88,16 @@ class ShoppingService {
     } catch (e) {
       print('Error fetching categories: $e');
       return [];
-      return [];
     }
   }
 
   Future<List<Banner>> fetchBanners() async {
     try {
-      final response = await http.get(Uri.parse('https://superapp-diht.onrender.com/api/banners'));
-      
+      const bannersUrl = 'https://superapp-diht.onrender.com/api/banners';
+      print('[HTTP] → GET $bannersUrl');
+      final response = await http.get(Uri.parse(bannersUrl));
+      print('[HTTP] ← GET $bannersUrl | status: ${response.statusCode} | body: ${response.body}');
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => Banner.fromJson(json)).toList();
@@ -279,11 +286,14 @@ class ShoppingService {
   }
   Future<Map<String, dynamic>> validateVoucher(String code, double total) async {
     try {
+      const voucherUrl = 'https://superapp-diht.onrender.com/api/validate-voucher';
+      print('[HTTP] → POST $voucherUrl');
       final response = await http.post(
-        Uri.parse('https://superapp-diht.onrender.com/api/validate-voucher'),
+        Uri.parse(voucherUrl),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'code': code, 'cart_total': total}),
       );
+      print('[HTTP] ← POST $voucherUrl | status: ${response.statusCode} | body: ${response.body}');
 
       if (response.statusCode == 200) {
         return json.decode(response.body);

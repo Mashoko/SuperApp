@@ -51,6 +51,7 @@ class AfricomPaymentService {
     required String channel,
   }) async {
     try {
+      print('[HTTP] → POST $_paymentEndpoint');
       final response = await http.post(
         Uri.parse(_paymentEndpoint),
         headers: <String, String>{
@@ -68,6 +69,7 @@ class AfricomPaymentService {
           'channel': channel,
         }),
       );
+      print('[HTTP] ← POST $_paymentEndpoint | status: ${response.statusCode} | body: ${response.body}');
 
       if (response.statusCode == 200) {
         final dynamic decoded = jsonDecode(response.body);

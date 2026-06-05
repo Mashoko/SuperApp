@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
+import 'package:mvvm_sip_demo/core/di/inject.dart';
 import 'package:mvvm_sip_demo/core/routes.dart';
+import 'package:mvvm_sip_demo/core/services/otp_auth_service.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
 import 'package:mvvm_sip_demo/models/utility_bills/bill_type.dart';
 import 'package:mvvm_sip_demo/features/utility_bills/presentation/viewmodels/utility_bills_viewmodel.dart';
@@ -18,9 +20,11 @@ class _PaymentsViewState extends State<PaymentsView> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // using hardcoded user1 to match HomeView
-      Provider.of<UtilityBillsViewModel>(context, listen: false).loadPayments('user1');
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final creds = await getIt<OtpAuthService>().getStoredCredentials();
+      final userId = creds?['username'] ?? '';
+      if (!mounted) return;
+      Provider.of<UtilityBillsViewModel>(context, listen: false).loadPayments(userId);
     });
   }
 
