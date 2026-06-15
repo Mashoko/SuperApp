@@ -66,6 +66,15 @@ class _ShoppingViewState extends State<ShoppingView> {
                       onCartPressed: () =>
                           Navigator.pushNamed(context, Routes.cart),
                       cartItemCount: itemCount,
+                      onSearch: (query) {
+                        final vm = context.read<ShoppingViewModel>();
+                        if (query.isEmpty) {
+                          vm.clearSearch();
+                        } else {
+                          vm.addRecentSearch(query);
+                          vm.searchProducts(query);
+                        }
+                      },
                     );
                   },
                 ),
@@ -141,8 +150,64 @@ class _ShoppingViewState extends State<ShoppingView> {
                           builder: (context, viewModel, child) {
                             if (viewModel.isLoading &&
                                 viewModel.products.isEmpty) {
-                              return const Center(
-                                  child: CircularProgressIndicator());
+                              return const Padding(
+                                padding: EdgeInsets.only(top: 64),
+                                child: Center(
+                                    child: CircularProgressIndicator()),
+                              );
+                            }
+
+                            if (viewModel.errorMessage != null &&
+                                viewModel.products.isEmpty) {
+                              return Padding(
+                                padding: const EdgeInsets.all(32),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.wifi_off,
+                                        size: 64, color: Colors.grey),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      viewModel.errorMessage!,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                          color: Colors.grey),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton.icon(
+                                      onPressed: () =>
+                                          viewModel.loadProducts(),
+                                      icon: const Icon(Icons.refresh),
+                                      label: const Text('Retry'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            if (!viewModel.isLoading &&
+                                viewModel.products.isEmpty) {
+                              return Padding(
+                                padding: const EdgeInsets.all(32),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.search_off,
+                                        size: 64,
+                                        color: Colors.grey[400]),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      viewModel.searchQuery.isNotEmpty
+                                          ? 'No results for "${viewModel.searchQuery}"'
+                                          : 'No products found',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                              );
                             }
 
                             // Bottom padding for checkout bar
