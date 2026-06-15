@@ -159,7 +159,8 @@ app.get('/api/products', async (req, res) => {
             filter.category = req.query.category;
         }
         if (req.query.search && req.query.search.trim() !== '') {
-            const searchRegex = new RegExp(req.query.search.trim(), 'i');
+            const escaped = req.query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const searchRegex = new RegExp(escaped, 'i');
             filter.$or = [{ name: searchRegex }, { description: searchRegex }];
         }
 
@@ -717,6 +718,9 @@ app.delete('/api/wishlist/remove/:productId', async (req, res) => {
     const { userId } = req.query;
     const { productId } = req.params;
     if (!userId) return res.status(400).json({ message: 'userId required' });
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({ message: 'Invalid productId' });
+    }
     await Wishlist.findOneAndUpdate({ userId }, { $pull: { productIds: productId } });
     res.json({ message: 'Removed from wishlist' });
   } catch (err) {
@@ -762,6 +766,9 @@ app.delete('/api/shipping-addresses/:id', async (req, res) => {
   try {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ message: 'userId required' });
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid address id' });
+    }
     await ShippingAddress.findOneAndDelete({ _id: req.params.id, userId });
     res.json({ message: 'Address deleted' });
   } catch (err) {
