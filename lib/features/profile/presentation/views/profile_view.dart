@@ -13,6 +13,7 @@ import '../../../shopping/presentation/views/order_history_view.dart';
 import '../../../shopping/presentation/views/wishlist_view.dart';
 import '../../../payments/presentation/views/payments_view.dart';
 import '../../../login/presentation/views/login_view.dart';
+import 'shipping_addresses_view.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({super.key, this.embeddedInMainShell = false});
@@ -235,8 +236,7 @@ class _ProfileViewState extends State<ProfileView> {
                             title: 'Shipping Addresses',
                             subtitle: 'Manage delivery locations',
                             isDark: isDark,
-                            onTap: () => _navigateTo(context,
-                                const _PlaceholderScreen(title: 'Shipping Addresses')),
+                            onTap: () => _navigateTo(context, const ShippingAddressesView()),
                           ),
                           _buildTile(
                             icon: Icons.payment_outlined,
