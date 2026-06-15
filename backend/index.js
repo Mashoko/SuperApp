@@ -599,6 +599,80 @@ app.delete('/api/cart/clear', async (req, res) => {
   }
 });
 
+// --- Order Routes ---
+const Order = require('./models/order.model');
+
+// POST /api/orders  { userId, items, shippingAddress, transactionId, paymentStatus, total, discountCode, discountAmount }
+app.post('/api/orders', async (req, res) => {
+  try {
+    const {
+      userId,
+      items,
+      shippingAddress,
+      transactionId,
+      paymentStatus = 'pending',
+      total,
+      discountCode,
+      discountAmount = 0,
+    } = req.body;
+
+    if (!userId || !items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'userId and items are required' });
+    }
+
+    const orderId = `order_${Date.now()}_${userId}`;
+
+    const order = new Order({
+      order_id: orderId,
+      user_id: userId,
+      items: items,
+      shipping_address: shippingAddress || '',
+      transaction_id: transactionId || null,
+      payment_status: paymentStatus,
+      total_amount: total || 0,
+      discount_code: discountCode || null,
+      discount_amount: discountAmount,
+      status: 'confirmed',
+    });
+
+    const savedOrder = await order.save();
+
+    // Clear the user's cart after successful order
+    await Cart.findOneAndUpdate({ userId }, { items: [] });
+
+    res.status(201).json(savedOrder);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/orders?userId=<username>
+app.get('/api/orders', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ message: 'userId required' });
+    const orders = await Order.find({ user_id: userId }).sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// PATCH /api/orders/:id/status  (admin)
+app.patch('/api/orders/:id/status', auth, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+    const order = await Order.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Global error handler — catches Multer rejections and other middleware errors
 app.use((err, req, res, next) => {
   if (err.code === 'LIMIT_FILE_SIZE') {
