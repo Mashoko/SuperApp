@@ -9,15 +9,17 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Security headers
+// crossOriginResourcePolicy is relaxed so that images served from /uploads
+// can be loaded by the Flutter app and admin panel from different origins.
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // CORS — restrict to known origins
+const extraOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+  : ['https://superapp-diht.onrender.com'];
+
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:8080',
-    'https://superapp-diht.onrender.com',
-  ],
+  origin: ['http://localhost:3000', 'http://localhost:8080', ...extraOrigins],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
