@@ -38,6 +38,7 @@ app.use(express.json());
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
+const auth = require('./middleware/auth.middleware');
 
 // Ensure uploads directory exists
 const uploadDir = 'uploads';
@@ -57,7 +58,19 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ storage: storage });
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: function (req, file, cb) {
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPEG, PNG, WEBP and GIF images are allowed'));
+    }
+  },
+});
 
 // Database Connection
 mongoose.connect(process.env.MONGO_URI)
@@ -68,7 +81,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/uploads', express.static('uploads'));
 
 // Routes
-app.post('/api/upload', upload.single('image'), (req, res) => {
+app.post('/api/upload', auth, upload.single('image'), (req, res) => {
     if (!req.file) {
         return res.status(400).send('No file uploaded.');
     }
@@ -90,15 +103,17 @@ const Product = require('./models/product.model');
 const User = require('./models/user.model');
 const Category = require('./models/category.model');
 const Shop = require('./models/shop.model');
-const auth = require('./middleware/auth.middleware');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 // Auth Routes
 app.post('/api/auth/register', authLimiter, async (req, res) => {
     try {
-        const { username, password, role } = req.body;
-        const user = new User({ username, password, role });
+        const { username, password } = req.body;
+        if (!username || !password) {
+          return res.status(400).json({ message: 'Username and password are required' });
+        }
+        const user = new User({ username, password }); // role defaults to 'staff' in schema
         await user.save();
         res.status(201).json({ message: 'User created successfully' });
     } catch (err) {
@@ -186,9 +201,14 @@ app.post('/api/products', auth, async (req, res) => {
 // Update a product
 app.put('/api/products/:id', auth, async (req, res) => {
     try {
+        const allowed = ['name', 'description', 'price', 'imageUrl', 'category', 'stock', 'discountPrice', 'isAvailable'];
+        const update = {};
+        for (const key of allowed) {
+            if (req.body[key] !== undefined) update[key] = req.body[key];
+        }
         const updatedProduct = await Product.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            { $set: update },
             { new: true }
         );
         res.json(updatedProduct);
@@ -412,6 +432,9 @@ app.post('/api/validate-voucher', async (req, res) => {
         if (discountAmount > subtotal) {
             discountAmount = subtotal;
         }
+
+        // Increment usage count
+        await Voucher.findByIdAndUpdate(voucher._id, { $inc: { usedCount: 1 } });
 
         res.json({
             valid: true,
