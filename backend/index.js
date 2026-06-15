@@ -466,6 +466,139 @@ app.post('/api/validate-voucher', async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+// --- Cart Routes ---
+const Cart = require('./models/cart.model');
+
+// Helper: populate cart items with product details and compute totals
+async function buildCartResponse(cart) {
+  const populatedItems = await Promise.all(
+    (cart ? cart.items : []).map(async (item) => {
+      const product = await Product.findById(item.productId);
+      if (!product || product.isDeleted) return null;
+      return {
+        product: {
+          _id: product._id,
+          product_id: product._id,
+          name: product.name,
+          price: product.price,
+          imageUrl: product.imageUrl,
+          image_url: product.imageUrl,
+          category: product.category,
+          stock: product.stock,
+          description: product.description,
+          unit: 'kg',
+        },
+        quantity: item.quantity,
+        total: product.price * item.quantity,
+      };
+    })
+  );
+
+  const filteredItems = populatedItems.filter((i) => i !== null);
+  const total = filteredItems.reduce((sum, i) => sum + i.total, 0);
+
+  return {
+    user_id: cart ? cart.userId : '',
+    items: filteredItems,
+    total: parseFloat(total.toFixed(2)),
+    item_count: filteredItems.length,
+  };
+}
+
+// GET /api/cart?userId=<username>
+app.get('/api/cart', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ message: 'userId required' });
+    const cart = await Cart.findOne({ userId });
+    res.json(await buildCartResponse(cart));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/cart/add  { userId, productId, quantity }
+app.post('/api/cart/add', async (req, res) => {
+  try {
+    const { userId, productId, quantity = 1 } = req.body;
+    if (!userId || !productId) return res.status(400).json({ message: 'userId and productId required' });
+
+    const product = await Product.findById(productId);
+    if (!product || product.isDeleted) return res.status(404).json({ message: 'Product not found' });
+
+    let cart = await Cart.findOne({ userId });
+    if (!cart) cart = new Cart({ userId, items: [] });
+
+    const existingIdx = cart.items.findIndex((i) => i.productId.toString() === productId);
+    if (existingIdx !== -1) {
+      cart.items[existingIdx].quantity += quantity;
+    } else {
+      cart.items.push({ productId, quantity });
+    }
+
+    await cart.save();
+    res.json(await buildCartResponse(cart));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// PUT /api/cart/update  { userId, productId, quantity }
+app.put('/api/cart/update', async (req, res) => {
+  try {
+    const { userId, productId, quantity } = req.body;
+    if (!userId || !productId || quantity === undefined) {
+      return res.status(400).json({ message: 'userId, productId, and quantity required' });
+    }
+
+    const cart = await Cart.findOne({ userId });
+    if (!cart) return res.status(404).json({ message: 'Cart not found' });
+
+    const idx = cart.items.findIndex((i) => i.productId.toString() === productId);
+    if (idx === -1) return res.status(404).json({ message: 'Item not in cart' });
+
+    if (quantity <= 0) {
+      cart.items.splice(idx, 1);
+    } else {
+      cart.items[idx].quantity = quantity;
+    }
+
+    await cart.save();
+    res.json(await buildCartResponse(cart));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// DELETE /api/cart/remove  { userId, productId }
+app.delete('/api/cart/remove', async (req, res) => {
+  try {
+    const { userId, productId } = req.body;
+    if (!userId || !productId) return res.status(400).json({ message: 'userId and productId required' });
+
+    const cart = await Cart.findOne({ userId });
+    if (!cart) return res.status(404).json({ message: 'Cart not found' });
+
+    cart.items = cart.items.filter((i) => i.productId.toString() !== productId);
+    await cart.save();
+    res.json(await buildCartResponse(cart));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// DELETE /api/cart/clear  { userId }
+app.delete('/api/cart/clear', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ message: 'userId required' });
+    await Cart.findOneAndUpdate({ userId }, { items: [] });
+    res.json({ message: 'Cart cleared' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Global error handler — catches Multer rejections and other middleware errors
 app.use((err, req, res, next) => {
   if (err.code === 'LIMIT_FILE_SIZE') {
