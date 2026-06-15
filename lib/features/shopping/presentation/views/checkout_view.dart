@@ -67,6 +67,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                     price: product.price,
                     quantity: quantity,
                     imageUrl: product.imageUrl,
+                    category: product.category,
                     onDelete: () => _confirmDelete(() =>
                         viewModel.removeFromCart(viewModel.userId, product.productId)),
                     onIncrement: () =>
@@ -392,7 +393,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     child: const Text(
-                      'Pay with Paynow',
+                      'Proceed to Pay',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -413,6 +414,7 @@ class _CheckoutViewState extends State<CheckoutView> {
     required double price,
     required int quantity,
     required String imageUrl,
+    required String category,
     required VoidCallback onDelete,
     required VoidCallback onIncrement,
     required VoidCallback onDecrement,
@@ -468,7 +470,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Text('Staples',
+                    Text(category.isNotEmpty ? category : 'General',
                         style:
                             TextStyle(color: Colors.grey[600], fontSize: 12)),
                     const SizedBox(width: 4),

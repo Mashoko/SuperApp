@@ -1,300 +1,263 @@
 import 'package:mvvm_sip_demo/models/shopping/product.dart';
-import 'package:mvvm_sip_demo/models/shopping/cart_item.dart';
 import 'package:mvvm_sip_demo/models/shopping/order.dart';
-import 'package:mvvm_sip_demo/models/shopping/order_status.dart';
 import 'package:mvvm_sip_demo/models/shopping/banner.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class ShoppingService {
+  static const String _base = 'https://superapp-diht.onrender.com/api';
+
+  // ── Product catalog (in-memory cache for browse) ──────────────────────────
   final Map<String, Product> _products = {};
-  final Map<String, List<CartItem>> _userCarts = {};
-  final List<Order> _orders = [];
 
-  ShoppingService() {
-    fetchProducts();
-  }
+  ShoppingService();
 
-  Future<({List<Product> products, int totalPages})> fetchProducts({int page = 1, int limit = 10, String? category}) async {
+  Future<({List<Product> products, int totalPages})> fetchProducts({
+    int page = 1,
+    int limit = 10,
+    String? category,
+    String? search,
+  }) async {
     try {
-      String url = 'https://superapp-diht.onrender.com/api/products?page=$page&limit=$limit';
-      if (category != null && category != 'All') {
-        url += '&category=$category';
-      }
-      
-      print('[HTTP] → GET $url');
-      final response = await http.get(Uri.parse(url));
-      print('[HTTP] ← GET $url | status: ${response.statusCode} | body: ${response.body}');
+      final params = <String, String>{
+        'page': '$page',
+        'limit': '$limit',
+      };
+      if (category != null && category != 'All') params['category'] = category;
+      if (search != null && search.trim().isNotEmpty) params['search'] = search.trim();
+
+      final uri = Uri.parse('$_base/products').replace(queryParameters: params);
+      final response = await http.get(uri);
 
       if (response.statusCode == 200) {
-        final dynamic decoded = json.decode(response.body);
-        
+        final decoded = json.decode(response.body);
+
         List<dynamic> productList;
         int totalPages = 1;
-        
+
         if (decoded is List) {
-           // Legacy backend response (List of products)
-           productList = decoded;
-           // If we are on page 1, clear cache? Or just merge?
-           // The legacy endpoint returns ALL products. 
-           // So if we are paging, this is unexpected, but we should handle it.
-           // We'll just assume page 1 contains everything.
+          productList = decoded;
         } else if (decoded is Map<String, dynamic>) {
-           // New backend response (Paginated)
-           productList = decoded['products'];
-           totalPages = decoded['totalPages'] ?? 1;
+          productList = decoded['products'] ?? [];
+          totalPages = decoded['totalPages'] ?? 1;
         } else {
-           print('Unexpected response format');
-           return (products: <Product>[], totalPages: 0);
+          return (products: <Product>[], totalPages: 0);
         }
-        
-        if (page == 1) {
-          // Only clear if we are reloading everything or changing category context significantly
-          // But for now, let's just update the cache
-        }
-        
+
         final List<Product> newProducts = [];
         for (final item in productList) {
           final product = Product.fromJson(item);
           _products[product.productId] = product;
           newProducts.add(product);
         }
-        print('Fetched ${newProducts.length} products (Page $page, Cat: $category) from API');
         return (products: newProducts, totalPages: totalPages);
       } else {
-        print('Failed to load products: ${response.statusCode}');
         return (products: <Product>[], totalPages: 0);
       }
     } catch (e) {
-      print('Error fetching products: $e');
       return (products: <Product>[], totalPages: 0);
     }
   }
 
   Future<List<String>> fetchCategories() async {
     try {
-      const categoriesUrl = 'https://superapp-diht.onrender.com/api/categories?hasProducts=true';
-      print('[HTTP] → GET $categoriesUrl');
-      final response = await http.get(Uri.parse(categoriesUrl));
-      print('[HTTP] ← GET $categoriesUrl | status: ${response.statusCode} | body: ${response.body}');
-
+      final response = await http.get(
+        Uri.parse('$_base/categories?hasProducts=true'),
+      );
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => json['name'].toString()).toList();
-      } else {
-        print('Failed to load categories: ${response.statusCode}');
-        return [];
+        return data.map((j) => j['name'].toString()).toList();
       }
+      return [];
     } catch (e) {
-      print('Error fetching categories: $e');
       return [];
     }
   }
 
   Future<List<Banner>> fetchBanners() async {
     try {
-      const bannersUrl = 'https://superapp-diht.onrender.com/api/banners';
-      print('[HTTP] → GET $bannersUrl');
-      final response = await http.get(Uri.parse(bannersUrl));
-      print('[HTTP] ← GET $bannersUrl | status: ${response.statusCode} | body: ${response.body}');
-
+      final response = await http.get(Uri.parse('$_base/banners'));
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Banner.fromJson(json)).toList();
-      } else {
-        print('Failed to load banners: ${response.statusCode}');
-        return [];
+        return data.map((j) => Banner.fromJson(j)).toList();
       }
+      return [];
     } catch (e) {
-      print('Error fetching banners: $e');
       return [];
     }
   }
 
-  void addProduct(Product product) {
-    _products[product.productId] = product;
-  }
+  Product? getProduct(String productId) => _products[productId];
 
-  List<Product> getProducts({String? category}) {
-    final products = _products.values.toList();
-    if (category != null) {
-      return products
-          .where((p) => p.category.toLowerCase() == category.toLowerCase())
-          .toList();
-    }
-    return products;
-  }
+  // ── Cart (server-side) ────────────────────────────────────────────────────
 
-  Product? getProduct(String productId) {
-    return _products[productId];
-  }
-
-  String addToCart(String userId, String productId, {int quantity = 1}) {
-    final product = _products[productId];
-    if (product == null) {
-      return 'Product $productId not found';
-    }
-
-    if (product.stock < quantity) {
-      return 'Insufficient stock. Available: ${product.stock}';
-    }
-
-    if (!_userCarts.containsKey(userId)) {
-      _userCarts[userId] = [];
-    }
-
-    final cart = _userCarts[userId]!;
-    final existingItemIndex =
-        cart.indexWhere((item) => item.product.productId == productId);
-
-    if (existingItemIndex != -1) {
-      cart[existingItemIndex].quantity += quantity;
-      return 'Updated quantity in cart';
-    }
-
-    cart.add(CartItem(product: product, quantity: quantity));
-    return 'Added ${quantity}x ${product.name} to cart';
-  }
-
-  String updateCartQuantity(String userId, String productId, int quantity) {
-    if (!_userCarts.containsKey(userId)) return 'Cart not found';
-    
-    final cart = _userCarts[userId]!;
-    final index = cart.indexWhere((item) => item.product.productId == productId);
-    
-    if (index != -1) {
-      if (quantity <= 0) {
-        // Remove item if quantity is zero or less
-        cart.removeAt(index);
-        return 'Removed item from cart';
+  Future<Map<String, dynamic>> fetchCart(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_base/cart?userId=${Uri.encodeComponent(userId)}'),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
       }
-      cart[index].quantity = quantity;
-      return 'Updated quantity to $quantity';
-    } else if (quantity > 0) {
-      // Add if not exists (optional, but good DX)
-      return addToCart(userId, productId, quantity: quantity);
+      return _emptyCart(userId);
+    } catch (e) {
+      return _emptyCart(userId);
     }
-    
-    return 'Product not found in cart';
   }
 
-  Map<String, dynamic> getCart(String userId) {
-    final cartItems = _userCarts[userId] ?? [];
-    final total = cartItems.fold<double>(
-        0.0, (sum, item) => sum + item.total);
-
-    return {
-      'user_id': userId,
-      'items': cartItems.map((item) => item.toJson()).toList(),
-      'total': total,
-      'item_count': cartItems.length,
-    };
-  }
-
-  String removeFromCart(String userId, String productId) {
-    final cart = _userCarts[userId];
-    if (cart == null || cart.isEmpty) {
-      return 'Cart is empty';
+  Future<Map<String, dynamic>> addToCart(String userId, String productId,
+      {int quantity = 1}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_base/cart/add'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'userId': userId,
+          'productId': productId,
+          'quantity': quantity,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      return _emptyCart(userId);
+    } catch (e) {
+      return _emptyCart(userId);
     }
+  }
 
-    final index = cart.indexWhere(
-        (item) => item.product.productId == productId);
-    if (index != -1) {
-      final removedItem = cart.removeAt(index);
-      return 'Removed ${removedItem.product.name} from cart';
+  Future<Map<String, dynamic>> updateCartQuantity(
+      String userId, String productId, int quantity) async {
+    if (quantity <= 0) return removeFromCart(userId, productId);
+    try {
+      final response = await http.put(
+        Uri.parse('$_base/cart/update'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'userId': userId,
+          'productId': productId,
+          'quantity': quantity,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      return _emptyCart(userId);
+    } catch (e) {
+      return _emptyCart(userId);
     }
-
-    return 'Product $productId not found in cart';
   }
 
-  void clearCart(String userId) {
-    _userCarts[userId] = [];
+  Future<Map<String, dynamic>> removeFromCart(
+      String userId, String productId) async {
+    try {
+      final request = http.Request('DELETE', Uri.parse('$_base/cart/remove'));
+      request.headers['Content-Type'] = 'application/json';
+      request.body = json.encode({'userId': userId, 'productId': productId});
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      return _emptyCart(userId);
+    } catch (e) {
+      return _emptyCart(userId);
+    }
   }
 
-  Order? placeOrder(
+  Future<void> clearCart(String userId) async {
+    try {
+      final request = http.Request('DELETE', Uri.parse('$_base/cart/clear'));
+      request.headers['Content-Type'] = 'application/json';
+      request.body = json.encode({'userId': userId});
+      final streamedResponse = await request.send();
+      await http.Response.fromStream(streamedResponse);
+    } catch (_) {}
+  }
+
+  Map<String, dynamic> _emptyCart(String userId) => {
+        'user_id': userId,
+        'items': <dynamic>[],
+        'total': 0.0,
+        'item_count': 0,
+      };
+
+  // ── Orders (server-side) ──────────────────────────────────────────────────
+
+  Future<Order?> placeOrder(
     String userId,
     String shippingAddress, {
     String? transactionId,
     String paymentStatus = 'pending',
-  }) {
-    final cart = _userCarts[userId];
-    if (cart == null || cart.isEmpty) {
+    double discountAmount = 0.0,
+    String? discountCode,
+    required Map<String, dynamic> cartSnapshot,
+  }) async {
+    try {
+      final cartItems = cartSnapshot['items'] as List<dynamic>? ?? [];
+      final total = (cartSnapshot['total'] as num?)?.toDouble() ?? 0.0;
+
+      final itemsPayload = cartItems.map((item) {
+        final productData = item['product'] as Map<String, dynamic>;
+        final quantity = item['quantity'] as int;
+        final itemTotal = (item['total'] as num?)?.toDouble() ?? 0.0;
+        return {
+          'product': productData,
+          'quantity': quantity,
+          'total': itemTotal,
+        };
+      }).toList();
+
+      final response = await http.post(
+        Uri.parse('$_base/orders'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'userId': userId,
+          'items': itemsPayload,
+          'shippingAddress': shippingAddress,
+          'transactionId': transactionId,
+          'paymentStatus': paymentStatus,
+          'total': total - discountAmount,
+          'discountCode': discountCode,
+          'discountAmount': discountAmount,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        final decoded = json.decode(response.body) as Map<String, dynamic>;
+        return Order.fromJson(decoded);
+      }
+      return null;
+    } catch (e) {
       return null;
     }
-
-    final cartItems = List<CartItem>.from(cart);
-
-    // Check stock availability
-    for (final item in cartItems) {
-      if (item.product.stock < item.quantity) {
-        return null;
-      }
-    }
-
-    // Create order
-    final orderId = 'order_${DateTime.now().millisecondsSinceEpoch}_$userId';
-    final order = Order(
-      orderId: orderId,
-      userId: userId,
-      items: cartItems,
-      shippingAddress: shippingAddress,
-      status: OrderStatus.confirmed,
-      transactionId: transactionId,
-      paymentStatus: paymentStatus,
-    );
-
-    // Update stock
-    for (final item in cartItems) {
-      final product = _products[item.product.productId];
-      if (product != null) {
-        // Note: In a real app, Product should be mutable or we need a way to update stock
-        // For now, we'll create a new product with updated stock
-        _products[product.productId] = Product(
-          productId: product.productId,
-          name: product.name,
-          price: product.price,
-          description: product.description,
-          stock: product.stock - item.quantity,
-          category: product.category,
-          createdAt: product.createdAt,
-        );
-      }
-    }
-
-    // Clear cart and add order
-    clearCart(userId);
-    _orders.add(order);
-
-    return order;
   }
 
-  List<Order> getOrders({String? userId}) {
-    if (userId == null) {
-      return List.from(_orders);
-    }
-    return _orders.where((order) => order.userId == userId).toList();
-  }
-
-  String updateOrderStatus(String orderId, OrderStatus status) {
-    final orderIndex = _orders.indexWhere((order) => order.orderId == orderId);
-    if (orderIndex != -1) {
-      // Note: Order is immutable, so we'd need to create a new one
-      // For simplicity, we'll just return success
-      return 'Order status updated to ${status.value}';
-    }
-    return 'Order $orderId not found';
-  }
-  Future<Map<String, dynamic>> validateVoucher(String code, double total) async {
+  Future<List<Order>> fetchOrders(String userId) async {
     try {
-      const voucherUrl = 'https://superapp-diht.onrender.com/api/validate-voucher';
-      print('[HTTP] → POST $voucherUrl');
+      final response = await http.get(
+        Uri.parse('$_base/orders?userId=${Uri.encodeComponent(userId)}'),
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((j) => Order.fromJson(j)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // ── Voucher ───────────────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> validateVoucher(
+      String code, double total) async {
+    try {
       final response = await http.post(
-        Uri.parse(voucherUrl),
+        Uri.parse('$_base/validate-voucher'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'code': code, 'cart_total': total}),
       );
-      print('[HTTP] ← POST $voucherUrl | status: ${response.statusCode} | body: ${response.body}');
-
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -306,4 +269,3 @@ class ShoppingService {
     }
   }
 }
-
