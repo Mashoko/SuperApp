@@ -41,8 +41,8 @@ class DashboardViewModel extends ChangeNotifier {
       final callStats = _callingService.getCallStatistics(userId);
 
       // Get shopping info
-      final cart = _shoppingService.getCart(userId);
-      final orders = _shoppingService.getOrders(userId: userId);
+      final cart = await _shoppingService.fetchCart(userId);
+      final orders = await _shoppingService.fetchOrders(userId);
 
       // Get payments info
       final payments = _utilityBillsService.getPayments(userId);
