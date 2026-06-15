@@ -158,6 +158,10 @@ app.get('/api/products', async (req, res) => {
         if (req.query.category && req.query.category !== 'All') {
             filter.category = req.query.category;
         }
+        if (req.query.search && req.query.search.trim() !== '') {
+            const searchRegex = new RegExp(req.query.search.trim(), 'i');
+            filter.$or = [{ name: searchRegex }, { description: searchRegex }];
+        }
 
         const totalProducts = await Product.countDocuments(filter);
         const totalPages = Math.ceil(totalProducts / limit);
@@ -669,6 +673,134 @@ app.patch('/api/orders/:id/status', auth, async (req, res) => {
     const order = await Order.findByIdAndUpdate(req.params.id, { status }, { new: true });
     if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json(order);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// --- Wishlist Routes ---
+const Wishlist = require('./models/wishlist.model');
+
+// GET /api/wishlist?userId=<username>
+app.get('/api/wishlist', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ message: 'userId required' });
+    const wishlist = await Wishlist.findOne({ userId });
+    const productIds = wishlist ? wishlist.productIds.map((id) => id.toString()) : [];
+    const products = await Product.find({ _id: { $in: productIds }, isDeleted: false });
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/wishlist/add  { userId, productId }
+app.post('/api/wishlist/add', async (req, res) => {
+  try {
+    const { userId, productId } = req.body;
+    if (!userId || !productId) return res.status(400).json({ message: 'userId and productId required' });
+    await Wishlist.findOneAndUpdate(
+      { userId },
+      { $addToSet: { productIds: productId } },
+      { upsert: true, new: true }
+    );
+    res.json({ message: 'Added to wishlist' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// DELETE /api/wishlist/remove/:productId?userId=<username>
+app.delete('/api/wishlist/remove/:productId', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const { productId } = req.params;
+    if (!userId) return res.status(400).json({ message: 'userId required' });
+    await Wishlist.findOneAndUpdate({ userId }, { $pull: { productIds: productId } });
+    res.json({ message: 'Removed from wishlist' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// --- Shipping Address Routes ---
+const ShippingAddress = require('./models/shipping_address.model');
+
+// GET /api/shipping-addresses?userId=<username>
+app.get('/api/shipping-addresses', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ message: 'userId required' });
+    const addresses = await ShippingAddress.find({ userId }).sort({ isDefault: -1, createdAt: -1 });
+    res.json(addresses);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/shipping-addresses  { userId, label, address, city, phone, isDefault }
+app.post('/api/shipping-addresses', async (req, res) => {
+  try {
+    const { userId, label, address, city, phone, isDefault } = req.body;
+    if (!userId || !label || !address) {
+      return res.status(400).json({ message: 'userId, label, and address are required' });
+    }
+    if (isDefault) {
+      await ShippingAddress.updateMany({ userId }, { isDefault: false });
+    }
+    const addr = new ShippingAddress({ userId, label, address, city, phone, isDefault: isDefault || false });
+    await addr.save();
+    res.status(201).json(addr);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// DELETE /api/shipping-addresses/:id?userId=<username>
+app.delete('/api/shipping-addresses/:id', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ message: 'userId required' });
+    await ShippingAddress.findOneAndDelete({ _id: req.params.id, userId });
+    res.json({ message: 'Address deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// --- Payment Proxy ---
+// POST /api/payments/africom/superapp-pay
+app.post('/api/payments/africom/superapp-pay', async (req, res) => {
+  try {
+    const { amount, currency, reference, user_id, channel } = req.body;
+    if (!amount || !currency || !reference || !user_id) {
+      return res.status(400).json({ message: 'amount, currency, reference, and user_id are required' });
+    }
+
+    // ── Africom integration placeholder ──────────────────────────────────────
+    // When you have your Africom credentials, replace this section with a real
+    // HTTP call to their API (e.g. using node-fetch or axios).
+    //
+    // Example:
+    //   const africomRes = await fetch('https://api.africom.co.zw/pay', {
+    //     method: 'POST',
+    //     headers: { 'X-Integration-Id': process.env.AFRICOM_INTEGRATION_ID,
+    //                 'X-Integration-Key': process.env.AFRICOM_INTEGRATION_KEY },
+    //     body: JSON.stringify({ amount, currency, reference, user_id, channel }),
+    //   });
+    //   const data = await africomRes.json();
+    //   return res.status(africomRes.status).json(data);
+    //
+    // Until then, return a test success so the Flutter checkout flow completes.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    return res.json({
+      status: 'success',
+      paid: true,
+      transaction_id: `TXN-${Date.now()}`,
+      message: 'Payment processed successfully',
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
