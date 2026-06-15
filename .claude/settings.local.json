@@ -47,7 +47,23 @@
       "Bash(python3 -c ' *)",
       "Bash(cp /tmp/new_prefs2.json /home/user/snap/code/243/.local/share/com.example.superapp/shared_preferences.json)",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('auth_user:', d.get\\('flutter.auth_user'\\)\\); print\\('password:', d.get\\('flutter.password'\\)\\)\")",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(mkdir -p /home/user/Documents/Calling/SuperApp/docs/superpowers/plans)",
+      "Bash(npm install *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git -C /home/user/Documents/Calling/SuperApp log --oneline -3)",
+      "Bash(git commit *)",
+      "Bash(git -C /home/user/Documents/Calling/SuperApp diff ac97918..HEAD -- backend/index.js)",
+      "Skill(code-review)",
+      "Skill(code-review:*)",
+      "Bash(node --check /home/user/Documents/Calling/SuperApp/backend/index.js)",
+      "Bash(grep -n 'Wishlist\\\\|wishlist\\\\|shipping\\\\|Shipping\\\\|africom\\\\|payment\\\\|Payment\\\\|search\\\\|searchRegex\\\\|isDeleted\\\\|addToSet\\\\|$pull\\\\|updateMany\\\\|findOneAndDelete\\\\|error handler\\\\|err, req, res, next' /home/user/Documents/Calling/SuperApp/backend/index.js)",
+      "Bash(node -e ' *)",
+      "Bash(flutter analyze *)"
+    ],
+    "additionalDirectories": [
+      "/home/user/Documents/Calling/SuperApp/docs/superpowers"
     ]
   }
 }

@@ -30,11 +30,9 @@ import '../../services/calling_service.dart';
 import '../../services/shopping_service.dart';
 import '../../services/payment_service.dart';
 import '../../services/utility_bills_service.dart';
-import '../../services/auth_service.dart'; // New AuthService
 import '../../features/dashboard/presentation/viewmodels/dashboard_viewmodel.dart';
 import '../../features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
 import '../../features/utility_bills/presentation/viewmodels/utility_bills_viewmodel.dart';
-import '../../features/auth/presentation/viewmodels/auth_viewmodel.dart';
 import '../../features/calling/presentation/viewmodels/calling_viewmodel.dart';
 
 final getIt = GetIt.instance;
@@ -105,12 +103,9 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<UtilityBillsService>(() => UtilityBillsService());
   getIt.registerLazySingleton<AfricomPaymentService>(
       () => const AfricomPaymentService());
-  getIt.registerLazySingleton<AuthService>(() => AuthService()); // New AppAuthService
-
   // ViewModels
   getIt.registerFactory(() => DashboardViewModel(getIt(), getIt(), getIt()));
   getIt.registerFactory(() => ShoppingViewModel(getIt()));
   getIt.registerFactory(() => UtilityBillsViewModel(getIt()));
-  getIt.registerFactory(() => AuthViewModel(getIt())); // Inject AuthService
   getIt.registerFactory(() => CallingViewModel(getIt())); // Inejct CallingService
 }

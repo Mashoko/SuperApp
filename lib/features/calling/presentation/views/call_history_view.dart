@@ -7,7 +7,6 @@ import 'package:mvvm_sip_demo/features/dialpad/presentation/viewmodels/dialpad_v
 import 'package:mvvm_sip_demo/features/call/presentation/viewmodels/call_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/calling/presentation/views/widgets/call_history_tile.dart';
 import 'package:mvvm_sip_demo/features/recents/data/models/recent_call.dart';
-import 'package:mvvm_sip_demo/features/auth/presentation/viewmodels/auth_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/quick_dialer_overlay.dart';
 import 'package:mvvm_sip_demo/core/routes.dart';
 

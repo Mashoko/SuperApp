@@ -9,8 +9,6 @@ import 'core/di/inject.dart';
 import 'core/managers/sip_call_manager.dart';
 import 'core/routes.dart';
 import 'core/theme.dart';
-import 'features/auth/presentation/viewmodels/auth_viewmodel.dart';
-
 import 'features/call/presentation/views/call_view.dart';
 import 'features/call/presentation/viewmodels/call_viewmodel.dart';
 import 'features/calling/presentation/views/calling_view.dart';
@@ -63,7 +61,6 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => getIt<DashboardViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<ShoppingViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<UtilityBillsViewModel>()),
-        ChangeNotifierProvider(create: (_) => getIt<AuthViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<CallingViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<DialpadViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<AccountSummaryViewModel>()),

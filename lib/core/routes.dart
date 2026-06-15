@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/views/home_view.dart';
-import 'package:mvvm_sip_demo/features/auth/presentation/views/signup_view.dart';
 import 'package:mvvm_sip_demo/features/profile/presentation/views/profile_view.dart';
 import 'package:mvvm_sip_demo/features/calling/presentation/views/calling_view.dart';
 import 'package:mvvm_sip_demo/features/calling/presentation/views/call_history_view.dart';
@@ -58,7 +57,7 @@ class Routes {
         payments: (context) => PaymentsView(),
         serviceProviders: (context) => ServiceProvidersView(),
         login: (context) => LoginView(),
-        signup: (context) => SignupView(),
+        signup: (context) => RegistrationView(),
         profile: (context) => ProfileView(),
         registration: (context) => RegistrationView(),
       };
