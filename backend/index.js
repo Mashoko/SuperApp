@@ -620,7 +620,7 @@ app.post('/api/orders', async (req, res) => {
       return res.status(400).json({ message: 'userId and items are required' });
     }
 
-    const orderId = `order_${Date.now()}_${userId}`;
+    const orderId = `order_${Date.now()}_${userId}_${Math.random().toString(36).slice(2, 7)}`;
 
     const order = new Order({
       order_id: orderId,
@@ -667,6 +667,7 @@ app.patch('/api/orders/:id/status', auth, async (req, res) => {
       return res.status(400).json({ message: 'Invalid status' });
     }
     const order = await Order.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json(order);
   } catch (err) {
     res.status(500).json({ message: err.message });
