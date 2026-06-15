@@ -41,58 +41,66 @@ class _ShippingAddressesViewState extends State<ShippingAddressesView> {
     final phoneCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add Address'),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: labelCtrl,
-                  decoration: const InputDecoration(labelText: 'Label (e.g. Home)'),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: addressCtrl,
-                  decoration: const InputDecoration(labelText: 'Street Address'),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: cityCtrl,
-                  decoration: const InputDecoration(labelText: 'City'),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: phoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Phone'),
-                ),
-              ],
+    final bool? confirmed;
+    try {
+      confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Add Address'),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: labelCtrl,
+                    decoration: const InputDecoration(labelText: 'Label (e.g. Home)'),
+                    validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: addressCtrl,
+                    decoration: const InputDecoration(labelText: 'Street Address'),
+                    validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: cityCtrl,
+                    decoration: const InputDecoration(labelText: 'City'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: phoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(labelText: 'Phone'),
+                  ),
+                ],
+              ),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) Navigator.pop(ctx, true);
+              },
+              child: const Text('Save'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) Navigator.pop(ctx, true);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
+      );
+    } finally {
+      labelCtrl.dispose();
+      addressCtrl.dispose();
+      cityCtrl.dispose();
+      phoneCtrl.dispose();
+    }
 
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
     setState(() => _isLoading = true);
     await _service.addAddress(
