@@ -83,7 +83,7 @@ app.use('/uploads', express.static('uploads'));
 // Routes
 app.post('/api/upload', auth, upload.single('image'), (req, res) => {
     if (!req.file) {
-        return res.status(400).send('No file uploaded.');
+        return res.status(400).json({ message: 'No file uploaded.' });
     }
     // Return the full URL to the uploaded file
     // Note: Use the request host/protocol to construct URL
@@ -211,6 +211,9 @@ app.put('/api/products/:id', auth, async (req, res) => {
             { $set: update },
             { new: true }
         );
+        if (!updatedProduct) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
         res.json(updatedProduct);
     } catch (err) {
         res.status(400).json({ message: err.message });
@@ -403,21 +406,41 @@ app.post('/api/validate-voucher', async (req, res) => {
             return res.status(400).json({ message: 'Voucher code is required' });
         }
 
-        const voucher = await Voucher.findOne({ code: code.toUpperCase() });
+        if (!cart_total || isNaN(subtotal) || subtotal < 0) {
+            return res.status(400).json({ message: 'A valid cart_total is required' });
+        }
 
-        if (!voucher) {
+        // First, find the voucher to check existence and gather error details
+        const existing = await Voucher.findOne({ code: code.toUpperCase() });
+
+        if (!existing) {
             return res.status(404).json({ message: 'Invalid voucher code' });
         }
-
-        if (!voucher.isActive) {
+        if (!existing.isActive) {
             return res.status(400).json({ message: 'Voucher is inactive' });
         }
-
-        if (new Date() > new Date(voucher.expirationDate)) {
+        if (new Date() > new Date(existing.expirationDate)) {
             return res.status(400).json({ message: 'Voucher has expired' });
         }
+        if (existing.usageLimit !== null && existing.usedCount >= existing.usageLimit) {
+            return res.status(400).json({ message: 'Voucher usage limit reached' });
+        }
 
-        if (voucher.usageLimit !== null && voucher.usedCount >= voucher.usageLimit) {
+        // Atomic increment — only succeeds if limit still not reached
+        const voucher = await Voucher.findOneAndUpdate(
+            {
+                _id: existing._id,
+                isActive: true,
+                $or: [
+                    { usageLimit: null },
+                    { $expr: { $lt: ['$usedCount', '$usageLimit'] } }
+                ]
+            },
+            { $inc: { usedCount: 1 } },
+            { new: true }
+        );
+
+        if (!voucher) {
             return res.status(400).json({ message: 'Voucher usage limit reached' });
         }
 
@@ -428,13 +451,9 @@ app.post('/api/validate-voucher', async (req, res) => {
             discountAmount = voucher.value;
         }
 
-        // Ensure discount doesn't exceed subtotal
         if (discountAmount > subtotal) {
             discountAmount = subtotal;
         }
-
-        // Increment usage count
-        await Voucher.findByIdAndUpdate(voucher._id, { $inc: { usedCount: 1 } });
 
         res.json({
             valid: true,
@@ -447,6 +466,18 @@ app.post('/api/validate-voucher', async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+// Global error handler — catches Multer rejections and other middleware errors
+app.use((err, req, res, next) => {
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ message: 'File too large. Maximum size is 5 MB.' });
+  }
+  if (err.message && err.message.includes('Only JPEG')) {
+    return res.status(415).json({ message: err.message });
+  }
+  console.error(err);
+  res.status(500).json({ message: 'Internal server error' });
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
