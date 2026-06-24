@@ -60,10 +60,43 @@
       "Bash(node --check /home/user/Documents/Calling/SuperApp/backend/index.js)",
       "Bash(grep -n 'Wishlist\\\\|wishlist\\\\|shipping\\\\|Shipping\\\\|africom\\\\|payment\\\\|Payment\\\\|search\\\\|searchRegex\\\\|isDeleted\\\\|addToSet\\\\|$pull\\\\|updateMany\\\\|findOneAndDelete\\\\|error handler\\\\|err, req, res, next' /home/user/Documents/Calling/SuperApp/backend/index.js)",
       "Bash(node -e ' *)",
-      "Bash(flutter analyze *)"
+      "Bash(flutter analyze *)",
+      "Bash(git rm *)",
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('hex'\\)\\)\")",
+      "Bash(git check-ignore *)",
+      "Bash(curl -s -X POST https://superapp-diht.onrender.com/api/auth/register -H 'Content-Type: application/json' -d '{\"username\":\"smoketest_june15\",\"password\":\"testpass123\",\"role\":\"super_admin\"}')",
+      "Bash(curl -s -X POST https://superapp-diht.onrender.com/api/payments/africom/superapp-pay -H 'Content-Type: application/json' -d '{\"amount\":10.00,\"currency\":\"USD\",\"reference\":\"TEST-1\",\"user_id\":\"testuser\",\"channel\":\"ewallet\"}')",
+      "Bash(curl -s \"https://superapp-diht.onrender.com/api/cart?userId=testuser\")",
+      "Bash(grep \"\\\\.dart$\")",
+      "Bash(protoc --version)",
+      "Bash(dart pub *)",
+      "Bash(which protoc-gen-dart 2>/dev/null || find /root /home -name \"protoc-gen-dart\" 2>/dev/null | head -3 *)",
+      "Read(//root/**)",
+      "Read(//home/user/.pub-cache/bin/**)",
+      "Bash(/home/user/.pub-cache/bin/protoc-gen-dart)",
+      "Bash(dart --version)",
+      "Bash(grep -n \"Wallet\\\\|walletBalance\\\\|wallet\\\\|balance\\\\|\\\\$0.00\\\\|_voiceChip\\\\|paymentsBalance\\\\|accountBalance\" /home/user/Documents/Calling/SuperApp/lib/features/home/presentation/views/home_view.dart)",
+      "Bash(find ~/.local/share -name \"*.json\" 2>/dev/null | xargs grep -l \"auth_user\\\\|password\" 2>/dev/null | head -5)",
+      "Read(//home/user/.local/share/**)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(snap run *)",
+      "Bash(flutter dart *)",
+      "Bash(ls /snap/flutter/current/bin/cache/dart-sdk/bin/ 2>/dev/null | head -5 *)",
+      "Read(//snap/flutter/current/bin/cache/dart-sdk/**)",
+      "Read(//snap/flutter/**)",
+      "Read(//home/user/.flutter/bin/cache/dart-sdk/**)",
+      "Read(//home/user/flutter/bin/cache/dart-sdk/**)",
+      "Read(//home/user/**)",
+      "Bash(ls /snap/flutter-3-stable/current/bin/cache/dart-sdk/bin/ 2>/dev/null | head *)",
+      "Read(//snap/flutter-3-stable/current/bin/cache/dart-sdk/**)",
+      "Read(//snap/**)",
+      "Bash(/snap/bin/dart run *)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(flutter test *)"
     ],
     "additionalDirectories": [
-      "/home/user/Documents/Calling/SuperApp/docs/superpowers"
+      "/home/user/Documents/Calling/SuperApp/docs/superpowers",
+      "/tmp"
     ]
   }
 }

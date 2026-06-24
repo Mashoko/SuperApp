@@ -2,6 +2,7 @@ import 'package:get_it/get_it.dart';
 import 'package:sip_ua/sip_ua.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../users_client.dart';
+import '../../payments_client.dart';
 import '../services/otp_auth_service.dart';
 
 import '../../features/registration/data/datasources/registration_local_data_source.dart';
@@ -34,6 +35,8 @@ import '../../features/dashboard/presentation/viewmodels/dashboard_viewmodel.dar
 import '../../features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
 import '../../features/utility_bills/presentation/viewmodels/utility_bills_viewmodel.dart';
 import '../../features/calling/presentation/viewmodels/calling_viewmodel.dart';
+import '../../services/shipping_address_service.dart';
+import '../../features/profile/presentation/viewmodels/profile_summary_viewmodel.dart';
 
 final getIt = GetIt.instance;
 
@@ -78,6 +81,11 @@ Future<void> configureDependencies() async {
     () => OtpAuthService(getIt<UsersClient>()),
   );
 
+  // Payments gRPC client
+  getIt.registerLazySingleton<PaymentsClient>(
+    () => PaymentsClient(packageId: 'org.duri.maswerasei', secure: false),
+  );
+
   getIt.registerLazySingleton(() => RegisterUser(getIt()));
   getIt.registerLazySingleton(() => MakeCall(getIt()));
   getIt.registerLazySingleton(() => AcceptCall(getIt()));
@@ -91,7 +99,7 @@ Future<void> configureDependencies() async {
   getIt.registerFactory(() => CallViewModel(getIt(), getIt(), getIt(), getIt()));
   getIt.registerLazySingleton(() => DialpadViewModel(getIt(), getIt(), getIt<OtpAuthService>(), getIt<DialpadRepository>()));
   getIt.registerFactory(() => LoginViewModel(getIt<OtpAuthService>(), getIt<RegisterUser>(), getIt<UsersClient>()));
-  getIt.registerFactory(() => AccountSummaryViewModel(getIt<OtpAuthService>()));
+  getIt.registerFactory(() => AccountSummaryViewModel(getIt<OtpAuthService>(), getIt<PaymentsClient>()));
 
   // Theme Provider
   getIt.registerSingleton<ThemeProvider>(ThemeProvider(getIt<SharedPreferences>()));
@@ -100,6 +108,7 @@ Future<void> configureDependencies() async {
   // Services
   getIt.registerLazySingleton<CallingService>(() => CallingService());
   getIt.registerLazySingleton<ShoppingService>(() => ShoppingService());
+  getIt.registerLazySingleton<ShippingAddressService>(() => ShippingAddressService());
   getIt.registerLazySingleton<UtilityBillsService>(() => UtilityBillsService());
   getIt.registerLazySingleton<AfricomPaymentService>(
       () => const AfricomPaymentService());
@@ -107,5 +116,10 @@ Future<void> configureDependencies() async {
   getIt.registerFactory(() => DashboardViewModel(getIt(), getIt(), getIt()));
   getIt.registerFactory(() => ShoppingViewModel(getIt()));
   getIt.registerFactory(() => UtilityBillsViewModel(getIt()));
-  getIt.registerFactory(() => CallingViewModel(getIt())); // Inejct CallingService
+  getIt.registerFactory(() => CallingViewModel(getIt()));
+  getIt.registerFactory(() => ProfileSummaryViewModel(
+        getIt<OtpAuthService>(),
+        getIt<ShoppingService>(),
+        getIt<ShippingAddressService>(),
+      ));
 }

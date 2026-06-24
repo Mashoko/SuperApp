@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package payments;
+option go_package = "momariserver/services/payments/paymentspb";
+
+// Request message on API request
+message requests {
+  string username    = 1;  // username/account of the user (required)
+  string domain      = 2;  // domain of the service (required)
+  string password    = 3;  // password of the user (required)
+  double balance     = 4;  // balance of the user
+  string email       = 5;  // email of the user (optional)
+  string package_id  = 6;  // package id of the application (required)
+  string token       = 7;  // token of the user request if any
+  string receiver    = 8;  // receiver of the airtime (required for ShareAirtime)
+  double amount      = 9;  // amount of the airtime or recharge (required)
+  string voucherPin  = 10; // voucher pin (required when using voucher recharge)
+  string debugInfo   = 11; // debug info (optional)
+  string transactionId = 12; // transaction id (required for payments/recharge)
+}
+
+// Response message on API response
+message reply {
+  string username      = 1;
+  string domain        = 2;
+  string password      = 3;
+  double balance       = 4;
+  string email         = 5;
+  Status status        = 6;
+  string token         = 7;
+  Error  error         = 8;
+  Info   info          = 9;
+  Success success      = 10;
+  double balanceAfter  = 11; // balance after recharge or airtime share
+}
+
+// Status of the request
+enum Status {
+  INFORMATION = 0; // request processed successfully but with information
+  SUCCESSFUL  = 1; // request processed successfully
+  ERROR       = 2; // error occurred while processing request
+  FAILURE     = 3; // failed to process request
+}
+
+// Error response message
+message Error {
+  string localizedDescription = 1;
+  string debugDescription     = 2;
+}
+
+// Success response message
+message Success {
+  string localizedDescription = 1;
+  string debugDescription     = 2;
+}
+
+// Info response message
+message Info {
+  string information = 1;
+}
+
+// Service definition for payments
+service paymentsService {
+  rpc ShareAirtime(requests) returns (reply);         // share airtime from one account to another
+  rpc DealerAccountBalances(requests) returns (reply); // get dealer account balances
+  rpc RechargeAccount(requests) returns (reply);       // recharge user account with voucher
+  rpc Reversal(requests) returns (reply);              // reverse a transaction
+}

@@ -248,6 +248,23 @@ class ShoppingService {
     }
   }
 
+  // ── Wishlist ──────────────────────────────────────────────────────────────
+
+  Future<int> fetchWishlistCount(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_base/wishlist?userId=${Uri.encodeComponent(userId)}'),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as List<dynamic>;
+        return data.length;
+      }
+      return 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   // ── Voucher ───────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> validateVoucher(

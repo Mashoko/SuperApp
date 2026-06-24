@@ -20,6 +20,7 @@ import 'features/dashboard/presentation/viewmodels/dashboard_viewmodel.dart';
 import 'features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
 import 'features/utility_bills/presentation/viewmodels/utility_bills_viewmodel.dart';
 import 'features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
+import 'features/profile/presentation/viewmodels/profile_summary_viewmodel.dart';
 import 'shared/theme/theme_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -64,6 +65,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => getIt<CallingViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<DialpadViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<AccountSummaryViewModel>()),
+        ChangeNotifierProvider(create: (_) => getIt<ProfileSummaryViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<CallViewModel>()),
       ],
       child: Consumer<ThemeProvider>(

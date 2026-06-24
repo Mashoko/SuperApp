@@ -11,8 +11,9 @@ import '../../../../features/account_summary/presentation/views/account_summary_
 import '../../../../shared/theme/theme_provider.dart';
 import '../../../shopping/presentation/views/order_history_view.dart';
 import '../../../shopping/presentation/views/wishlist_view.dart';
-import '../../../payments/presentation/views/payments_view.dart';
+import '../../../payment_methods/presentation/views/payment_methods_view.dart';
 import '../../../login/presentation/views/login_view.dart';
+import '../viewmodels/profile_summary_viewmodel.dart';
 import 'shipping_addresses_view.dart';
 
 class ProfileView extends StatefulWidget {
@@ -32,6 +33,9 @@ class _ProfileViewState extends State<ProfileView> {
   void initState() {
     super.initState();
     _loadSavedImage();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ProfileSummaryViewModel>(context, listen: false).load();
+    });
   }
 
   Future<void> _loadSavedImage() async {
@@ -71,8 +75,8 @@ class _ProfileViewState extends State<ProfileView> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDark = themeProvider.isDarkMode;
 
-    return Consumer<AccountSummaryViewModel>(
-      builder: (context, accountVM, _) {
+    return Consumer2<AccountSummaryViewModel, ProfileSummaryViewModel>(
+      builder: (context, accountVM, profileVM, _) {
         final username = accountVM.summary?['username'] as String? ?? '';
         final alias = accountVM.alias ?? '';
         final domain = accountVM.summary?['domain'] as String? ?? '';
@@ -197,7 +201,7 @@ class _ProfileViewState extends State<ProfileView> {
                           isDark: isDark,
                           alias: alias,
                           domain: domain,
-                          balance: balance,
+                          balance: balance != null ? accountVM.formattedMinutes : null,
                         ),
                         const SizedBox(height: 20),
                       ],
@@ -218,33 +222,35 @@ class _ProfileViewState extends State<ProfileView> {
                           _buildTile(
                             icon: Icons.shopping_bag_outlined,
                             title: 'My Orders',
-                            subtitle: 'History of your orders',
+                            subtitle: profileVM.orderSubtitle,
                             isDark: isDark,
+                            showBadge: profileVM.hasActiveOrders,
                             onTap: () => _navigateTo(
                                 context, const OrderHistoryView()),
                           ),
                           _buildTile(
                             icon: Icons.favorite_border,
                             title: 'Wishlist',
-                            subtitle: 'Your saved items',
+                            subtitle: profileVM.wishlistSubtitle,
                             isDark: isDark,
+                            showBadge: profileVM.hasWishlistItems,
                             onTap: () =>
                                 _navigateTo(context, const WishlistView()),
                           ),
                           _buildTile(
                             icon: Icons.location_on_outlined,
                             title: 'Shipping Addresses',
-                            subtitle: 'Manage delivery locations',
+                            subtitle: profileVM.addressSubtitle,
                             isDark: isDark,
                             onTap: () => _navigateTo(context, const ShippingAddressesView()),
                           ),
                           _buildTile(
                             icon: Icons.payment_outlined,
                             title: 'Payment Methods',
-                            subtitle: 'Manage linked cards and wallets',
+                            subtitle: profileVM.paymentSubtitle,
                             isDark: isDark,
                             onTap: () =>
-                                _navigateTo(context, const PaymentsView()),
+                                _navigateTo(context, const PaymentMethodsView()),
                           ),
                         ],
                       ),
@@ -325,7 +331,7 @@ class _ProfileViewState extends State<ProfileView> {
     required bool isDark,
     required String alias,
     required String domain,
-    required double? balance,
+    required String? balance,
   }) {
     return Container(
       width: double.infinity,
@@ -360,7 +366,7 @@ class _ProfileViewState extends State<ProfileView> {
             _buildInfoRow(isDark, Icons.dns_outlined, 'Domain', domain),
           if (balance != null)
             _buildInfoRow(isDark, Icons.account_balance_wallet_outlined,
-                'Balance', '\$${balance.toStringAsFixed(2)}'),
+                'Balance', balance),
         ],
       ),
     );
@@ -446,18 +452,37 @@ class _ProfileViewState extends State<ProfileView> {
     required bool isDark,
     required VoidCallback onTap,
     Widget? trailing,
+    bool showBadge = false,
   }) {
     return ListTile(
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white10 : Colors.blue.shade50,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon,
-            color: isDark ? Colors.white70 : Colors.blueAccent),
+      leading: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white10 : Colors.blue.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon,
+                color: isDark ? Colors.white70 : Colors.blueAccent),
+          ),
+          if (showBadge)
+            Positioned(
+              top: -2,
+              right: -2,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(
+                  color: Colors.orange,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+        ],
       ),
       title: Text(
         title,

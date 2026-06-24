@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mvvm_sip_demo/core/di/inject.dart';
@@ -150,8 +151,6 @@ class _HomeViewState extends State<HomeView> {
   Widget _buildBottomNav(BuildContext context) {
     final theme = Theme.of(context);
     return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
       color: theme.colorScheme.surface,
       elevation: 12,
       shadowColor: Colors.black26,
@@ -232,14 +231,22 @@ class _GlideHomeTab extends StatelessWidget {
         final mq = MediaQuery.of(context);
         final h = (mq.size.width * 0.05).clamp(16.0, 22.0).toDouble();
 
-        final walletKey =
-            '${accountVM.balance}_${dialpadVM.accountBalance}_$alias';
-        final walletPrimary =
-            _primaryWalletLine(accountVM, dialpadVM);
-        final walletChipText =
-            accountVM.loading && accountVM.alias == null
-                ? 'Wallet · …'
-                : 'Wallet · ${dialpadVM.accountBalance.isEmpty ? '—' : dialpadVM.accountBalance}';
+        final pb = accountVM.paymentsBalance;
+        final pbLoading = accountVM.paymentsLoading;
+        final voiceMins = accountVM.formattedMinutes;
+        // For regular (non-dealer) accounts paymentsBalance is null — fall
+        // back to showing voice-minutes credit as the primary wallet figure.
+        final walletKey = '${pb ?? voiceMins}_$alias';
+        final walletPrimary = pbLoading
+            ? '…'
+            : pb != null
+                ? '\$${NumberFormat('#,##0.00', 'en_US').format(pb)}'
+                : voiceMins;
+        final walletChipText = (accountVM.loading && accountVM.alias == null) || pbLoading
+            ? 'Wallet · …'
+            : pb != null
+                ? 'Wallet · \$${NumberFormat('#,##0.00', 'en_US').format(pb)}'
+                : 'Balance · $voiceMins';
 
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(0, 6, 0, 120),
@@ -269,15 +276,18 @@ class _GlideHomeTab extends StatelessWidget {
                       const ShimmerWidget.rectangular(
                           height: 180, width: double.infinity)
                     else
-                      MasterBalanceCard(
-                        walletBalanceKey: walletKey,
-                        walletBalanceText: walletPrimary,
-                        voiceChipLabel:
-                            _voiceChipLabel(accountVM.balance),
-                        dataChipLabel: 'Data — add a bundle',
-                        onTopUp: () => _launchTopUp(context),
-                        onManageAccount: () => Navigator.pushNamed(
-                            context, Routes.profile),
+                      GestureDetector(
+                        onLongPress: () => accountVM.loadCurrentUser(),
+                        child: MasterBalanceCard(
+                          walletBalanceKey: walletKey,
+                          walletBalanceText: walletPrimary,
+                          voiceChipLabel:
+                              _voiceChipLabel(accountVM.balance),
+                          dataChipLabel: 'Data — add a bundle',
+                          onTopUp: () => _launchTopUp(context),
+                          onManageAccount: () => Navigator.pushNamed(
+                              context, Routes.profile),
+                        ),
                       ),
 
                     const SizedBox(height: 28),
@@ -475,17 +485,6 @@ String _voiceChipLabel(double? balanceNs) {
   return raw.replaceAll('Voice Bal: ', 'Minutes · ');
 }
 
-String _primaryWalletLine(
-  AccountSummaryViewModel account,
-  DialpadViewModel dialpad,
-) {
-  final d = dialpad.accountBalance.trim();
-  if (d.isNotEmpty) return d;
-  if (account.balance != null) {
-    return '\$${account.balance!.toStringAsFixed(2)}';
-  }
-  return '—';
-}
 
 Future<void> _launchTopUp(BuildContext context) async {
   const url = 'https://selfservice.ai.co.zw/';
