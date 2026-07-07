@@ -87,7 +87,6 @@ class _GlassBottomNavState extends State<GlassBottomNav> {
                 decoration: BoxDecoration(
                   color: glassColor,
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: borderColor, width: 0),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.14),
@@ -95,6 +94,10 @@ class _GlassBottomNavState extends State<GlassBottomNav> {
                       offset: const Offset(0, 18),
                     ),
                   ],
+                ),
+                foregroundDecoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: borderColor),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(28),
