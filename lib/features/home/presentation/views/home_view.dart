@@ -17,7 +17,8 @@ import 'package:mvvm_sip_demo/shared/widgets/maintenance_screen.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/home_top_bar.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/master_balance_card.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/promotions_carousel.dart';
-import 'package:mvvm_sip_demo/features/home/presentation/widgets/services_hub_tab.dart';
+// TODO(Task 6): Import and use ServicesGridSection instead
+// import 'package:mvvm_sip_demo/features/home/presentation/widgets/services_hub_tab.dart';
 import 'package:mvvm_sip_demo/features/profile/presentation/views/profile_view.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/views/shopping_view.dart';
@@ -134,7 +135,8 @@ class _HomeViewState extends State<HomeView> {
           onGoServices: () => _onTabChange(1),
         );
       case 1:
-        return const ServicesHubTab();
+        // TODO(Task 6): Use ServicesGridSection instead
+        return const Scaffold(body: Center(child: Text('Services - wiring in Task 6')));
       case 2:
         return ShoppingView(onBack: () => _onTabChange(0));
       case 3:

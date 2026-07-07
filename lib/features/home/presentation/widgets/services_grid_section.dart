@@ -5,8 +5,11 @@ import 'package:mvvm_sip_demo/features/home/presentation/widgets/scale_tap_wrapp
 import 'package:mvvm_sip_demo/shared/widgets/glide_card.dart';
 import 'package:mvvm_sip_demo/shared/widgets/maintenance_screen.dart';
 
-class ServicesHubTab extends StatelessWidget {
-  const ServicesHubTab({super.key});
+/// The services grid, embedded inside the Home tab's scroll view (it used
+/// to be its own full-screen tab — see the glass-bottom-nav design spec for
+/// why it moved).
+class ServicesGridSection extends StatelessWidget {
+  const ServicesGridSection({super.key});
 
   static const _items = <_ServiceItem>[
     _ServiceItem(
@@ -58,41 +61,21 @@ class ServicesHubTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final pad = (mq.size.width * 0.05).clamp(16.0, 24.0);
-
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(pad, 16, pad, 16),
-            child: Text(
-              'Services',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-          ),
-        ),
-        SliverPadding(
-          padding: EdgeInsets.fromLTRB(pad, 0, pad, 120),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              childAspectRatio: 1.05,
-            ),
-            delegate: SliverChildBuilderDelegate(
-              (context, i) => _ServiceCard(item: _items[i]),
-              childCount: _items.length,
-            ),
-          ),
-        ),
-      ],
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
+        childAspectRatio: 1.05,
+      ),
+      itemCount: _items.length,
+      itemBuilder: (context, i) => _ServiceCard(item: _items[i]),
     );
   }
 }
-
-// ── Card ───────────────────────────────────────────────────────────────────────
 
 class _ServiceCard extends StatelessWidget {
   const _ServiceCard({required this.item});
@@ -181,8 +164,6 @@ class _ServiceCard extends StatelessWidget {
     );
   }
 }
-
-// ── Model ─────────────────────────────────────────────────────────────────────
 
 class _ServiceItem {
   const _ServiceItem({
