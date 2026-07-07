@@ -100,12 +100,7 @@ class _Section extends StatelessWidget {
             children: [
               Icon(icon, size: 15, color: Theme.of(context).hintColor),
               const SizedBox(width: 6),
-              Expanded(
-                child: Text(title,
-                    style: Theme.of(context).textTheme.titleSmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-              ),
+              Text(title, style: Theme.of(context).textTheme.titleSmall),
             ],
           ),
           const SizedBox(height: 10),
