@@ -1380,8 +1380,11 @@ class _Section extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
+          // 138 = 24 (card's 12px vertical padding x2) + 56 (image) + 10
+          // (spacer) + ~48 (2-line bodyMedium text) — 108 overflows by
+          // ~24px once the title wraps to 2 lines.
           SizedBox(
-            height: 108,
+            height: 138,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: items.length,
