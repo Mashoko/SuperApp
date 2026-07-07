@@ -100,12 +100,17 @@ class _Section extends StatelessWidget {
             children: [
               Icon(icon, size: 15, color: Theme.of(context).hintColor),
               const SizedBox(width: 6),
-              Text(title, style: Theme.of(context).textTheme.titleSmall),
+              Expanded(
+                child: Text(title,
+                    style: Theme.of(context).textTheme.titleSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
             ],
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 108,
+            height: 138,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: items.length,
