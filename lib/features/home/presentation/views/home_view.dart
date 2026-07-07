@@ -17,7 +17,6 @@ import 'package:mvvm_sip_demo/shared/widgets/maintenance_screen.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/home_top_bar.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/master_balance_card.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/promotions_carousel.dart';
-import 'package:mvvm_sip_demo/features/home/presentation/widgets/services_hub_tab.dart';
 import 'package:mvvm_sip_demo/features/profile/presentation/views/profile_view.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/shopping/presentation/views/shopping_view.dart';
@@ -134,7 +133,7 @@ class _HomeViewState extends State<HomeView> {
           onGoServices: () => _onTabChange(1),
         );
       case 1:
-        return const ServicesHubTab();
+        return const SizedBox.shrink();
       case 2:
         return ShoppingView(onBack: () => _onTabChange(0));
       case 3:
