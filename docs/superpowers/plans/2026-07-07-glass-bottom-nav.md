@@ -277,7 +277,6 @@ class _GlassBottomNavState extends State<GlassBottomNav> {
                 decoration: BoxDecoration(
                   color: glassColor,
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: borderColor),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.14),
@@ -285,6 +284,17 @@ class _GlassBottomNavState extends State<GlassBottomNav> {
                       offset: const Offset(0, 18),
                     ),
                   ],
+                ),
+                // Border lives in foregroundDecoration, not decoration: a
+                // border inside decoration adds implicit padding equal to
+                // its width (Container insets the child to avoid painting
+                // over the stroke), which would shrink the width the
+                // LayoutBuilder below measures and shift the sliding
+                // indicator's computed position. foregroundDecoration paints
+                // after the child with no effect on layout.
+                foregroundDecoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: borderColor),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(28),
@@ -694,7 +704,6 @@ class _GlassBottomNavState extends State<GlassBottomNav> {
                 decoration: BoxDecoration(
                   color: glassColor,
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: borderColor),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.14),
@@ -702,6 +711,17 @@ class _GlassBottomNavState extends State<GlassBottomNav> {
                       offset: const Offset(0, 18),
                     ),
                   ],
+                ),
+                // Border lives in foregroundDecoration, not decoration: a
+                // border inside decoration adds implicit padding equal to
+                // its width (Container insets the child to avoid painting
+                // over the stroke), which would shrink the width the
+                // LayoutBuilder below measures and shift the sliding
+                // indicator's computed position. foregroundDecoration paints
+                // after the child with no effect on layout.
+                foregroundDecoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: borderColor),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(28),
