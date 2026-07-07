@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,8 +12,10 @@ import 'package:mvvm_sip_demo/features/dashboard/presentation/viewmodels/dashboa
 import 'package:mvvm_sip_demo/features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/call_history_widget.dart';
 import 'package:mvvm_sip_demo/features/dialpad/presentation/views/dialpad_view.dart';
-import 'package:mvvm_sip_demo/features/home/presentation/widgets/hanging_dialer.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/explore_tab.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/glass_bottom_nav.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/scale_tap_wrapper.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/services_grid_section.dart';
 import 'package:mvvm_sip_demo/shared/widgets/maintenance_screen.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/home_top_bar.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/master_balance_card.dart';
@@ -31,16 +34,27 @@ class HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<HomeView> {
   int _currentIndex = 0;
+  bool _navVisible = true;
+
+  static const _tabs = [
+    GlassNavTab(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
+    GlassNavTab(
+        icon: Icons.explore_outlined, activeIcon: Icons.explore, label: 'Explore'),
+    GlassNavTab(
+        icon: Icons.storefront_outlined,
+        activeIcon: Icons.storefront,
+        label: 'Shop'),
+    GlassNavTab(
+        icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
+  ];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // Load gRPC account — fires reactively, no await needed
       Provider.of<AccountSummaryViewModel>(context, listen: false)
           .loadCurrentUser();
 
-      // Get the real stored user ID for user-keyed local services
       final creds = await getIt<OtpAuthService>().getStoredCredentials();
       final userId = creds?['username'] ?? 'guest';
 
@@ -50,8 +64,7 @@ class _HomeViewState extends State<HomeView> {
           .loadDashboard(userId);
       Provider.of<ShoppingViewModel>(context, listen: false).loadCart(userId);
 
-      final dialpad =
-          Provider.of<DialpadViewModel>(context, listen: false);
+      final dialpad = Provider.of<DialpadViewModel>(context, listen: false);
       dialpad.loadRecents();
       dialpad.loadAccountInfo();
     });
@@ -75,14 +88,59 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
+  void _openMaintenance(
+      {required String label, required IconData icon, required Color color}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MaintenanceScreen(label: label, icon: icon, color: color),
+      ),
+    );
+  }
+
+  List<GlassNavQuickAction> _quickActions() => [
+        GlassNavQuickAction(
+          icon: Icons.send_outlined,
+          label: 'Send',
+          onTap: () => _openMaintenance(
+            label: 'Send Money',
+            icon: Icons.send_outlined,
+            color: WunzaColors.glidePrimary,
+          ),
+        ),
+        GlassNavQuickAction(
+          icon: Icons.qr_code_scanner_outlined,
+          label: 'Scan',
+          onTap: () => _openMaintenance(
+            label: 'Scan',
+            icon: Icons.qr_code_scanner_outlined,
+            color: WunzaColors.glideAccent,
+          ),
+        ),
+        GlassNavQuickAction(
+          icon: Icons.payments_outlined,
+          label: 'Pay',
+          onTap: () => _openMaintenance(
+            label: 'Payments',
+            icon: Icons.payments_outlined,
+            color: const Color(0xFF2E7D32),
+          ),
+        ),
+      ];
+
+  bool _onScrollNotification(UserScrollNotification notification) {
+    if (notification.direction == ScrollDirection.reverse && _navVisible) {
+      setState(() => _navVisible = false);
+    } else if (notification.direction == ScrollDirection.forward &&
+        !_navVisible) {
+      setState(() => _navVisible = true);
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true,
-      floatingActionButton:
-          HangingDialerButton(onTap: _openDialpadSheet),
-      floatingActionButtonLocation:
-          FloatingActionButtonLocation.centerDocked,
       body: Stack(
         children: [
           Container(
@@ -108,19 +166,41 @@ class _HomeViewState extends State<HomeView> {
           ),
           SafeArea(
             bottom: false,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              transitionBuilder: (child, animation) =>
-                  FadeTransition(opacity: animation, child: child),
-              child: Container(
-                key: ValueKey<int>(_currentIndex),
-                child: _buildCurrentTab(),
+            child: NotificationListener<UserScrollNotification>(
+              onNotification: _onScrollNotification,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (child, animation) =>
+                    FadeTransition(opacity: animation, child: child),
+                child: Container(
+                  key: ValueKey<int>(_currentIndex),
+                  child: _buildCurrentTab(),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 18 + MediaQuery.of(context).padding.bottom,
+            child: Center(
+              child: SizedBox(
+                width: (MediaQuery.of(context).size.width - 28)
+                    .clamp(0.0, 420.0)
+                    .toDouble(),
+                child: GlassBottomNav(
+                  tabs: _tabs,
+                  activeIndex: _currentIndex,
+                  onTabSelected: _onTabChange,
+                  onDialerTap: _openDialpadSheet,
+                  quickActions: _quickActions(),
+                  visible: _navVisible,
+                ),
               ),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(context),
     );
   }
 
@@ -130,10 +210,9 @@ class _HomeViewState extends State<HomeView> {
         return _GlideHomeTab(
           onGoShop: () => _onTabChange(2),
           onGoCart: () => Navigator.pushNamed(context, Routes.cart),
-          onGoServices: () => _onTabChange(1),
         );
       case 1:
-        return const SizedBox.shrink();
+        return const ExploreTab();
       case 2:
         return ShoppingView(onBack: () => _onTabChange(0));
       case 3:
@@ -142,67 +221,8 @@ class _HomeViewState extends State<HomeView> {
         return _GlideHomeTab(
           onGoShop: () => _onTabChange(2),
           onGoCart: () => Navigator.pushNamed(context, Routes.cart),
-          onGoServices: () => _onTabChange(1),
         );
     }
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    final theme = Theme.of(context);
-    return BottomAppBar(
-      color: theme.colorScheme.surface,
-      elevation: 12,
-      shadowColor: Colors.black26,
-      child: SizedBox(
-        height: 56,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(children: [
-              _navItem(Icons.home_outlined, Icons.home, 'Home', 0),
-              _navItem(Icons.apps_outlined, Icons.apps, 'Services', 1),
-            ]),
-            const SizedBox(width: 56),
-            Row(children: [
-              _navItem(
-                  Icons.storefront_outlined, Icons.storefront, 'Shop', 2),
-              _navItem(Icons.person_outline, Icons.person, 'Profile', 3),
-            ]),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(
-      IconData icon, IconData activeIcon, String label, int index) {
-    final selected = _currentIndex == index;
-    final color = selected
-        ? WunzaColors.glidePrimary
-        : WunzaColors.textSecondary;
-    return MaterialButton(
-      minWidth: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      onPressed: () => _onTabChange(index),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(selected ? activeIcon : icon,
-              color: color, size: selected ? 26 : 24),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight:
-                  selected ? FontWeight.w600 : FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -212,20 +232,17 @@ class _GlideHomeTab extends StatelessWidget {
   const _GlideHomeTab({
     required this.onGoShop,
     required this.onGoCart,
-    required this.onGoServices,
   });
 
   final VoidCallback onGoShop;
   final VoidCallback onGoCart;
-  final VoidCallback onGoServices;
 
   @override
   Widget build(BuildContext context) {
     return Consumer3<ShoppingViewModel, AccountSummaryViewModel,
         DialpadViewModel>(
       builder: (context, shoppingVM, accountVM, dialpadVM, _) {
-        final cartCount =
-            (shoppingVM.cart['items'] as List?)?.length ?? 0;
+        final cartCount = (shoppingVM.cart['items'] as List?)?.length ?? 0;
         final alias = accountVM.alias ?? '…';
         final mq = MediaQuery.of(context);
         final h = (mq.size.width * 0.05).clamp(16.0, 22.0).toDouble();
@@ -233,22 +250,21 @@ class _GlideHomeTab extends StatelessWidget {
         final pb = accountVM.paymentsBalance;
         final pbLoading = accountVM.paymentsLoading;
         final voiceMins = accountVM.formattedMinutes;
-        // For regular (non-dealer) accounts paymentsBalance is null — fall
-        // back to showing voice-minutes credit as the primary wallet figure.
         final walletKey = '${pb ?? voiceMins}_$alias';
         final walletPrimary = pbLoading
             ? '…'
             : pb != null
                 ? '\$${NumberFormat('#,##0.00', 'en_US').format(pb)}'
                 : voiceMins;
-        final walletChipText = (accountVM.loading && accountVM.alias == null) || pbLoading
+        final walletChipText = (accountVM.loading && accountVM.alias == null) ||
+                pbLoading
             ? 'Wallet · …'
             : pb != null
                 ? 'Wallet · \$${NumberFormat('#,##0.00', 'en_US').format(pb)}'
                 : 'Balance · $voiceMins';
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(0, 6, 0, 120),
+          padding: const EdgeInsets.fromLTRB(0, 6, 0, 140),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -256,21 +272,18 @@ class _GlideHomeTab extends StatelessWidget {
                 userName: accountVM.loading && accountVM.alias == null
                     ? '…'
                     : alias,
-                walletChipLabel:
-                    accountVM.loading && accountVM.alias == null
-                        ? 'Loading…'
-                        : walletChipText,
+                walletChipLabel: accountVM.loading && accountVM.alias == null
+                    ? 'Loading…'
+                    : walletChipText,
                 notificationCount: cartCount,
                 onNotificationsTap: onGoCart,
-                onAvatarTap: () =>
-                    Navigator.pushNamed(context, Routes.profile),
+                onAvatarTap: () => Navigator.pushNamed(context, Routes.profile),
               ),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Balance card ────────────────────────────────
                     if (accountVM.loading && accountVM.alias == null)
                       const ShimmerWidget.rectangular(
                           height: 180, width: double.infinity)
@@ -280,32 +293,25 @@ class _GlideHomeTab extends StatelessWidget {
                         child: MasterBalanceCard(
                           walletBalanceKey: walletKey,
                           walletBalanceText: walletPrimary,
-                          voiceChipLabel:
-                              _voiceChipLabel(accountVM.balance),
+                          voiceChipLabel: _voiceChipLabel(accountVM.balance),
                           dataChipLabel: 'Data — add a bundle',
                           onTopUp: () => _launchTopUp(context),
-                          onManageAccount: () => Navigator.pushNamed(
-                              context, Routes.profile),
+                          onManageAccount: () =>
+                              Navigator.pushNamed(context, Routes.profile),
                         ),
                       ),
-
                     const SizedBox(height: 28),
-
-                    // ── Quick services ──────────────────────────────
-                    _QuickServicesRow(
-                        onGoShop: onGoShop,
-                        onGoServices: onGoServices),
-
+                    _QuickServicesRow(onGoShop: onGoShop),
                     const SizedBox(height: 28),
-
-                    // ── Promotions ──────────────────────────────────
+                    Text('All services',
+                        style: Theme.of(context).textTheme.headlineSmall),
+                    const SizedBox(height: 12),
+                    const ServicesGridSection(),
+                    const SizedBox(height: 28),
                     GlidePromotionsCarousel(
                         apiBanners: shoppingVM.banners,
                         onBannerTap: (_) => onGoShop()),
-
                     const SizedBox(height: 28),
-
-                    // ── Recent activity ─────────────────────────────
                     const CallHistoryWidget(),
                   ],
                 ),
@@ -321,11 +327,9 @@ class _GlideHomeTab extends StatelessWidget {
 // ── Quick services row ─────────────────────────────────────────────────────────
 
 class _QuickServicesRow extends StatelessWidget {
-  const _QuickServicesRow(
-      {required this.onGoShop, required this.onGoServices});
+  const _QuickServicesRow({required this.onGoShop});
 
   final VoidCallback onGoShop;
-  final VoidCallback onGoServices;
 
   @override
   Widget build(BuildContext context) {
@@ -376,8 +380,7 @@ class _QuickServicesRow extends StatelessWidget {
         icon: Icons.history_outlined,
         label: 'History',
         color: const Color(0xFF5D4037),
-        onTap: () =>
-            Navigator.pushNamed(context, Routes.callHistory),
+        onTap: () => Navigator.pushNamed(context, Routes.callHistory),
       ),
       _QA(
         icon: Icons.manage_accounts_outlined,
@@ -390,23 +393,7 @@ class _QuickServicesRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Quick services',
-                style: Theme.of(context).textTheme.headlineSmall),
-            TextButton(
-              onPressed: onGoServices,
-              child: const Text(
-                'See all',
-                style: TextStyle(
-                  color: WunzaColors.glidePrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
+        Text('Quick services', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 12),
         SizedBox(
           height: 88,
@@ -455,8 +442,7 @@ class _QuickActionTile extends StatelessWidget {
               decoration: BoxDecoration(
                 color: qa.color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: qa.color.withValues(alpha: 0.18), width: 1),
+                border: Border.all(color: qa.color.withValues(alpha: 0.18), width: 1),
               ),
               child: Icon(qa.icon, color: qa.color, size: 26),
             ),
@@ -466,9 +452,10 @@ class _QuickActionTile extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(context)
+                  .textTheme
+                  .labelMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -484,23 +471,20 @@ String _voiceChipLabel(double? balanceNs) {
   return raw.replaceAll('Voice Bal: ', 'Minutes · ');
 }
 
-
 Future<void> _launchTopUp(BuildContext context) async {
   const url = 'https://selfservice.ai.co.zw/';
   final uri = Uri.parse(url);
   if (await canLaunchUrl(uri)) {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   } else if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Could not open $url')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Could not open $url')));
   }
 }
 
 String _formatVoiceBalance(double nanoseconds) {
   if (nanoseconds <= 0) return 'Voice Bal: 0 m';
-  final duration =
-      Duration(microseconds: (nanoseconds / 1000).round());
+  final duration = Duration(microseconds: (nanoseconds / 1000).round());
   final hours = duration.inHours;
   final minutes = duration.inMinutes.remainder(60);
   final seconds = duration.inSeconds.remainder(60);
