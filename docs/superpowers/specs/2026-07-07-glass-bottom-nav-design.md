@@ -76,8 +76,8 @@ from the `GlassNav.jsx` token block (`--gn-glass-border`, `--gn-shadow-float`,
 - Floating (not docked) is required for the scroll-aware hide/show behavior — a
   `Scaffold.bottomNavigationBar` doesn't support sliding off past the screen edge
   the way a freely positioned widget does.
-- Tab content already carries ~120-140px bottom padding (see `_GlideHomeTab`,
-  `ServicesHubTab`), which is enough clearance for the floating pill; no content
+- Tab content already carries 140px bottom padding (see `_GlideHomeTab`,
+  `ServicesGridSection`), which is enough clearance for the floating pill; no content
   padding changes needed beyond what Explore's new content requires.
 
 ## Tabs

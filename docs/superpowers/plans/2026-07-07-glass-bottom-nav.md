@@ -2033,7 +2033,7 @@ String _formatVoiceBalance(double nanoseconds) {
 }
 ```
 
-Note `ScrollDirection` (used in `_onScrollNotification`) comes from `package:flutter/material.dart`'s re-export of `package:flutter/widgets.dart` — no extra import needed.
+Note `ScrollDirection` (used in `_onScrollNotification`) requires an explicit import from `package:flutter/rendering.dart` — `import 'package:flutter/rendering.dart' show ScrollDirection;` is necessary (it is not re-exported by `package:flutter/material.dart` or `package:flutter/widgets.dart`).
 
 Then delete the now-unused FAB widget:
 
