@@ -34,6 +34,16 @@ class WunzaColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+
+  // --- Glass bottom nav tokens (nav-scoped only; phase 2 folds these
+  // into the app-wide ColorScheme) ---
+  static const Color navBgDark = Color(0xFF0B0B0E);
+  static const Color navBgLight = Color(0xFFF2F1EE);
+  static const Color navGlassDark = Color(0x801E1E24); // rgba(30,30,36,0.5)
+  static const Color navGlassLight = Color(0x8CFFFFFF); // rgba(255,255,255,0.55)
+  static const Color navIndicator = Color(0xFF9B8CFF); // violet, active-tab glow only
+  static const Color padGradientStart = Color(0xFFFF7A45); // coral
+  static const Color padGradientEnd = Color(0xFFFF4D6D); // pink
 }
 
 class WunzaTheme {
