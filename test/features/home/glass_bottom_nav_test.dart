@@ -69,4 +69,129 @@ void main() {
     final slide = tester.widget<AnimatedSlide>(find.byType(AnimatedSlide));
     expect(slide.offset, const Offset(0, 1.6));
   });
+
+  testWidgets('short tap on the PAD calls onDialerTap and does not open the fan',
+      (tester) async {
+    var dialerTaps = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SizedBox(
+          width: 400,
+          child: GlassBottomNav(
+            tabs: _tabs,
+            activeIndex: 0,
+            onTabSelected: (_) {},
+            onDialerTap: () => dialerTaps++,
+            quickActions: [
+              GlassNavQuickAction(
+                  icon: Icons.send_outlined, label: 'Send', onTap: () {}),
+            ],
+          ),
+        ),
+      ),
+    ));
+
+    await tester.tap(find.byKey(const Key('glass-nav-pad')));
+    await tester.pump();
+
+    expect(dialerTaps, 1);
+    expect(find.byIcon(Icons.send_outlined), findsNothing);
+  });
+
+  testWidgets('long-press on the PAD opens the fan with all quick actions',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SizedBox(
+          width: 400,
+          child: GlassBottomNav(
+            tabs: _tabs,
+            activeIndex: 0,
+            onTabSelected: (_) {},
+            onDialerTap: () {},
+            quickActions: [
+              GlassNavQuickAction(
+                  icon: Icons.send_outlined, label: 'Send', onTap: () {}),
+              GlassNavQuickAction(
+                  icon: Icons.qr_code_scanner_outlined,
+                  label: 'Scan',
+                  onTap: () {}),
+              GlassNavQuickAction(
+                  icon: Icons.payments_outlined, label: 'Pay', onTap: () {}),
+            ],
+          ),
+        ),
+      ),
+    ));
+
+    await tester.longPress(find.byKey(const Key('glass-nav-pad')));
+    await tester.pump();
+    // Fan entries stagger in (0ms, 45ms, 90ms) — advance past the last one.
+    await tester.pump(const Duration(milliseconds: 150));
+
+    expect(find.byIcon(Icons.send_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.qr_code_scanner_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.payments_outlined), findsOneWidget);
+  });
+
+  testWidgets('tapping the scrim closes the fan', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SizedBox(
+          width: 400,
+          child: GlassBottomNav(
+            tabs: _tabs,
+            activeIndex: 0,
+            onTabSelected: (_) {},
+            onDialerTap: () {},
+            quickActions: [
+              GlassNavQuickAction(
+                  icon: Icons.send_outlined, label: 'Send', onTap: () {}),
+            ],
+          ),
+        ),
+      ),
+    ));
+
+    await tester.longPress(find.byKey(const Key('glass-nav-pad')));
+    await tester.pump();
+    expect(find.byIcon(Icons.send_outlined), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('glass-nav-scrim')));
+    await tester.pump();
+    expect(find.byIcon(Icons.send_outlined), findsNothing);
+  });
+
+  testWidgets('tapping a quick action closes the fan and fires its onTap',
+      (tester) async {
+    var sendTaps = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SizedBox(
+          width: 400,
+          child: GlassBottomNav(
+            tabs: _tabs,
+            activeIndex: 0,
+            onTabSelected: (_) {},
+            onDialerTap: () {},
+            quickActions: [
+              GlassNavQuickAction(
+                  icon: Icons.send_outlined,
+                  label: 'Send',
+                  onTap: () => sendTaps++),
+            ],
+          ),
+        ),
+      ),
+    ));
+
+    await tester.longPress(find.byKey(const Key('glass-nav-pad')));
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.send_outlined));
+    await tester.pump();
+
+    expect(sendTaps, 1);
+    expect(find.byIcon(Icons.send_outlined), findsNothing);
+  });
 }

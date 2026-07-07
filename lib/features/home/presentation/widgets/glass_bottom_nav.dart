@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -60,6 +61,39 @@ class GlassBottomNav extends StatefulWidget {
 }
 
 class _GlassBottomNavState extends State<GlassBottomNav> {
+  OverlayEntry? _fanEntry;
+
+  void _openFan() {
+    if (_fanEntry != null || widget.quickActions.isEmpty) return;
+    final overlay = Overlay.of(context);
+    final entry = OverlayEntry(
+      builder: (context) => Positioned.fill(
+        child: _QuickActionFan(
+          actions: widget.quickActions,
+          onDismiss: _closeFan,
+        ),
+      ),
+    );
+    overlay.insert(entry);
+    _fanEntry = entry;
+  }
+
+  void _closeFan() {
+    _fanEntry?.remove();
+    _fanEntry = null;
+  }
+
+  void _onPadTap() {
+    _closeFan();
+    widget.onDialerTap();
+  }
+
+  @override
+  void dispose() {
+    _fanEntry?.remove();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -144,26 +178,177 @@ class _GlassBottomNavState extends State<GlassBottomNav> {
               left: 0,
               right: 0,
               child: Center(
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        WunzaColors.padGradientStart,
-                        WunzaColors.padGradientEnd,
+                child: GestureDetector(
+                  key: const Key('glass-nav-pad'),
+                  onTap: _onPadTap,
+                  onLongPress: widget.quickActions.isEmpty ? null : _openFan,
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          WunzaColors.padGradientStart,
+                          WunzaColors.padGradientEnd,
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              WunzaColors.padGradientEnd.withValues(alpha: 0.45),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
                       ],
                     ),
+                    child: const Icon(Icons.dialpad,
+                        color: Colors.white, size: 28),
                   ),
-                  child: const Icon(Icons.dialpad,
-                      color: Colors.white, size: 28),
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Full-screen scrim + radially-arranged quick actions, shown via [Overlay]
+/// so it can dim/dismiss over the whole screen regardless of where
+/// [GlassBottomNav] itself is positioned.
+class _QuickActionFan extends StatelessWidget {
+  const _QuickActionFan({required this.actions, required this.onDismiss});
+
+  final List<GlassNavQuickAction> actions;
+  final VoidCallback onDismiss;
+
+  static List<double> _anglesFor(int count) {
+    if (count == 1) return const [-90];
+    if (count == 2) return const [-130, -50];
+    if (count == 3) return const [-150, -90, -30];
+    return List.generate(
+        count, (i) => -180 + (180 / (count + 1)) * (i + 1));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final angles = _anglesFor(actions.length);
+    const dist = 78.0;
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            key: const Key('glass-nav-scrim'),
+            behavior: HitTestBehavior.opaque,
+            onTap: onDismiss,
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: Container(color: Colors.black.withValues(alpha: 0.28)),
+            ),
+          ),
+        ),
+        for (var i = 0; i < actions.length; i++)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Transform.translate(
+              offset: Offset(
+                math.cos(angles[i] * math.pi / 180) * dist,
+                math.sin(angles[i] * math.pi / 180) * dist - 110,
+              ),
+              child: _FanActionButton(
+                action: actions[i],
+                delay: Duration(milliseconds: i * 45),
+                onTap: () {
+                  onDismiss();
+                  actions[i].onTap();
+                },
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Pops in with a spring-eased scale, staggered by [delay] so successive
+/// fan buttons appear slightly after one another (mirrors the mockup's
+/// per-index stagger). Collapses to an instant appearance when the
+/// platform/user has reduced motion enabled.
+class _FanActionButton extends StatefulWidget {
+  const _FanActionButton({
+    required this.action,
+    required this.onTap,
+    required this.delay,
+  });
+
+  final GlassNavQuickAction action;
+  final VoidCallback onTap;
+  final Duration delay;
+
+  @override
+  State<_FanActionButton> createState() => _FanActionButtonState();
+}
+
+class _FanActionButtonState extends State<_FanActionButton> {
+  bool _appeared = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.delay == Duration.zero) {
+      _appeared = true;
+    } else {
+      Future.delayed(widget.delay, () {
+        if (mounted) setState(() => _appeared = true);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduced = MediaQuery.of(context).disableAnimations;
+    final shown = _appeared || reduced;
+
+    return AnimatedScale(
+      scale: shown ? 1.0 : 0.3,
+      duration: reduced ? Duration.zero : const Duration(milliseconds: 320),
+      curve: Curves.elasticOut,
+      child: AnimatedOpacity(
+        opacity: shown ? 1.0 : 0.0,
+        duration: reduced ? Duration.zero : const Duration(milliseconds: 220),
+        child: Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: widget.onTap,
+            customBorder: const CircleBorder(),
+            child: Semantics(
+              label: widget.action.label,
+              button: true,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border.all(color: Colors.white24),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Colors.black38,
+                        blurRadius: 16,
+                        offset: Offset(0, 6)),
+                  ],
+                ),
+                child: Icon(widget.action.icon,
+                    color: Theme.of(context).colorScheme.onSurface, size: 19),
+              ),
+            ),
+          ),
         ),
       ),
     );
