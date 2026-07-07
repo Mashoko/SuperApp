@@ -530,7 +530,7 @@ Append to `test/features/home/glass_bottom_nav_test.dart` (inside `void main() {
     await tester.pump();
 
     expect(dialerTaps, 1);
-    expect(find.text('Send'), findsNothing);
+    expect(find.byIcon(Icons.send_outlined), findsNothing);
   });
 
   testWidgets('long-press on the PAD opens the fan with all quick actions',
@@ -564,9 +564,9 @@ Append to `test/features/home/glass_bottom_nav_test.dart` (inside `void main() {
     // Fan entries stagger in (0ms, 45ms, 90ms) — advance past the last one.
     await tester.pump(const Duration(milliseconds: 150));
 
-    expect(find.text('Send'), findsOneWidget);
-    expect(find.text('Scan'), findsOneWidget);
-    expect(find.text('Pay'), findsOneWidget);
+    expect(find.byIcon(Icons.send_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.qr_code_scanner_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.payments_outlined), findsOneWidget);
   });
 
   testWidgets('tapping the scrim closes the fan', (tester) async {
@@ -590,11 +590,11 @@ Append to `test/features/home/glass_bottom_nav_test.dart` (inside `void main() {
 
     await tester.longPress(find.byKey(const Key('glass-nav-pad')));
     await tester.pump();
-    expect(find.text('Send'), findsOneWidget);
+    expect(find.byIcon(Icons.send_outlined), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('glass-nav-scrim')));
     await tester.pump();
-    expect(find.text('Send'), findsNothing);
+    expect(find.byIcon(Icons.send_outlined), findsNothing);
   });
 
   testWidgets('tapping a quick action closes the fan and fires its onTap',
@@ -623,11 +623,11 @@ Append to `test/features/home/glass_bottom_nav_test.dart` (inside `void main() {
     await tester.longPress(find.byKey(const Key('glass-nav-pad')));
     await tester.pump();
 
-    await tester.tap(find.text('Send'));
+    await tester.tap(find.byIcon(Icons.send_outlined));
     await tester.pump();
 
     expect(sendTaps, 1);
-    expect(find.text('Send'), findsNothing);
+    expect(find.byIcon(Icons.send_outlined), findsNothing);
   });
 ```
 
