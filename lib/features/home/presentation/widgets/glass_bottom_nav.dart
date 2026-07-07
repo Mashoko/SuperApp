@@ -178,34 +178,39 @@ class _GlassBottomNavState extends State<GlassBottomNav> {
               left: 0,
               right: 0,
               child: Center(
-                child: GestureDetector(
-                  key: const Key('glass-nav-pad'),
-                  onTap: _onPadTap,
-                  onLongPress: widget.quickActions.isEmpty ? null : _openFan,
-                  child: Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          WunzaColors.padGradientStart,
-                          WunzaColors.padGradientEnd,
+                child: Semantics(
+                  label: 'Dialer',
+                  button: true,
+                  hint: 'Long-press for quick actions (Send, Scan, Pay)',
+                  child: GestureDetector(
+                    key: const Key('glass-nav-pad'),
+                    onTap: _onPadTap,
+                    onLongPress: widget.quickActions.isEmpty ? null : _openFan,
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            WunzaColors.padGradientStart,
+                            WunzaColors.padGradientEnd,
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                WunzaColors.padGradientEnd.withValues(alpha: 0.45),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
+                          ),
                         ],
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              WunzaColors.padGradientEnd.withValues(alpha: 0.45),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
+                      child: const Icon(Icons.dialpad,
+                          color: Colors.white, size: 28),
                     ),
-                    child: const Icon(Icons.dialpad,
-                        color: Colors.white, size: 28),
                   ),
                 ),
               ),

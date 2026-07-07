@@ -194,4 +194,19 @@ void main() {
     expect(sendTaps, 1);
     expect(find.byIcon(Icons.send_outlined), findsNothing);
   });
+
+  testWidgets('PAD has accessibility label and hint', (tester) async {
+    await tester.pumpWidget(
+        _harness(activeIndex: 0, onTabSelected: (_) {}, visible: true));
+
+    expect(find.bySemanticsLabel('Dialer'), findsOneWidget);
+    final semantics =
+        tester.widget<Semantics>(find.ancestor(
+          of: find.byKey(const Key('glass-nav-pad')),
+          matching: find.byType(Semantics),
+        ).first);
+    expect(semantics.properties.label, 'Dialer');
+    expect(semantics.properties.button, true);
+    expect(semantics.properties.hint, 'Long-press for quick actions (Send, Scan, Pay)');
+  });
 }
