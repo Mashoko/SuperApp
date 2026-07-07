@@ -97,9 +97,10 @@ folded into the **Home** tab (`_GlideHomeTab`), appended as a new section below
 the existing `_QuickServicesRow` (which already duplicates a subset of these
 items — `Call`, `Shop`, `Bills`, `Pay`, `History`, `Account`). The full grid
 gives users access to everything `_QuickServicesRow`'s "See all" used to link to,
-without a dedicated tab. `ServicesHubTab` becomes a section widget embedded in
-Home rather than a full-screen tab (no route/navigation change needed since it
-was reached via local tab-index state, not `Navigator`).
+without a dedicated tab. `ServicesHubTab` was renamed to `ServicesGridSection`
+and became a section widget embedded in Home rather than a full-screen tab (no
+route/navigation change needed since it was reached via local tab-index state,
+not `Navigator`).
 
 ### Explore tab (new)
 
