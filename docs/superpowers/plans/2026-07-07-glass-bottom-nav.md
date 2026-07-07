@@ -267,46 +267,61 @@ class _GlassBottomNavState extends State<GlassBottomNav> {
         height: 96,
         child: Stack(
           clipBehavior: Clip.none,
-          alignment: Alignment.bottomCenter,
           children: [
-            Container(
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
               height: 72,
-              decoration: BoxDecoration(
-                color: glassColor,
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: borderColor),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.14),
-                    blurRadius: 40,
-                    offset: const Offset(0, 18),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-                  child: Stack(
-                    alignment: Alignment.bottomCenter,
-                    children: [
-                      _SlidingIndicator(
-                        activeIndex: widget.activeIndex,
-                        tabCount: widget.tabs.length,
-                      ),
-                      Row(
-                        children: [
-                          for (var i = 0; i < widget.tabs.length; i++)
-                            Expanded(
-                              child: _GlassTabButton(
-                                tab: widget.tabs[i],
-                                isActive: i == widget.activeIndex,
-                                onTap: () => widget.onTabSelected(i),
-                              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: glassColor,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: borderColor),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.14),
+                      blurRadius: 40,
+                      offset: const Offset(0, 18),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
+                    // LayoutBuilder wraps the Stack (not a Positioned) so it
+                    // sits between two RenderObjects that both expect a plain
+                    // box child — Positioned/AnimatedPositioned must be a
+                    // direct Stack child with nothing else in between, and
+                    // LayoutBuilder is itself backed by a RenderObject, so it
+                    // cannot sit directly between a Stack and a Positioned.
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Stack(
+                          alignment: Alignment.bottomCenter,
+                          children: [
+                            _SlidingIndicator(
+                              activeIndex: widget.activeIndex,
+                              tabCount: widget.tabs.length,
+                              navWidth: constraints.maxWidth,
                             ),
-                        ],
-                      ),
-                    ],
+                            Row(
+                              children: [
+                                for (var i = 0; i < widget.tabs.length; i++)
+                                  Expanded(
+                                    child: _GlassTabButton(
+                                      tab: widget.tabs[i],
+                                      isActive: i == widget.activeIndex,
+                                      onTap: () => widget.onTabSelected(i),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -342,43 +357,48 @@ class _GlassBottomNavState extends State<GlassBottomNav> {
   }
 }
 
+/// Plain [StatelessWidget] (not backed by its own RenderObject) so its
+/// [AnimatedPositioned] resolves directly against the ancestor [Stack] —
+/// [navWidth] is measured by a [LayoutBuilder] one level up, in
+/// [_GlassBottomNavState.build], rather than here.
 class _SlidingIndicator extends StatelessWidget {
-  const _SlidingIndicator({required this.activeIndex, required this.tabCount});
+  const _SlidingIndicator({
+    required this.activeIndex,
+    required this.tabCount,
+    required this.navWidth,
+  });
 
   final int activeIndex;
   final int tabCount;
+  final double navWidth;
 
   static const double _width = 28;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final slotWidth = constraints.maxWidth / tabCount;
-        final left = slotWidth * activeIndex + slotWidth / 2 - _width / 2;
-        return AnimatedPositioned(
-          key: const Key('glass-nav-indicator'),
-          duration: _motionDuration(context, const Duration(milliseconds: 320)),
-          curve: Curves.easeOutCubic,
-          bottom: 8,
-          left: left,
-          child: Container(
-            width: _width,
-            height: 3,
-            decoration: BoxDecoration(
-              color: WunzaColors.navIndicator,
-              borderRadius: BorderRadius.circular(3),
-              boxShadow: [
-                BoxShadow(
-                  color: WunzaColors.navIndicator.withValues(alpha: 0.6),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                ),
-              ],
+    final slotWidth = navWidth / tabCount;
+    final left = slotWidth * activeIndex + slotWidth / 2 - _width / 2;
+    return AnimatedPositioned(
+      key: const Key('glass-nav-indicator'),
+      duration: _motionDuration(context, const Duration(milliseconds: 320)),
+      curve: Curves.easeOutCubic,
+      bottom: 8,
+      left: left,
+      child: Container(
+        width: _width,
+        height: 3,
+        decoration: BoxDecoration(
+          color: WunzaColors.navIndicator,
+          borderRadius: BorderRadius.circular(3),
+          boxShadow: [
+            BoxShadow(
+              color: WunzaColors.navIndicator.withValues(alpha: 0.6),
+              blurRadius: 10,
+              spreadRadius: 2,
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }
@@ -664,46 +684,61 @@ class _GlassBottomNavState extends State<GlassBottomNav> {
         height: 96,
         child: Stack(
           clipBehavior: Clip.none,
-          alignment: Alignment.bottomCenter,
           children: [
-            Container(
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
               height: 72,
-              decoration: BoxDecoration(
-                color: glassColor,
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: borderColor),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.14),
-                    blurRadius: 40,
-                    offset: const Offset(0, 18),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-                  child: Stack(
-                    alignment: Alignment.bottomCenter,
-                    children: [
-                      _SlidingIndicator(
-                        activeIndex: widget.activeIndex,
-                        tabCount: widget.tabs.length,
-                      ),
-                      Row(
-                        children: [
-                          for (var i = 0; i < widget.tabs.length; i++)
-                            Expanded(
-                              child: _GlassTabButton(
-                                tab: widget.tabs[i],
-                                isActive: i == widget.activeIndex,
-                                onTap: () => widget.onTabSelected(i),
-                              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: glassColor,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: borderColor),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.14),
+                      blurRadius: 40,
+                      offset: const Offset(0, 18),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
+                    // LayoutBuilder wraps the Stack (not a Positioned) so it
+                    // sits between two RenderObjects that both expect a plain
+                    // box child — Positioned/AnimatedPositioned must be a
+                    // direct Stack child with nothing else in between, and
+                    // LayoutBuilder is itself backed by a RenderObject, so it
+                    // cannot sit directly between a Stack and a Positioned.
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Stack(
+                          alignment: Alignment.bottomCenter,
+                          children: [
+                            _SlidingIndicator(
+                              activeIndex: widget.activeIndex,
+                              tabCount: widget.tabs.length,
+                              navWidth: constraints.maxWidth,
                             ),
-                        ],
-                      ),
-                    ],
+                            Row(
+                              children: [
+                                for (var i = 0; i < widget.tabs.length; i++)
+                                  Expanded(
+                                    child: _GlassTabButton(
+                                      tab: widget.tabs[i],
+                                      isActive: i == widget.activeIndex,
+                                      onTap: () => widget.onTabSelected(i),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
