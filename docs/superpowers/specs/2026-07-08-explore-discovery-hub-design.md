@@ -113,10 +113,11 @@ filter button opens the existing `MaintenanceScreen` ("Coming soon") — same
 placeholder pattern used elsewhere in the app (Send/Scan/Pay, Bills,
 Providers) for capabilities that don't have a backend yet.
 
-Tapping the bar opens `ExploreSearchSheet` as a full-screen modal route
-(`Navigator.push`, not a bottom sheet — it needs an auto-focused text field
-and full scrollable content, matching how `DialpadView` is opened elsewhere).
-Contents:
+Tapping the bar opens `ExploreSearchSheet` as a full-screen route
+(`Navigator.push` with `MaterialPageRoute(fullscreenDialog: true)`) rather
+than a bottom sheet, since it needs an auto-focused text field, a back
+button, and full scrollable content — the standard Flutter pattern for a
+search takeover. Contents:
 
 - Auto-focused text field with a back/close button.
 - **Recent searches**: ~4 static placeholder strings, each removable (local
