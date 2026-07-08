@@ -904,6 +904,32 @@ app.get('/api/posts', async (req, res) => {
   }
 });
 
+app.post('/api/posts/:id/like', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ message: 'userId is required' });
+    }
+
+    const post = await Post.findOne({ _id: req.params.id, isDeleted: false });
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    const alreadyLiked = post.likedBy.includes(userId);
+    if (alreadyLiked) {
+      post.likedBy = post.likedBy.filter((id) => id !== userId);
+    } else {
+      post.likedBy.push(userId);
+    }
+    await post.save();
+
+    res.json({ liked: !alreadyLiked, likeCount: post.likedBy.length });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Global error handler — catches Multer rejections and other middleware errors
 app.use((err, req, res, next) => {
   if (err.code === 'LIMIT_FILE_SIZE') {
