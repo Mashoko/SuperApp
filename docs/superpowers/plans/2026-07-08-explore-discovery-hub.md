@@ -462,6 +462,13 @@ class _DiscoveryCard extends StatelessWidget {
     return Semantics(
       button: true,
       label: '${item.title}, ${item.subtitle}',
+      // Without this, the descendant Text widgets (title, subtitle) merge
+      // their own text into this node's computed label, producing
+      // "Item One, Sub one\nItem One\nSub one" instead of the clean label
+      // set above — verified by dumping the actual SemanticsNode tree.
+      // excludeSemantics hides the children's semantics so only the
+      // explicit label above is announced.
+      excludeSemantics: true,
       child: Container(
         width: 160,
         padding: const EdgeInsets.all(12),
