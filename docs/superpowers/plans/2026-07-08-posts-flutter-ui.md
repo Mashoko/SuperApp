@@ -467,6 +467,7 @@ git commit -m "feat(posts): add Post model and PostsService HTTP client"
 Create `test/features/home/posts_viewmodel_test.dart`:
 
 ```dart
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -496,6 +497,11 @@ class FakePostsService implements PostsService {
   bool failCreate = false;
   bool failDelete = false;
   Post? createdPost;
+  // When set, toggleLike waits on this instead of returning immediately —
+  // lets a test observe the ViewModel's state *before* the network call
+  // resolves, to verify the optimistic update actually happens synchronously
+  // rather than only after the awaited call completes.
+  Completer<LikeResult>? likeCompleter;
 
   @override
   Future<FeedPage> fetchFeed({required int page, int limit = 10}) async {
@@ -522,6 +528,7 @@ class FakePostsService implements PostsService {
   @override
   Future<LikeResult> toggleLike({required String postId, required String userId}) async {
     if (failLike) throw Exception('like failed');
+    if (likeCompleter != null) return likeCompleter!.future;
     return const LikeResult(liked: true, likeCount: 1);
   }
 
@@ -598,6 +605,27 @@ void main() {
 
       expect(vm.posts.firstWhere((p) => p.id == 'p1').isLikedBy('user1'), false);
     });
+
+    test('applies the optimistic update synchronously, before the network call resolves',
+        () async {
+      final fake = FakePostsService();
+      final completer = Completer<LikeResult>();
+      fake.likeCompleter = completer;
+      final vm = PostsViewModel(fake);
+      await vm.loadFeed('user1');
+
+      final pending = vm.toggleLike('p1', 'user1'); // deliberately not awaited yet
+
+      // The optimistic update must already be visible even though the fake
+      // service's toggleLike call hasn't resolved — this is the actual
+      // property this task exists to deliver (a like that feels instant).
+      expect(vm.posts.firstWhere((p) => p.id == 'p1').isLikedBy('user1'), true);
+
+      completer.complete(const LikeResult(liked: true, likeCount: 1));
+      await pending;
+
+      expect(vm.posts.firstWhere((p) => p.id == 'p1').isLikedBy('user1'), true);
+    });
   });
 
   group('createPost', () {
@@ -630,6 +658,7 @@ void main() {
         ),
         throwsA(isA<Exception>()),
       );
+      expect(vm.posts, hasLength(2));
     });
   });
 
@@ -806,7 +835,7 @@ class PostsViewModel extends ChangeNotifier {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `flutter test test/features/home/posts_viewmodel_test.dart`
-Expected: PASS (10 tests).
+Expected: PASS (11 tests).
 
 - [ ] **Step 5: Commit**
 
