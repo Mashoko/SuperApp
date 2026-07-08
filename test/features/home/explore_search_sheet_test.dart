@@ -40,4 +40,16 @@ void main() {
 
     expect(find.text('Wireless earbuds'), findsNothing);
   });
+
+  testWidgets('a whitespace-only query does not show spurious suggestions',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ExploreSearchSheet()));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.pump();
+
+    expect(find.text('Recent searches'), findsOneWidget);
+    expect(find.text('Suggestions'), findsNothing);
+  });
 }

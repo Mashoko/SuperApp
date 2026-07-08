@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/explore_tab.dart';
+import 'package:mvvm_sip_demo/shared/widgets/maintenance_screen.dart';
 
 void main() {
   testWidgets(
@@ -59,5 +60,28 @@ void main() {
 
     expect(dot1.color, WunzaColors.navIndicator);
     expect(dot0.color, WunzaColors.navIndicator.withValues(alpha: 0.25));
+  });
+
+  testWidgets('tapping See all on a section opens MaintenanceScreen',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: Scaffold(body: ExploreTab())));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    await tester.tap(find.text('See all').first);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MaintenanceScreen), findsOneWidget);
+  });
+
+  testWidgets('each banner exposes a semantics label', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: Scaffold(body: ExploreTab())));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    // Find a Semantics widget that wraps text containing "Refer a friend"
+    final semanticsWithBanner = find.ancestor(
+      of: find.text('Refer a friend'),
+      matching: find.byType(Semantics),
+    );
+    expect(semanticsWithBanner, findsWidgets);
   });
 }

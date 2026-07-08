@@ -33,8 +33,9 @@ class _ExploreSearchSheetState extends State<ExploreSearchSheet> {
   }
 
   List<DiscoveryItem> get _suggestions {
-    if (_query.isEmpty) return const [];
-    final q = _query.toLowerCase();
+    final trimmed = _query.trim();
+    if (trimmed.isEmpty) return const [];
+    final q = trimmed.toLowerCase();
     return allDiscoveryItems
         .where((i) => i.title.toLowerCase().contains(q))
         .toList();
@@ -73,7 +74,7 @@ class _ExploreSearchSheetState extends State<ExploreSearchSheet> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          if (_query.isNotEmpty) ...[
+          if (_query.trim().isNotEmpty) ...[
             Text('Suggestions', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 10),
             if (_suggestions.isEmpty)
