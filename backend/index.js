@@ -910,6 +910,9 @@ app.post('/api/posts/:id/like', async (req, res) => {
     if (!userId) {
       return res.status(400).json({ message: 'userId is required' });
     }
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
 
     // Atomic find-then-save (read likedBy, mutate in JS, write the whole
     // array back) has a lost-update race under concurrent likes on the same
@@ -951,6 +954,9 @@ app.delete('/api/posts/:id', async (req, res) => {
     const { authorUserId } = req.body;
     if (!authorUserId) {
       return res.status(400).json({ message: 'authorUserId is required' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: 'Post not found' });
     }
 
     const post = await Post.findOne({ _id: req.params.id, isDeleted: false });

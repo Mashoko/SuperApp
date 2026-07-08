@@ -71,4 +71,9 @@ describe('DELETE /api/posts/:id', () => {
     const res = await request(app).delete(`/api/posts/${post._id}`).send({});
     expect(res.status).toBe(400);
   });
+
+  test('returns 404 (not 500) for a malformed post id', async () => {
+    const res = await request(app).delete('/api/posts/not-a-real-id').send({ authorUserId: 'user1' });
+    expect(res.status).toBe(404);
+  });
 });

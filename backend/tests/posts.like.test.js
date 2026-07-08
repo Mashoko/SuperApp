@@ -71,4 +71,18 @@ describe('POST /api/posts/:id/like', () => {
     expect(fetched.likedBy.sort()).toEqual(['userA', 'userB']);
     expect(fetched.likedBy.length).toBe(2);
   });
+
+  test('returns 404 (not 500) for a malformed post id', async () => {
+    const res = await request(app).post('/api/posts/not-a-real-id/like').send({ userId: 'user2' });
+    expect(res.status).toBe(404);
+  });
+
+  test('returns 404 for a soft-deleted post', async () => {
+    const post = await Post.create({
+      type: 'text', caption: 'gone', authorUserId: 'user1', authorName: 'Alice', isDeleted: true,
+    });
+
+    const res = await request(app).post(`/api/posts/${post._id}/like`).send({ userId: 'user2' });
+    expect(res.status).toBe(404);
+  });
 });
