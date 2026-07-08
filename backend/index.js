@@ -72,6 +72,32 @@ const upload = multer({
   },
 });
 
+// Multer instance for post media (photo/video/audio) — separate from the
+// image-only `upload` above, which stays untouched for /api/upload.
+const POST_MEDIA_LIMITS = {
+  'image/jpeg': 5 * 1024 * 1024,
+  'image/png': 5 * 1024 * 1024,
+  'image/webp': 5 * 1024 * 1024,
+  'image/gif': 5 * 1024 * 1024,
+  'video/mp4': 50 * 1024 * 1024,
+  'video/quicktime': 50 * 1024 * 1024,
+  'audio/mpeg': 15 * 1024 * 1024,
+  'audio/mp4': 15 * 1024 * 1024,
+  'audio/wav': 15 * 1024 * 1024,
+};
+
+const postUpload = multer({
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // largest individual type limit below; per-type limits enforced in the route handler
+  fileFilter: function (req, file, cb) {
+    if (Object.prototype.hasOwnProperty.call(POST_MEDIA_LIMITS, file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Unsupported media type: ${file.mimetype}`));
+    }
+  },
+});
+
 // Database Connection
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('Successfully connected to MongoDB'))
@@ -813,18 +839,65 @@ app.post('/api/payments/africom/superapp-pay', async (req, res) => {
   }
 });
 
+// ── Posts ──────────────────────────────────────────────────────────────────
+const Post = require('./models/post.model');
+
+app.post('/api/posts', postUpload.single('media'), async (req, res) => {
+  try {
+    const { type, caption, authorUserId, authorName, audioTitle, durationSeconds } = req.body;
+
+    if (!type || !['photo', 'video', 'text', 'audio'].includes(type)) {
+      return res.status(400).json({ message: 'type must be one of: photo, video, text, audio' });
+    }
+    if (!authorUserId || !authorName) {
+      return res.status(400).json({ message: 'authorUserId and authorName are required' });
+    }
+    if (type !== 'text' && !req.file) {
+      return res.status(400).json({ message: 'media file is required for photo, video, and audio posts' });
+    }
+
+    if (req.file) {
+      const perTypeLimit = POST_MEDIA_LIMITS[req.file.mimetype];
+      if (req.file.size > perTypeLimit) {
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({
+          message: `File too large for ${req.file.mimetype}. Maximum size is ${Math.round(perTypeLimit / (1024 * 1024))} MB.`,
+        });
+      }
+    }
+
+    const post = new Post({
+      type,
+      caption,
+      mediaUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
+      audioTitle,
+      durationSeconds: durationSeconds ? Number(durationSeconds) : undefined,
+      authorUserId,
+      authorName,
+    });
+    await post.save();
+    res.status(201).json(post);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 // Global error handler — catches Multer rejections and other middleware errors
 app.use((err, req, res, next) => {
   if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(413).json({ message: 'File too large. Maximum size is 5 MB.' });
+    return res.status(413).json({ message: 'File too large.' });
   }
-  if (err.message && err.message.includes('Only JPEG')) {
+  if (err.message && (err.message.includes('Only JPEG') || err.message.includes('Unsupported media type'))) {
     return res.status(415).json({ message: err.message });
   }
   console.error(err);
   res.status(500).json({ message: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
