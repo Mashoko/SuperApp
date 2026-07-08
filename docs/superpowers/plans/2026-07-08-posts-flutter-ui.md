@@ -1505,7 +1505,7 @@ Note: tests must not tap the video/audio play buttons — doing so calls real `V
 - [ ] **Step 6: Run tests to verify they pass**
 
 Run: `flutter test test/features/home/feed_post_card_test.dart`
-Expected: PASS (10 tests).
+Expected: PASS (11 tests).
 
 - [ ] **Step 7: Commit**
 
