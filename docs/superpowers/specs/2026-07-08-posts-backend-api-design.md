@@ -162,11 +162,16 @@ disk storage and static serving as the existing upload path.
 
 Matches the existing per-route `try/catch` → `res.status(4xx/5xx).json({message})`
 style, no shared error middleware beyond the existing generic one at the
-bottom of `index.js`. Missing required fields → 400. Unsupported/oversized
-media → 400 (multer's rejection is caught and turned into a 400 response,
-same pattern as the existing `/api/upload` route's error handling). Post not
-found → 404. Delete by non-author → 403. No additional rate-limiting (the
-existing `authLimiter` is scoped to `/api/auth/*` only, and these routes
+bottom of `index.js`. Missing required fields → 400. Oversized media → 413,
+unsupported mime type → 415 — matching the existing `/api/upload` route's
+global error-handling middleware exactly (it already maps Multer's
+`LIMIT_FILE_SIZE` to 413 and a fileFilter rejection to 415; this spec extends
+that same middleware to recognize the new route's rejection message rather
+than adding a second one). A per-mime-type size check that runs after upload
+(see Media upload extension) returns 400 with a descriptive message, since
+that check isn't a Multer-level rejection. Post not found → 404. Delete by
+non-author → 403. No additional rate-limiting (the existing `authLimiter` is
+scoped to `/api/auth/*` only, and these routes
 follow the un-rate-limited convention already used by products/cart/wishlist).
 
 ## Testing
