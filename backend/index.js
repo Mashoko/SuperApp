@@ -946,6 +946,31 @@ app.post('/api/posts/:id/like', async (req, res) => {
   }
 });
 
+app.delete('/api/posts/:id', async (req, res) => {
+  try {
+    const { authorUserId } = req.body;
+    if (!authorUserId) {
+      return res.status(400).json({ message: 'authorUserId is required' });
+    }
+
+    const post = await Post.findOne({ _id: req.params.id, isDeleted: false });
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    if (post.authorUserId !== authorUserId) {
+      return res.status(403).json({ message: 'Only the author can delete this post' });
+    }
+
+    post.isDeleted = true;
+    await post.save();
+
+    res.json({ message: 'Post deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Global error handler — catches Multer rejections and other middleware errors
 app.use((err, req, res, next) => {
   if (err.code === 'LIMIT_FILE_SIZE') {
