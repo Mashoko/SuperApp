@@ -911,20 +911,36 @@ app.post('/api/posts/:id/like', async (req, res) => {
       return res.status(400).json({ message: 'userId is required' });
     }
 
-    const post = await Post.findOne({ _id: req.params.id, isDeleted: false });
+    // Atomic find-then-save (read likedBy, mutate in JS, write the whole
+    // array back) has a lost-update race under concurrent likes on the same
+    // post: two concurrent requests can both read the same "before" array
+    // and one write can silently clobber the other. This codebase already
+    // has an atomic pattern for the same class of operation (see
+    // /api/wishlist/add's $addToSet and /api/wishlist/remove's $pull) --
+    // reused here as two atomic attempts (add if absent, else remove if
+    // present) so every mutation is a single atomic MongoDB operation, not
+    // a read-modify-write cycle.
+    let post = await Post.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: false, likedBy: { $ne: userId } },
+      { $addToSet: { likedBy: userId } },
+      { new: true }
+    );
+
+    let liked = true;
+    if (!post) {
+      post = await Post.findOneAndUpdate(
+        { _id: req.params.id, isDeleted: false, likedBy: userId },
+        { $pull: { likedBy: userId } },
+        { new: true }
+      );
+      liked = false;
+    }
+
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
 
-    const alreadyLiked = post.likedBy.includes(userId);
-    if (alreadyLiked) {
-      post.likedBy = post.likedBy.filter((id) => id !== userId);
-    } else {
-      post.likedBy.push(userId);
-    }
-    await post.save();
-
-    res.json({ liked: !alreadyLiked, likeCount: post.likedBy.length });
+    res.json({ liked, likeCount: post.likedBy.length });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

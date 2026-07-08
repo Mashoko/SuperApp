@@ -56,4 +56,19 @@ describe('POST /api/posts/:id/like', () => {
     const res = await request(app).post(`/api/posts/${fakeId}/like`).send({ userId: 'user2' });
     expect(res.status).toBe(404);
   });
+
+  test('concurrent likes from different users are both recorded (no lost update)', async () => {
+    const post = await Post.create({
+      type: 'text', caption: 'hi', authorUserId: 'user1', authorName: 'Alice',
+    });
+
+    await Promise.all([
+      request(app).post(`/api/posts/${post._id}/like`).send({ userId: 'userA' }),
+      request(app).post(`/api/posts/${post._id}/like`).send({ userId: 'userB' }),
+    ]);
+
+    const fetched = await Post.findById(post._id);
+    expect(fetched.likedBy.sort()).toEqual(['userA', 'userB']);
+    expect(fetched.likedBy.length).toBe(2);
+  });
 });
