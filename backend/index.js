@@ -882,6 +882,28 @@ app.post('/api/posts', postUpload.single('media'), async (req, res) => {
   }
 });
 
+app.get('/api/posts', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const filter = { isDeleted: false };
+
+    const totalPosts = await Post.countDocuments(filter);
+    const totalPages = Math.ceil(totalPosts / limit);
+
+    const posts = await Post.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ posts, totalPages, currentPage: page, totalPosts });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Global error handler — catches Multer rejections and other middleware errors
 app.use((err, req, res, next) => {
   if (err.code === 'LIMIT_FILE_SIZE') {
