@@ -17,7 +17,7 @@ class _FakePostsService implements PostsService {
 
   @override
   Future<FeedPage> fetchFeed({required int page, int limit = 10}) async =>
-      const FeedPage(posts: [], totalPages: 1, currentPage: 1);
+      const FeedPage(posts: [], totalPages: 1, currentPage: 1, ok: true);
 
   @override
   Future<Post> createPost({

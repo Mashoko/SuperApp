@@ -41,6 +41,7 @@ void main() {
       expect(page.posts.first.id, 'p1');
       expect(page.totalPages, 3);
       expect(page.currentPage, 1);
+      expect(page.ok, true);
     });
 
     test('returns an empty page on a non-200 response', () async {
@@ -50,6 +51,7 @@ void main() {
       final page = await service.fetchFeed(page: 1);
 
       expect(page.posts, isEmpty);
+      expect(page.ok, false);
     });
   });
 

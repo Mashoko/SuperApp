@@ -9,11 +9,13 @@ class FeedPage {
     required this.posts,
     required this.totalPages,
     required this.currentPage,
+    required this.ok,
   });
 
   final List<Post> posts;
   final int totalPages;
   final int currentPage;
+  final bool ok;
 }
 
 class LikeResult {
@@ -48,11 +50,12 @@ class PostsService {
           posts: posts,
           totalPages: data['totalPages'] as int,
           currentPage: data['currentPage'] as int,
+          ok: true,
         );
       }
-      return FeedPage(posts: const [], totalPages: 1, currentPage: page);
+      return FeedPage(posts: const [], totalPages: 1, currentPage: page, ok: false);
     } catch (e) {
-      return FeedPage(posts: const [], totalPages: 1, currentPage: page);
+      return FeedPage(posts: const [], totalPages: 1, currentPage: page, ok: false);
     }
   }
 

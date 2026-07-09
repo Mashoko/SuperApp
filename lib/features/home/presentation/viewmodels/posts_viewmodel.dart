@@ -10,8 +10,9 @@ class PostsViewModel extends ChangeNotifier {
   final PostsService _service;
 
   List<Post> _posts = [];
-  bool _isLoading = false;
+  bool _isLoading = true;
   bool _isLoadingMore = false;
+  bool _loadMoreFailed = false;
   String? _error;
   int _currentPage = 1;
   int _totalPages = 1;
@@ -19,6 +20,7 @@ class PostsViewModel extends ChangeNotifier {
   List<Post> get posts => _posts;
   bool get isLoading => _isLoading;
   bool get isLoadingMore => _isLoadingMore;
+  bool get loadMoreFailed => _loadMoreFailed;
   String? get error => _error;
   bool get hasMore => _currentPage < _totalPages;
 
@@ -27,37 +29,38 @@ class PostsViewModel extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    try {
-      final page = await _service.fetchFeed(page: 1);
+    final page = await _service.fetchFeed(page: 1);
+    if (page.ok) {
       _posts = page.posts;
       _currentPage = page.currentPage;
       _totalPages = page.totalPages;
-    } catch (e) {
+      _error = null;
+    } else {
       _error = 'Failed to load posts. Check your connection and try again.';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
     }
+    _isLoading = false;
+    notifyListeners();
   }
 
   Future<void> loadMore(String userId) async {
     if (_isLoadingMore || !hasMore) return;
 
+    _loadMoreFailed = false;
     _isLoadingMore = true;
     notifyListeners();
 
-    try {
-      final page = await _service.fetchFeed(page: _currentPage + 1);
+    final page = await _service.fetchFeed(page: _currentPage + 1);
+    if (page.ok) {
       _posts = [..._posts, ...page.posts];
       _currentPage = page.currentPage;
       _totalPages = page.totalPages;
-    } catch (e) {
+    } else {
       // Loading-more failures don't replace the already-loaded feed; the
       // UI shows a small inline retry affordance instead.
-    } finally {
-      _isLoadingMore = false;
-      notifyListeners();
+      _loadMoreFailed = true;
     }
+    _isLoadingMore = false;
+    notifyListeners();
   }
 
   Future<void> toggleLike(String postId, String userId) async {

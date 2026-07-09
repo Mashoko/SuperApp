@@ -36,11 +36,13 @@ class FakePostsService implements PostsService {
 
   @override
   Future<FeedPage> fetchFeed({required int page, int limit = 10}) async {
-    if (failFetch) throw Exception('network error');
-    if (page == 1) {
-      return FeedPage(posts: feedPage1, totalPages: totalPages, currentPage: 1);
+    if (failFetch) {
+      return FeedPage(posts: const [], totalPages: 1, currentPage: page, ok: false);
     }
-    return FeedPage(posts: feedPage2, totalPages: totalPages, currentPage: 2);
+    if (page == 1) {
+      return FeedPage(posts: feedPage1, totalPages: totalPages, currentPage: 1, ok: true);
+    }
+    return FeedPage(posts: feedPage2, totalPages: totalPages, currentPage: 2, ok: true);
   }
 
   @override
@@ -114,6 +116,27 @@ void main() {
       await vm.loadMore('user1');
 
       expect(vm.posts, hasLength(2));
+    });
+
+    test(
+        'sets loadMoreFailed and preserves the already-loaded feed when a page fails, and a subsequent retry succeeds',
+        () async {
+      final fake = FakePostsService();
+      final vm = PostsViewModel(fake);
+      await vm.loadFeed('user1');
+
+      fake.failFetch = true;
+      await vm.loadMore('user1');
+
+      expect(vm.posts, hasLength(2), reason: 'the already-loaded feed must not be wiped by a failed page');
+      expect(vm.hasMore, true, reason: 'hasMore must not be truncated by a failed page');
+      expect(vm.loadMoreFailed, true);
+
+      fake.failFetch = false;
+      await vm.loadMore('user1');
+
+      expect(vm.posts, hasLength(3));
+      expect(vm.loadMoreFailed, false);
     });
   });
 

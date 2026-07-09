@@ -143,9 +143,16 @@ class _ExploreTabState extends State<ExploreTab> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(dialogContext);
-              context.read<PostsViewModel>().deletePost(postId, _userId);
+              try {
+                await context.read<PostsViewModel>().deletePost(postId, _userId);
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Failed to delete post. Please try again.')),
+                );
+              }
             },
             child: const Text('Delete'),
           ),
@@ -290,8 +297,10 @@ class _ExploreTabState extends State<ExploreTab> {
                         child: Center(child: CircularProgressIndicator()),
                       );
                     }
-                    if (!postsVM.hasMore) return const SizedBox.shrink();
-                    return FeedLoadMoreRetry(onRetry: () => postsVM.loadMore(_userId));
+                    if (postsVM.loadMoreFailed) {
+                      return FeedLoadMoreRetry(onRetry: () => postsVM.loadMore(_userId));
+                    }
+                    return const SizedBox.shrink();
                   }
                   final post = postsVM.posts[index];
                   return FeedPostCard(
