@@ -29,10 +29,12 @@ import '../../shared/theme/theme_provider.dart';
 // Merged Imports
 import '../../services/calling_service.dart';
 import '../../services/shopping_service.dart';
+import '../../services/posts_service.dart';
 import '../../services/payment_service.dart';
 import '../../services/utility_bills_service.dart';
 import '../../features/dashboard/presentation/viewmodels/dashboard_viewmodel.dart';
 import '../../features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
+import '../../features/home/presentation/viewmodels/posts_viewmodel.dart';
 import '../../features/utility_bills/presentation/viewmodels/utility_bills_viewmodel.dart';
 import '../../features/calling/presentation/viewmodels/calling_viewmodel.dart';
 import '../../services/shipping_address_service.dart';
@@ -108,6 +110,7 @@ Future<void> configureDependencies() async {
   // Services
   getIt.registerLazySingleton<CallingService>(() => CallingService());
   getIt.registerLazySingleton<ShoppingService>(() => ShoppingService());
+  getIt.registerLazySingleton<PostsService>(() => PostsService());
   getIt.registerLazySingleton<ShippingAddressService>(() => ShippingAddressService());
   getIt.registerLazySingleton<UtilityBillsService>(() => UtilityBillsService());
   getIt.registerLazySingleton<AfricomPaymentService>(
@@ -115,6 +118,7 @@ Future<void> configureDependencies() async {
   // ViewModels
   getIt.registerFactory(() => DashboardViewModel(getIt(), getIt(), getIt()));
   getIt.registerFactory(() => ShoppingViewModel(getIt()));
+  getIt.registerFactory(() => PostsViewModel(getIt()));
   getIt.registerFactory(() => UtilityBillsViewModel(getIt()));
   getIt.registerFactory(() => CallingViewModel(getIt()));
   getIt.registerFactory(() => ProfileSummaryViewModel(

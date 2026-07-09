@@ -1,15 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:mvvm_sip_demo/core/di/inject.dart';
+import 'package:mvvm_sip_demo/core/services/otp_auth_service.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
+import 'package:mvvm_sip_demo/features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/viewmodels/posts_viewmodel.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/views/composer_audio_view.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/views/composer_photo_video_view.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/views/composer_text_view.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/composer_bar.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/composer_choice_sheet.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/discovery_section.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/explore_models.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/explore_search_sheet.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/feed_post_card.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/feed_states.dart';
+import 'package:mvvm_sip_demo/models/post.dart';
 import 'package:mvvm_sip_demo/shared/widgets/maintenance_screen.dart';
 
-/// The Explore tab's discovery hub: a pinned search bar, quick category
-/// chips, a banner carousel, and 4 flagship [DiscoverySection]s — all on
-/// static placeholder data. See the Explore discovery hub design spec for
-/// what's deferred (the remaining ~8 carousels, real search, filtering,
-/// tablet/desktop layouts, loading/error states, the social layer).
+/// The Explore tab: a pinned search bar, quick category chips, a banner
+/// carousel, and 4 flagship [DiscoverySection]s (all on static placeholder
+/// data — see the Explore discovery hub design spec), followed by a real
+/// composer bar and an infinite-scrolling feed of [Post]s (see the Posts
+/// Flutter UI design spec). The feed sits below the static sections so it
+/// can scroll infinitely without stranding content beneath it.
 class ExploreTab extends StatefulWidget {
   const ExploreTab({super.key});
 
@@ -19,6 +33,46 @@ class ExploreTab extends StatefulWidget {
 
 class _ExploreTabState extends State<ExploreTab> {
   String _selectedCategoryId = exploreCategories.first.id;
+  String _userId = 'guest';
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final creds = await getIt<OtpAuthService>().getStoredCredentials();
+      if (!mounted) return;
+      setState(() => _userId = creds?['username'] ?? 'guest');
+      context.read<PostsViewModel>().loadFeed(_userId);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 300) {
+      context.read<PostsViewModel>().loadMore(_userId);
+    }
+  }
+
+  String get _authorName {
+    final alias = context.read<AccountSummaryViewModel>().alias;
+    return (alias == null || alias.isEmpty) ? 'You' : alias;
+  }
+
+  String _initialsFor(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return (parts.first.substring(0, 1) + parts.last.substring(0, 1)).toUpperCase();
+  }
 
   void _openSearchSheet() {
     Navigator.push(
@@ -35,15 +89,77 @@ class _ExploreTabState extends State<ExploreTab> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            MaintenanceScreen(label: label, icon: icon, color: color),
+        builder: (_) => MaintenanceScreen(label: label, icon: icon, color: color),
+      ),
+    );
+  }
+
+  void _openComposer() {
+    ComposerChoiceSheet.show(context, (type) {
+      final authorName = _authorName;
+      switch (type) {
+        case PostType.text:
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ComposerTextView(authorUserId: _userId, authorName: authorName),
+            ),
+          );
+          break;
+        case PostType.audio:
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ComposerAudioView(authorUserId: _userId, authorName: authorName),
+            ),
+          );
+          break;
+        case PostType.photo:
+        case PostType.video:
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ComposerPhotoVideoView(
+                type: type,
+                authorUserId: _userId,
+                authorName: authorName,
+              ),
+            ),
+          );
+          break;
+      }
+    });
+  }
+
+  void _confirmDelete(String postId) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete post?'),
+        content: const Text("This can't be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.read<PostsViewModel>().deletePost(postId, _userId);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final postsVM = context.watch<PostsViewModel>();
+
     return CustomScrollView(
+      controller: _scrollController,
       slivers: [
         SliverPersistentHeader(
           pinned: true,
@@ -58,7 +174,7 @@ class _ExploreTabState extends State<ExploreTab> {
         ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(0, 4, 0, 140),
+            padding: const EdgeInsets.fromLTRB(0, 4, 0, 22),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -131,6 +247,70 @@ class _ExploreTabState extends State<ExploreTab> {
             ),
           ),
         ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+            child: ComposerBar(userInitials: _initialsFor(_authorName), onTap: _openComposer),
+          ),
+        ),
+        if (postsVM.isLoading)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: FeedLoadingSkeleton(),
+            ),
+          )
+        else if (postsVM.error != null && postsVM.posts.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: FeedErrorState(
+                message: postsVM.error!,
+                onRetry: () => postsVM.loadFeed(_userId),
+              ),
+            ),
+          )
+        else if (postsVM.posts.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: FeedEmptyState(onCompose: _openComposer),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 140),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (index == postsVM.posts.length) {
+                    if (postsVM.isLoadingMore) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (!postsVM.hasMore) return const SizedBox.shrink();
+                    return FeedLoadMoreRetry(onRetry: () => postsVM.loadMore(_userId));
+                  }
+                  final post = postsVM.posts[index];
+                  return FeedPostCard(
+                    post: post,
+                    currentUserId: _userId,
+                    onLikeTap: () => postsVM.toggleLike(post.id, _userId),
+                    onCommentTap: () => _openMaintenance(
+                      label: 'Comments',
+                      icon: Icons.mode_comment_outlined,
+                      color: WunzaColors.navIndicator,
+                    ),
+                    onDeleteTap:
+                        post.authorUserId == _userId ? () => _confirmDelete(post.id) : null,
+                  );
+                },
+                childCount: postsVM.posts.length + 1,
+              ),
+            ),
+          ),
       ],
     );
   }

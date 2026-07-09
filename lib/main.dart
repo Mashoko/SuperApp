@@ -18,6 +18,7 @@ import 'features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
 
 import 'features/dashboard/presentation/viewmodels/dashboard_viewmodel.dart';
 import 'features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
+import 'features/home/presentation/viewmodels/posts_viewmodel.dart';
 import 'features/utility_bills/presentation/viewmodels/utility_bills_viewmodel.dart';
 import 'features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
 import 'features/profile/presentation/viewmodels/profile_summary_viewmodel.dart';
@@ -61,6 +62,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => getIt<DashboardViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<ShoppingViewModel>()),
+        ChangeNotifierProvider(create: (_) => getIt<PostsViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<UtilityBillsViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<CallingViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<DialpadViewModel>()),
