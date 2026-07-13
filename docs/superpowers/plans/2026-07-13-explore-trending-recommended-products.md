@@ -1531,7 +1531,7 @@ Add wishlist methods, in a new section near the end of the class (before the clo
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `flutter test test/features/shopping/shopping_viewmodel_products_test.dart`
-Expected: PASS (8 tests).
+Expected: PASS (9 tests).
 
 - [ ] **Step 5: Run the full Flutter test suite excluding the known unrelated live-network test to confirm no regressions**
 
