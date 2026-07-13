@@ -1807,20 +1807,23 @@ class ProductCard extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                     ),
-                  if (!isSmall && product.storeName != null && product.storeName!.isNotEmpty) ...[
+                  if (!isSmall &&
+                      ((product.storeName != null && product.storeName!.isNotEmpty) ||
+                          product.verifiedSeller)) ...[
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        Flexible(
-                          child: Text(
-                            product.storeName!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: WunzaColors.textSecondary,
-                                ),
+                        if (product.storeName != null && product.storeName!.isNotEmpty)
+                          Flexible(
+                            child: Text(
+                              product.storeName!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: WunzaColors.textSecondary,
+                                  ),
+                            ),
                           ),
-                        ),
                         if (product.verifiedSeller) ...[
                           const SizedBox(width: 4),
                           const Icon(Icons.verified, size: 14, color: WunzaColors.primary),
@@ -1962,7 +1965,7 @@ This is a one-line addition preserving the grid's exact existing (always-unfille
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `flutter test test/features/shopping/product_card_test.dart`
-Expected: PASS (7 tests).
+Expected: PASS (8 tests).
 
 - [ ] **Step 6: Run `flutter analyze` to confirm the call-site fix compiles cleanly**
 
