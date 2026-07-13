@@ -190,12 +190,55 @@ app.get('/api/products', async (req, res) => {
             filter.$or = [{ name: searchRegex }, { description: searchRegex }];
         }
 
+        let sort = null;
+
+        if (req.query.sort === 'trending') {
+            filter.isTrending = true;
+            sort = { averageRating: -1, createdAt: -1 };
+        } else if (req.query.sort === 'recommended') {
+            const userId = req.query.userId;
+            let categories = [];
+            let excludeIds = [];
+
+            if (userId) {
+                const wishlist = await Wishlist.findOne({ userId });
+                const wishlistProductIds = wishlist
+                    ? wishlist.productIds.map((id) => id.toString())
+                    : [];
+                const cart = await Cart.findOne({ userId });
+                const cartProductIds = cart
+                    ? cart.items.map((item) => item.productId.toString())
+                    : [];
+                excludeIds = [...new Set([...wishlistProductIds, ...cartProductIds])];
+
+                if (wishlistProductIds.length > 0) {
+                    const wishlistProducts = await Product.find({
+                        _id: { $in: wishlistProductIds },
+                    });
+                    categories = [
+                        ...new Set(wishlistProducts.map((p) => p.category).filter(Boolean)),
+                    ];
+                }
+            }
+
+            if (categories.length > 0) {
+                filter.category = { $in: categories };
+            }
+            if (excludeIds.length > 0) {
+                filter._id = { $nin: excludeIds };
+            }
+            sort =
+                categories.length > 0
+                    ? { averageRating: -1, createdAt: -1 }
+                    : { createdAt: -1, averageRating: -1 };
+        }
+
         const totalProducts = await Product.countDocuments(filter);
         const totalPages = Math.ceil(totalProducts / limit);
 
-        const products = await Product.find(filter)
-            .skip(skip)
-            .limit(limit);
+        let query = Product.find(filter);
+        if (sort) query = query.sort(sort);
+        const products = await query.skip(skip).limit(limit);
 
         res.json({
             products,
