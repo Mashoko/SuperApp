@@ -350,12 +350,12 @@ This is purely additive: when `req.query.sort` is absent, `sort` stays `null`, n
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `cd backend && npx jest tests/products.sort.test.js`
-Expected: PASS (5 tests).
+Expected: PASS (6 tests).
 
 - [ ] **Step 6: Run the full backend suite to confirm no regressions**
 
 Run: `cd backend && npx jest`
-Expected: PASS (all suites, previous 23 tests + 5 new = 28 tests).
+Expected: PASS (all suites, previous 23 tests + 6 new = 29 tests).
 
 - [ ] **Step 7: Commit**
 
