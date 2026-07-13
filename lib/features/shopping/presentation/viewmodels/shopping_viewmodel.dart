@@ -31,6 +31,16 @@ class ShoppingViewModel extends ChangeNotifier {
 
   List<String> _recentSearches = [];
 
+  List<Product> _trendingProducts = [];
+  bool _trendingLoading = false;
+  String? _trendingError;
+
+  List<Product> _recommendedProducts = [];
+  bool _recommendedLoading = false;
+  String? _recommendedError;
+
+  List<String> _wishlistProductIds = [];
+
   // ── Getters ──────────────────────────────────────────────────────────────
 
   List<Product> get products => _products;
@@ -53,6 +63,16 @@ class ShoppingViewModel extends ChangeNotifier {
 
   List<String> get recentSearches => _recentSearches;
 
+  List<Product> get trendingProducts => _trendingProducts;
+  bool get trendingLoading => _trendingLoading;
+  String? get trendingError => _trendingError;
+
+  List<Product> get recommendedProducts => _recommendedProducts;
+  bool get recommendedLoading => _recommendedLoading;
+  String? get recommendedError => _recommendedError;
+
+  List<String> get wishlistProductIds => _wishlistProductIds;
+
   // ── Private helpers ───────────────────────────────────────────────────────
 
   void _setLoading(bool v) { _isLoading = v; notifyListeners(); }
@@ -62,51 +82,78 @@ class ShoppingViewModel extends ChangeNotifier {
   // ── Products ──────────────────────────────────────────────────────────────
 
   Future<void> loadProducts({String? category, String? search}) async {
-    try {
-      _setLoading(true);
-      _setError(null);
-      _page = 1;
-      _totalPages = 1;
+    _setLoading(true);
+    _setError(null);
+    _page = 1;
+    _totalPages = 1;
 
-      await Future.wait([loadCategories(), loadBanners()]);
+    await Future.wait([loadCategories(), loadBanners()]);
 
-      final cat = category ?? _selectedCategory;
-      final q = search ?? _searchQuery;
+    final cat = category ?? _selectedCategory;
+    final q = search ?? _searchQuery;
 
-      final result = await _service.fetchProducts(
-        page: 1,
-        category: cat,
-        search: q.isEmpty ? null : q,
-      );
+    final result = await _service.fetchProducts(
+      page: 1,
+      category: cat,
+      search: q.isEmpty ? null : q,
+    );
 
+    if (result.ok) {
       _products = result.products;
       _totalPages = result.totalPages;
-      notifyListeners();
-    } catch (e) {
+    } else {
       _setError('Failed to load products. Check your connection and try again.');
-    } finally {
-      _setLoading(false);
     }
+    _setLoading(false);
   }
 
   Future<void> loadMoreProducts() async {
     if (_isLoading || _isMoreLoading || _page >= _totalPages) return;
-    try {
-      _setMoreLoading(true);
-      _page++;
-      final result = await _service.fetchProducts(
-        page: _page,
-        category: _selectedCategory,
-        search: _searchQuery.isEmpty ? null : _searchQuery,
-      );
+    _setMoreLoading(true);
+    final nextPage = _page + 1;
+    final result = await _service.fetchProducts(
+      page: nextPage,
+      category: _selectedCategory,
+      search: _searchQuery.isEmpty ? null : _searchQuery,
+    );
+    if (result.ok) {
+      _page = nextPage;
       _products.addAll(result.products);
-      notifyListeners();
-    } catch (e) {
-      _page--;
+    } else {
       _setError('Failed to load more products.');
-    } finally {
-      _setMoreLoading(false);
     }
+    _setMoreLoading(false);
+  }
+
+  Future<void> loadTrendingProducts() async {
+    _trendingLoading = true;
+    _trendingError = null;
+    notifyListeners();
+
+    final result = await _service.fetchTrendingProducts();
+    if (result.ok) {
+      _trendingProducts = result.products;
+    } else {
+      _trendingError = 'Failed to load trending products. Check your connection and try again.';
+    }
+    _trendingLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> loadRecommendedProducts(String userId) async {
+    _recommendedLoading = true;
+    _recommendedError = null;
+    notifyListeners();
+
+    final result = await _service.fetchRecommendedProducts(userId: userId);
+    if (result.ok) {
+      _recommendedProducts = result.products;
+    } else {
+      _recommendedError =
+          'Failed to load recommended products. Check your connection and try again.';
+    }
+    _recommendedLoading = false;
+    notifyListeners();
   }
 
   Future<void> loadBanners() async {
@@ -312,6 +359,42 @@ class ShoppingViewModel extends ChangeNotifier {
       _setError('Failed to load orders.');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // ── Wishlist (favourite button) ───────────────────────────────────────────
+
+  Future<void> loadWishlist(String userId) async {
+    try {
+      final products = await _service.fetchWishlist(userId);
+      _wishlistProductIds = products.map((p) => p.productId).toList();
+      notifyListeners();
+    } catch (_) {
+      // Silent -- the favourite button simply won't show as filled; not
+      // worth a dedicated error state for a background wishlist-state sync.
+    }
+  }
+
+  bool isWishlisted(String productId) => _wishlistProductIds.contains(productId);
+
+  Future<void> toggleWishlist(String userId, String productId) async {
+    final wasWishlisted = isWishlisted(productId);
+    _wishlistProductIds = wasWishlisted
+        ? _wishlistProductIds.where((id) => id != productId).toList()
+        : [..._wishlistProductIds, productId];
+    notifyListeners();
+
+    try {
+      if (wasWishlisted) {
+        await _service.removeFromWishlist(userId, productId);
+      } else {
+        await _service.addToWishlist(userId, productId);
+      }
+    } catch (e) {
+      _wishlistProductIds = wasWishlisted
+          ? [..._wishlistProductIds, productId]
+          : _wishlistProductIds.where((id) => id != productId).toList();
+      notifyListeners();
     }
   }
 }
