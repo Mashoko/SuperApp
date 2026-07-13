@@ -5,14 +5,15 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class ShoppingService {
+  ShoppingService({http.Client? client}) : _client = client ?? http.Client();
+
+  final http.Client _client;
   static const String _base = 'https://superapp-diht.onrender.com/api';
 
   // ── Product catalog (in-memory cache for browse) ──────────────────────────
   final Map<String, Product> _products = {};
 
-  ShoppingService();
-
-  Future<({List<Product> products, int totalPages})> fetchProducts({
+  Future<({List<Product> products, int totalPages, bool ok})> fetchProducts({
     int page = 1,
     int limit = 10,
     String? category,
@@ -27,7 +28,7 @@ class ShoppingService {
       if (search != null && search.trim().isNotEmpty) params['search'] = search.trim();
 
       final uri = Uri.parse('$_base/products').replace(queryParameters: params);
-      final response = await http.get(uri);
+      final response = await _client.get(uri);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -41,7 +42,7 @@ class ShoppingService {
           productList = decoded['products'] ?? [];
           totalPages = decoded['totalPages'] ?? 1;
         } else {
-          return (products: <Product>[], totalPages: 0);
+          return (products: <Product>[], totalPages: 0, ok: false);
         }
 
         final List<Product> newProducts = [];
@@ -50,18 +51,74 @@ class ShoppingService {
           _products[product.productId] = product;
           newProducts.add(product);
         }
-        return (products: newProducts, totalPages: totalPages);
+        return (products: newProducts, totalPages: totalPages, ok: true);
       } else {
-        return (products: <Product>[], totalPages: 0);
+        return (products: <Product>[], totalPages: 0, ok: false);
       }
     } catch (e) {
-      return (products: <Product>[], totalPages: 0);
+      return (products: <Product>[], totalPages: 0, ok: false);
+    }
+  }
+
+  Future<({List<Product> products, int totalPages, bool ok})> fetchTrendingProducts({
+    int page = 1,
+    int limit = 10,
+  }) async {
+    try {
+      final uri = Uri.parse('$_base/products').replace(queryParameters: {
+        'sort': 'trending',
+        'page': '$page',
+        'limit': '$limit',
+      });
+      final response = await _client.get(uri);
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body) as Map<String, dynamic>;
+        final productList = decoded['products'] as List<dynamic>? ?? [];
+        final totalPages = decoded['totalPages'] as int? ?? 1;
+        return (
+          products: productList.map((item) => Product.fromJson(item)).toList(),
+          totalPages: totalPages,
+          ok: true,
+        );
+      }
+      return (products: <Product>[], totalPages: 0, ok: false);
+    } catch (e) {
+      return (products: <Product>[], totalPages: 0, ok: false);
+    }
+  }
+
+  Future<({List<Product> products, int totalPages, bool ok})> fetchRecommendedProducts({
+    required String userId,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    try {
+      final uri = Uri.parse('$_base/products').replace(queryParameters: {
+        'sort': 'recommended',
+        'userId': userId,
+        'page': '$page',
+        'limit': '$limit',
+      });
+      final response = await _client.get(uri);
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body) as Map<String, dynamic>;
+        final productList = decoded['products'] as List<dynamic>? ?? [];
+        final totalPages = decoded['totalPages'] as int? ?? 1;
+        return (
+          products: productList.map((item) => Product.fromJson(item)).toList(),
+          totalPages: totalPages,
+          ok: true,
+        );
+      }
+      return (products: <Product>[], totalPages: 0, ok: false);
+    } catch (e) {
+      return (products: <Product>[], totalPages: 0, ok: false);
     }
   }
 
   Future<List<String>> fetchCategories() async {
     try {
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$_base/categories?hasProducts=true'),
       );
       if (response.statusCode == 200) {
@@ -76,7 +133,7 @@ class ShoppingService {
 
   Future<List<Banner>> fetchBanners() async {
     try {
-      final response = await http.get(Uri.parse('$_base/banners'));
+      final response = await _client.get(Uri.parse('$_base/banners'));
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((j) => Banner.fromJson(j)).toList();
@@ -93,7 +150,7 @@ class ShoppingService {
 
   Future<Map<String, dynamic>> fetchCart(String userId) async {
     try {
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$_base/cart?userId=${Uri.encodeComponent(userId)}'),
       );
       if (response.statusCode == 200) {
@@ -108,7 +165,7 @@ class ShoppingService {
   Future<Map<String, dynamic>> addToCart(String userId, String productId,
       {int quantity = 1}) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$_base/cart/add'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
@@ -130,7 +187,7 @@ class ShoppingService {
       String userId, String productId, int quantity) async {
     if (quantity <= 0) return removeFromCart(userId, productId);
     try {
-      final response = await http.put(
+      final response = await _client.put(
         Uri.parse('$_base/cart/update'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
@@ -154,7 +211,7 @@ class ShoppingService {
       final request = http.Request('DELETE', Uri.parse('$_base/cart/remove'));
       request.headers['Content-Type'] = 'application/json';
       request.body = json.encode({'userId': userId, 'productId': productId});
-      final streamedResponse = await request.send();
+      final streamedResponse = await _client.send(request);
       final response = await http.Response.fromStream(streamedResponse);
       if (response.statusCode == 200) {
         return json.decode(response.body) as Map<String, dynamic>;
@@ -170,7 +227,7 @@ class ShoppingService {
       final request = http.Request('DELETE', Uri.parse('$_base/cart/clear'));
       request.headers['Content-Type'] = 'application/json';
       request.body = json.encode({'userId': userId});
-      final streamedResponse = await request.send();
+      final streamedResponse = await _client.send(request);
       await http.Response.fromStream(streamedResponse);
     } catch (_) {}
   }
@@ -208,7 +265,7 @@ class ShoppingService {
         };
       }).toList();
 
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$_base/orders'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
@@ -235,7 +292,7 @@ class ShoppingService {
 
   Future<List<Order>> fetchOrders(String userId) async {
     try {
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$_base/orders?userId=${Uri.encodeComponent(userId)}'),
       );
       if (response.statusCode == 200) {
@@ -252,7 +309,7 @@ class ShoppingService {
 
   Future<int> fetchWishlistCount(String userId) async {
     try {
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$_base/wishlist?userId=${Uri.encodeComponent(userId)}'),
       );
       if (response.statusCode == 200) {
@@ -265,12 +322,56 @@ class ShoppingService {
     }
   }
 
+  Future<List<Product>> fetchWishlist(String userId) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('$_base/wishlist?userId=${Uri.encodeComponent(userId)}'),
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((j) => Product.fromJson(j)).toList();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> addToWishlist(String userId, String productId) async {
+    try {
+      final response = await _client.post(
+        Uri.parse('$_base/wishlist/add'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'userId': userId, 'productId': productId}),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to add to wishlist');
+      }
+    } catch (e) {
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<void> removeFromWishlist(String userId, String productId) async {
+    try {
+      final response = await _client.delete(
+        Uri.parse('$_base/wishlist/remove/$productId')
+            .replace(queryParameters: {'userId': userId}),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to remove from wishlist');
+      }
+    } catch (e) {
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
   // ── Voucher ───────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> validateVoucher(
       String code, double total) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$_base/validate-voucher'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'code': code, 'cart_total': total}),
