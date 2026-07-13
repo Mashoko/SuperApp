@@ -1138,7 +1138,7 @@ This converts every existing method from the top-level `http.get`/`http.post`/`h
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `flutter test test/services/shopping_service_test.dart`
-Expected: PASS (10 tests). (`flutter analyze` will show pre-existing errors in `shopping_viewmodel.dart` referencing the old 2-field record shape until Task 4 — expected and resolved by the very next task.)
+Expected: PASS (12 tests). (`flutter analyze` will show pre-existing errors in `shopping_viewmodel.dart` referencing the old 2-field record shape until Task 4 — expected and resolved by the very next task.)
 
 - [ ] **Step 6: Commit**
 
