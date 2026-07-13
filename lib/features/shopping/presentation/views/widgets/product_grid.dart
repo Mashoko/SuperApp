@@ -43,6 +43,7 @@ class ProductGrid extends StatelessWidget {
         final product = products[index];
         return ProductCard(
           product: product,
+          isFavorited: false, // Shopping-tab grid has no wishlist state wired yet -- out of scope for this plan
           viewMode: viewMode, // Pass viewMode
           onTap: () => onProductTap(product),
           onAddToCart: () => onAddToCart(product),

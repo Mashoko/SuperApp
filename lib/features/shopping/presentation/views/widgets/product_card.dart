@@ -5,6 +5,7 @@ import 'package:mvvm_sip_demo/models/shopping/product.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
+  final bool isFavorited;
   final VoidCallback? onTap;
   final VoidCallback? onAddToCart;
   final VoidCallback? onFavorite;
@@ -13,6 +14,7 @@ class ProductCard extends StatelessWidget {
   const ProductCard({
     super.key,
     required this.product,
+    required this.isFavorited,
     this.onTap,
     this.onAddToCart,
     this.onFavorite,
@@ -22,6 +24,10 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSmall = viewMode == ProductViewMode.small || viewMode == ProductViewMode.extraSmall;
+    final hasDiscount = product.discountPrice != null && product.discountPrice! < product.price;
+    final discountPercent = hasDiscount
+        ? (((product.price - product.discountPrice!) / product.price) * 100).round()
+        : 0;
 
     return GestureDetector(
       onTap: onTap,
@@ -62,6 +68,26 @@ class ProductCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (hasDiscount)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: WunzaColors.padGradientEnd,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '-$discountPercent%',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                   if (!isSmall) // Hide favorite in small mode to save space
                     Positioned(
                       top: 8,
@@ -74,10 +100,10 @@ class ProductCard extends StatelessWidget {
                             color: Colors.white,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
-                            Icons.favorite_border,
+                          child: Icon(
+                            isFavorited ? Icons.favorite : Icons.favorite_border,
                             size: 18,
-                            color: WunzaColors.textSecondary,
+                            color: isFavorited ? WunzaColors.padGradientEnd : WunzaColors.textSecondary,
                           ),
                         ),
                       ),
@@ -100,31 +126,101 @@ class ProductCard extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                     ),
+                  if (!isSmall &&
+                      ((product.storeName != null && product.storeName!.isNotEmpty) ||
+                          product.verifiedSeller)) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        if (product.storeName != null && product.storeName!.isNotEmpty)
+                          Flexible(
+                            child: Text(
+                              product.storeName!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: WunzaColors.textSecondary,
+                                  ),
+                            ),
+                          ),
+                        if (product.verifiedSeller) ...[
+                          const SizedBox(width: 4),
+                          const Icon(Icons.verified, size: 14, color: WunzaColors.primary),
+                        ],
+                      ],
+                    ),
+                  ],
+                  if (!isSmall && product.reviewCount > 0) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, size: 14, color: Colors.amber),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${product.averageRating.toStringAsFixed(1)} (${product.reviewCount})',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: WunzaColors.textSecondary,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (!isSmall && product.deliveryAvailable) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.local_shipping_outlined, size: 14, color: WunzaColors.textSecondary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Delivery',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: WunzaColors.textSecondary,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ],
                   if (!isSmall) const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            Text(
-                              '\$${product.price.toStringAsFixed(0)}', // No decimals in small mode
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: isSmall ? 12 : 18,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                Text(
+                                  '\$${(hasDiscount ? product.discountPrice! : product.price).toStringAsFixed(isSmall ? 0 : 2)}',
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: isSmall ? 12 : 18,
+                                      ),
+                                ),
+                                if (!isSmall) ...[
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'USD',
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: WunzaColors.primary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                   ),
+                                ],
+                              ],
                             ),
-                            if (!isSmall) ...[
-                              const SizedBox(width: 4),
+                            if (!isSmall && hasDiscount) ...[
+                              const SizedBox(width: 6),
                               Text(
-                                'USD',
+                                '\$${product.price.toStringAsFixed(2)}',
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: WunzaColors.primary,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
+                                      color: WunzaColors.textSecondary,
+                                      decoration: TextDecoration.lineThrough,
                                     ),
                               ),
                             ],
