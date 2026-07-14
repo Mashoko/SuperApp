@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mvvm_sip_demo/core/di/inject.dart';
+import 'package:mvvm_sip_demo/core/routes.dart';
 import 'package:mvvm_sip_demo/core/services/otp_auth_service.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
 import 'package:mvvm_sip_demo/features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
@@ -12,10 +13,13 @@ import 'package:mvvm_sip_demo/features/home/presentation/widgets/composer_bar.da
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/composer_choice_sheet.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/discovery_section.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/explore_models.dart';
+import 'package:mvvm_sip_demo/features/home/presentation/widgets/explore_product_section.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/explore_search_sheet.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/feed_post_card.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/feed_states.dart';
+import 'package:mvvm_sip_demo/features/shopping/presentation/viewmodels/shopping_viewmodel.dart';
 import 'package:mvvm_sip_demo/models/post.dart';
+import 'package:mvvm_sip_demo/models/shopping/product.dart';
 import 'package:mvvm_sip_demo/shared/widgets/maintenance_screen.dart';
 
 /// The Explore tab: a pinned search bar, quick category chips, a banner
@@ -40,11 +44,15 @@ class _ExploreTabState extends State<ExploreTab> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    context.read<ShoppingViewModel>().loadTrendingProducts();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final creds = await getIt<OtpAuthService>().getStoredCredentials();
       if (!mounted) return;
       setState(() => _userId = creds?['username'] ?? 'guest');
       context.read<PostsViewModel>().loadFeed(_userId);
+      final shoppingVM = context.read<ShoppingViewModel>();
+      shoppingVM.loadRecommendedProducts(_userId);
+      shoppingVM.loadWishlist(_userId);
     });
   }
 
@@ -91,6 +99,17 @@ class _ExploreTabState extends State<ExploreTab> {
       MaterialPageRoute(
         builder: (_) => MaintenanceScreen(label: label, icon: icon, color: color),
       ),
+    );
+  }
+
+  void _openProductDetails(Product product) {
+    Navigator.pushNamed(context, Routes.productDetails, arguments: product);
+  }
+
+  void _addProductToCart(Product product) {
+    context.read<ShoppingViewModel>().addToCart(_userId, product.productId);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${product.name} added to cart')),
     );
   }
 
@@ -164,6 +183,7 @@ class _ExploreTabState extends State<ExploreTab> {
   @override
   Widget build(BuildContext context) {
     final postsVM = context.watch<PostsViewModel>();
+    final shoppingVM = context.watch<ShoppingViewModel>();
 
     return CustomScrollView(
       controller: _scrollController,
@@ -207,25 +227,39 @@ class _ExploreTabState extends State<ExploreTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      DiscoverySection(
+                      ExploreProductSection(
                         title: 'Trending Now',
                         subtitle: "What's popular right now",
-                        items: trendingItems,
-                        onSeeAll: () => _openMaintenance(
-                          label: 'Trending Now',
-                          icon: Icons.local_fire_department_outlined,
-                          color: WunzaColors.padGradientStart,
-                        ),
+                        products: shoppingVM.trendingProducts,
+                        isLoading: shoppingVM.trendingLoading,
+                        error: shoppingVM.trendingError,
+                        onRetry: () => shoppingVM.loadTrendingProducts(),
+                        emptyTitle: 'No Trending Products Yet',
+                        emptyMessage: 'Check back later. New products are added every day.',
+                        emptyActionLabel: 'Browse Categories',
+                        onEmptyAction: _openSearchSheet,
+                        currentUserId: _userId,
+                        isWishlisted: shoppingVM.isWishlisted,
+                        onFavoriteTap: (p) => shoppingVM.toggleWishlist(_userId, p.productId),
+                        onProductTap: _openProductDetails,
+                        onAddToCart: _addProductToCart,
                       ),
-                      DiscoverySection(
+                      ExploreProductSection(
                         title: 'Recommended Products',
                         subtitle: 'Picked for you',
-                        items: recommendedItems,
-                        onSeeAll: () => _openMaintenance(
-                          label: 'Recommended Products',
-                          icon: Icons.auto_awesome_outlined,
-                          color: WunzaColors.navIndicator,
-                        ),
+                        products: shoppingVM.recommendedProducts,
+                        isLoading: shoppingVM.recommendedLoading,
+                        error: shoppingVM.recommendedError,
+                        onRetry: () => shoppingVM.loadRecommendedProducts(_userId),
+                        emptyTitle: 'No Recommendations Yet',
+                        emptyMessage: 'Browse a few products and we\'ll start tailoring picks for you.',
+                        emptyActionLabel: 'Browse Categories',
+                        onEmptyAction: _openSearchSheet,
+                        currentUserId: _userId,
+                        isWishlisted: shoppingVM.isWishlisted,
+                        onFavoriteTap: (p) => shoppingVM.toggleWishlist(_userId, p.productId),
+                        onProductTap: _openProductDetails,
+                        onAddToCart: _addProductToCart,
                       ),
                       DiscoverySection(
                         title: 'Popular Businesses',

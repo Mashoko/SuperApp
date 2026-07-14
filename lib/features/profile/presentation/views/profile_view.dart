@@ -12,6 +12,7 @@ import '../../../../shared/theme/theme_provider.dart';
 import '../../../shopping/presentation/views/order_history_view.dart';
 import '../../../shopping/presentation/views/wishlist_view.dart';
 import '../../../payment_methods/presentation/views/payment_methods_view.dart';
+import '../../../help_support/presentation/views/help_support_view.dart';
 import '../../../login/presentation/views/login_view.dart';
 import '../viewmodels/profile_summary_viewmodel.dart';
 import 'shipping_addresses_view.dart';
@@ -289,7 +290,7 @@ class _ProfileViewState extends State<ProfileView> {
                             subtitle: 'FAQ and customer service',
                             isDark: isDark,
                             onTap: () => _navigateTo(context,
-                                const _PlaceholderScreen(title: 'Help & Support')),
+                                const HelpSupportView()),
                           ),
                         ],
                       ),
