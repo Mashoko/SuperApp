@@ -401,7 +401,7 @@ class _MainScreenState extends State<_MainScreen> {
       (icon: Icons.smart_toy_outlined,  label: 'Ask AI\nAssistant',   sub: 'Instant answers', color: const Color(0xFF9C27B0),
         onTap: widget.onAiChat),
       (icon: Icons.chat_bubble_outline,            label: 'WhatsApp\nSupport',  sub: '24/7 available', color: const Color(0xFF25D366),
-        onTap: () => _openWhatsApp(context, _userName)),
+        onTap: () => openWhatsAppSupport(context, _userName)),
       (icon: Icons.phone_outlined,      label: 'Request\na Call',    sub: 'Business hours', color: const Color(0xFF00BCD4),
         onTap: () => _launchUrl(_kSupportPhone)),
       (icon: Icons.email_outlined,      label: 'Email\nSupport',     sub: 'Reply < 24 hrs', color: const Color(0xFFFF9800),
@@ -552,7 +552,7 @@ class _MainScreenState extends State<_MainScreen> {
 
   Widget _buildContactMethods(bool d) {
     final methods = [
-      (icon: Icons.chat_bubble_outline,         label: 'WhatsApp',  color: const Color(0xFF25D366), onTap: () => _openWhatsApp(context, _userName)),
+      (icon: Icons.chat_bubble_outline,         label: 'WhatsApp',  color: const Color(0xFF25D366), onTap: () => openWhatsAppSupport(context, _userName)),
       (icon: Icons.chat_outlined,    label: 'Live Chat', color: const Color(0xFF185FA5), onTap: widget.onAiChat),
       (icon: Icons.phone_outlined,   label: 'Call',      color: const Color(0xFF00BCD4), onTap: () => _launchUrl(_kSupportPhone)),
       (icon: Icons.email_outlined,   label: 'Email',     color: const Color(0xFFFF9800), onTap: () => _launchUrl('mailto:$_kSupportEmail')),
@@ -1571,7 +1571,7 @@ Future<void> _launchUrl(String url) async {
   if (await canLaunchUrl(uri)) { await launchUrl(uri, mode: LaunchMode.externalApplication); }
 }
 
-Future<void> _openWhatsApp(BuildContext context, String userName) async {
+Future<void> openWhatsAppSupport(BuildContext context, String userName) async {
   final creds = await getIt<OtpAuthService>().getStoredCredentials();
   final phone  = creds?['username'] ?? '';
   final os     = Platform.operatingSystem;
