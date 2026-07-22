@@ -8,6 +8,8 @@ import '../../../../core/di/inject.dart';
 import '../../../../core/services/otp_auth_service.dart';
 import '../../../../shared/theme/theme_provider.dart';
 
+import '../../data/faq_data.dart';
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 // Replace with your actual WhatsApp support number (digits only, country code first)
@@ -24,20 +26,6 @@ enum _TicketStatus  { open, inProgress, resolved }
 enum _Screen {
   main, aiChat, reportProblem, myTickets, ticketDetail,
   systemStatus, emergency, faqCategory, serviceHelp
-}
-
-class _FaqItem {
-  final String question;
-  final String answer;
-  const _FaqItem(this.question, this.answer);
-}
-
-class _FaqCategory {
-  final String title;
-  final IconData icon;
-  final Color color;
-  final List<_FaqItem> items;
-  const _FaqCategory({required this.title, required this.icon, required this.color, required this.items});
 }
 
 class _ServiceTopic {
@@ -72,64 +60,6 @@ class _Ticket {
 
 // ─── Static content ───────────────────────────────────────────────────────────
 
-const _faqData = [
-  _FaqCategory(title: 'Payments', icon: Icons.payment_outlined, color: Color(0xFF185FA5), items: [
-    _FaqItem('Why is my payment pending?', 'Payments can take up to 24 hours to process depending on your bank or mobile money provider. If it has been longer than 24 hours, please use the Report a Problem form and attach your transaction receipt.'),
-    _FaqItem('My payment failed — what now?', 'Check that your card or wallet has sufficient funds and that your payment method is active. Try again or use an alternative method. If the issue persists, tap Report a Problem.'),
-    _FaqItem('I was charged twice', 'Duplicate charges are reversed automatically within 2 business days. If you have not received a refund after 3 days, contact our support team with the duplicate transaction IDs.'),
-    _FaqItem('What is the refund policy?', 'Digital services (calls, airtime) are non-refundable once delivered. Shopping orders can be refunded within 7 days of delivery if the item is unused and in original condition.'),
-    _FaqItem('My card was declined', 'Ensure your card is enabled for online payments. Some cards block international or digital transactions by default — contact your bank to enable them.'),
-    _FaqItem('What are the transaction limits?', 'Daily limits vary by payment method. EcoCash: \$500/day. Bank cards: \$2,000/day. Wallet transfers: \$1,000/day. Contact support to request a limit increase.'),
-  ]),
-  _FaqCategory(title: 'Shopping', icon: Icons.shopping_bag_outlined, color: Color(0xFF9C27B0), items: [
-    _FaqItem('How do I track my order?', 'Go to Profile → My Orders and tap on your order. You will see the real-time status and estimated delivery date.'),
-    _FaqItem('My order has not arrived', 'Check the tracking status in My Orders. If the delivery window has passed, tap Report a Problem and select Shopping to raise an investigation.'),
-    _FaqItem('How do I return an item?', 'Visit My Orders, tap the order, and select Return Item. Returns must be requested within 7 days of delivery. The seller will arrange collection.'),
-    _FaqItem('Can I cancel my order?', 'Orders can be cancelled within 30 minutes of placement before they are confirmed by the seller. Go to My Orders → Cancel Order.'),
-    _FaqItem('I received the wrong item', 'Take a photo of the received item and tap Report a Problem → Shopping → Wrong Item Received. We will arrange a replacement or refund.'),
-    _FaqItem('Where is my refund?', 'Approved refunds are processed within 3–5 business days back to your original payment method.'),
-  ]),
-  _FaqCategory(title: 'Calling & Airtime', icon: Icons.call_outlined, color: Color(0xFF00BCD4), items: [
-    _FaqItem('How do I buy airtime?', 'Tap the Calling tab → Buy Airtime, enter the amount and recipient number, then confirm payment.'),
-    _FaqItem('I sent airtime to the wrong number', 'Airtime transfers are instant and cannot be reversed. Please double-check the number before confirming a transfer.'),
-    _FaqItem('Poor call quality', 'VoIP call quality depends on your internet connection. For best results use Wi-Fi or a strong 4G signal. Try toggling airplane mode to reset your connection.'),
-    _FaqItem('My calls are dropping', 'Check your internet speed (minimum 1 Mbps for calls). If the issue persists, go to Account Services and re-register your SIP account.'),
-    _FaqItem('International calls not connecting', 'Ensure your account has sufficient balance and that the destination number is formatted correctly with the country code (e.g. +44 for UK).'),
-    _FaqItem('I was not credited after recharge', 'Wait 5 minutes and pull-to-refresh your balance. If the credit still has not appeared, report the issue with your voucher PIN and transaction reference.'),
-  ]),
-  _FaqCategory(title: 'Wallet', icon: Icons.account_balance_wallet_outlined, color: Color(0xFF4CAF50), items: [
-    _FaqItem('How do I deposit into my wallet?', 'Tap Payment Methods → Add Funds and choose EcoCash, OneMoney, or bank transfer. Deposits reflect within minutes.'),
-    _FaqItem('How do I withdraw from my wallet?', 'Tap Wallet → Withdraw and select your bank account or mobile money number. Withdrawals take 1–2 business days.'),
-    _FaqItem('My wallet balance is incorrect', 'Pull down to refresh your wallet. If the balance is still wrong after refreshing, contact support with the specific transaction ID.'),
-    _FaqItem('Can I send money to another user?', 'Wallet transfers between app users are instant. Tap Wallet → Transfer and enter the recipient\'s phone number.'),
-    _FaqItem('What are the wallet limits?', 'The daily spending limit is \$2,000 and the wallet balance cap is \$5,000. Contact support to request an increase.'),
-    _FaqItem('Why is my wallet frozen?', 'Wallets are temporarily frozen after suspicious activity is detected. Tap Emergency → Unfreeze Account or contact support directly.'),
-  ]),
-  _FaqCategory(title: 'Utility Bills', icon: Icons.bolt_outlined, color: Color(0xFFFF9800), items: [
-    _FaqItem('How do I pay ZESA?', 'Tap Bills → Electricity → ZESA, enter your meter number and amount, then confirm payment. The token is delivered by SMS.'),
-    _FaqItem('I paid but did not receive my ZESA token', 'Tokens are usually delivered within 2 minutes. Check your SMS inbox. If not received after 10 minutes, tap Report a Problem → Utility Bills.'),
-    _FaqItem('Can I pay bills for someone else?', 'Yes. During payment, enter the recipient\'s account number or meter number instead of your own.'),
-    _FaqItem('Which utility providers are supported?', 'ZESA, ZINWA, DSTV, ZOL, TelOne, NetOne, Econet, Municipality rates, and selected school fees.'),
-    _FaqItem('My bill payment is pending', 'Some payments to utility providers take up to 30 minutes to process. If it is pending for more than 1 hour, report the issue with your reference number.'),
-    _FaqItem('Can I set up recurring bill payments?', 'Recurring payments are coming soon. You will be notified when the feature is available.'),
-  ]),
-  _FaqCategory(title: 'Account & Security', icon: Icons.security_outlined, color: Color(0xFFE53935), items: [
-    _FaqItem('How do I reset my PIN?', 'Tap Profile → Account Services → Reset PIN. You will receive an OTP on your registered phone number to verify your identity.'),
-    _FaqItem('How do I change my phone number?', 'Phone number changes require identity verification. Contact support with a copy of your ID and proof of ownership of the new number.'),
-    _FaqItem('I cannot log in to my account', 'Tap Forgot Password on the login screen to reset via OTP. If you no longer have access to your registered number, contact support immediately.'),
-    _FaqItem('How do I enable two-factor authentication?', 'Go to Profile → Settings → Security → Two-Factor Authentication and follow the setup steps.'),
-    _FaqItem('I suspect unauthorized access to my account', 'Immediately tap Emergency → Account Compromised. This will lock your account and alert our security team.'),
-    _FaqItem('How do I delete my account?', 'Account deletion requests must be submitted in writing to support@firststreet.co.zw with your full name and registered phone number.'),
-  ]),
-  _FaqCategory(title: 'General', icon: Icons.help_outline, color: Color(0xFF607D8B), items: [
-    _FaqItem('What is First Street?', 'First Street is a super app providing calling, shopping, utility bill payments, and wallet services across Zimbabwe and the region.'),
-    _FaqItem('Is my data secure?', 'Yes. All data is encrypted in transit and at rest. We comply with applicable data protection regulations and never sell your personal information.'),
-    _FaqItem('How do I update the app?', 'Open the Google Play Store or Apple App Store and search for First Street to download the latest version.'),
-    _FaqItem('The app is crashing', 'Try force-closing and reopening the app. If the issue continues, uninstall and reinstall from the store. If it still crashes, report the issue.'),
-    _FaqItem('How do I contact support?', 'Use any channel on the Help & Support screen: WhatsApp, live chat, email, or phone. WhatsApp is the fastest.'),
-    _FaqItem('What are support hours?', 'WhatsApp and chat: 24/7. Phone support: Monday–Friday 08:00–17:00 CAT. Email: responses within 24 hours.'),
-  ]),
-];
 
 const _serviceData = [
   _ServiceCategory(name: 'Calling', icon: Icons.call_outlined, color: Color(0xFF00BCD4), topics: [
@@ -200,7 +130,7 @@ class HelpSupportView extends StatefulWidget {
 
 class _HelpSupportViewState extends State<HelpSupportView> {
   final List<_Screen> _stack = [_Screen.main];
-  _FaqCategory? _activeFaqCategory;
+  FaqCategory? _activeFaqCategory;
   _ServiceCategory? _activeService;
   _Ticket? _activeTicket;
 
@@ -264,7 +194,7 @@ class _HelpSupportViewState extends State<HelpSupportView> {
 class _MainScreen extends StatefulWidget {
   final bool isDark;
   final VoidCallback onAiChat, onReport, onTickets, onStatus, onEmergency;
-  final void Function(_FaqCategory) onFaqCategory;
+  final void Function(FaqCategory) onFaqCategory;
   final void Function(_ServiceCategory) onService;
   const _MainScreen({required this.isDark, required this.onAiChat, required this.onReport,
     required this.onTickets, required this.onStatus, required this.onEmergency,
@@ -275,7 +205,7 @@ class _MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<_MainScreen> {
   final _searchCtrl = TextEditingController();
-  List<_FaqItem> _searchResults = [];
+  List<FaqItem> _searchResults = [];
   String _userName = '';
 
   @override
@@ -303,8 +233,8 @@ class _MainScreenState extends State<_MainScreen> {
   void _onSearch() {
     final q = _searchCtrl.text.trim().toLowerCase();
     if (q.isEmpty) { setState(() => _searchResults = []); return; }
-    final results = <_FaqItem>[];
-    for (final cat in _faqData) {
+    final results = <FaqItem>[];
+    for (final cat in faqData) {
       for (final item in cat.items) {
         if (item.question.toLowerCase().contains(q) || item.answer.toLowerCase().contains(q)) {
           results.add(item);
@@ -515,12 +445,12 @@ class _MainScreenState extends State<_MainScreen> {
       title: 'Frequently Asked Questions',
       isDark: d,
       child: Column(
-        children: _faqData.map((cat) => _buildFaqCategoryRow(cat, d)).toList(),
+        children: faqData.map((cat) => _buildFaqCategoryRow(cat, d)).toList(),
       ),
     );
   }
 
-  Widget _buildFaqCategoryRow(_FaqCategory cat, bool d) {
+  Widget _buildFaqCategoryRow(FaqCategory cat, bool d) {
     return GestureDetector(
       onTap: () => widget.onFaqCategory(cat),
       child: Container(
@@ -669,8 +599,8 @@ class _AIChatScreenState extends State<_AIChatScreen> {
 
     // Simple keyword search over FAQ data
     final ql = q.toLowerCase();
-    _FaqItem? match;
-    for (final cat in _faqData) {
+    FaqItem? match;
+    for (final cat in faqData) {
       for (final item in cat.items) {
         if (item.question.toLowerCase().contains(ql) || ql.split(' ').any((w) => w.length > 3 && item.answer.toLowerCase().contains(w))) {
           match = item; break;
@@ -1145,7 +1075,7 @@ class _EmergencyScreen extends StatelessWidget {
 class _FaqCategoryScreen extends StatelessWidget {
   final bool isDark;
   final VoidCallback onBack;
-  final _FaqCategory category;
+  final FaqCategory category;
   const _FaqCategoryScreen({required this.isDark, required this.onBack, required this.category});
 
   Color _card(bool d) => d ? const Color(0xFF161B22) : Colors.white;
@@ -1197,14 +1127,14 @@ class _ServiceHelpScreen extends StatelessWidget {
   final bool isDark;
   final VoidCallback onBack;
   final _ServiceCategory service;
-  final void Function(_FaqCategory) onFaqTap;
+  final void Function(FaqCategory) onFaqTap;
   const _ServiceHelpScreen({required this.isDark, required this.onBack, required this.service, required this.onFaqTap});
 
   @override
   Widget build(BuildContext context) {
     final d = isDark;
     // Find matching FAQ category
-    final faqCat = _faqData.where((c) => c.title.toLowerCase().contains(service.name.toLowerCase().split(' ').first)).firstOrNull;
+    final faqCat = faqData.where((c) => c.title.toLowerCase().contains(service.name.toLowerCase().split(' ').first)).firstOrNull;
 
     return Scaffold(
       backgroundColor: d ? const Color(0xFF0D1117) : const Color(0xFFF4F6FA),
