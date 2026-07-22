@@ -9,6 +9,7 @@ import '../../../../core/services/otp_auth_service.dart';
 import '../../../../shared/theme/theme_provider.dart';
 
 import '../../data/faq_data.dart';
+import '../../../dash/presentation/widgets/dash_sheet.dart';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -24,7 +25,7 @@ const _kWebsite        = 'https://firststreet.co.zw';
 enum _ServiceStatus { operational, degraded, outage }
 enum _TicketStatus  { open, inProgress, resolved }
 enum _Screen {
-  main, aiChat, reportProblem, myTickets, ticketDetail,
+  main, reportProblem, myTickets, ticketDetail,
   systemStatus, emergency, faqCategory, serviceHelp
 }
 
@@ -156,8 +157,6 @@ class _HelpSupportViewState extends State<HelpSupportView> {
 
   Widget _buildScreen(bool isDark) {
     switch (_stack.last) {
-      case _Screen.aiChat:
-        return _AIChatScreen(isDark: isDark, onBack: _pop);
       case _Screen.reportProblem:
         return _ReportProblemScreen(isDark: isDark, onBack: _pop);
       case _Screen.myTickets:
@@ -177,7 +176,7 @@ class _HelpSupportViewState extends State<HelpSupportView> {
       case _Screen.main:
         return _MainScreen(
           isDark: isDark,
-          onAiChat:       () => _push(_Screen.aiChat),
+          onAiChat:       () => showDashSheet(context),
           onReport:       () => _push(_Screen.reportProblem),
           onTickets:      () => _push(_Screen.myTickets),
           onStatus:       () => _push(_Screen.systemStatus),
@@ -398,7 +397,7 @@ class _MainScreenState extends State<_MainScreen> {
     final actions = [
       (icon: Icons.chat_bubble_outline, label: 'Chat with\nSupport', sub: 'Avg < 2 min', color: const Color(0xFF185FA5),
         onTap: () => _launchUrl(_kSupportPhone)),
-      (icon: Icons.smart_toy_outlined,  label: 'Ask AI\nAssistant',   sub: 'Instant answers', color: const Color(0xFF9C27B0),
+      (icon: Icons.smart_toy_outlined,  label: 'Ask Dash',   sub: 'Instant answers', color: const Color(0xFF9C27B0),
         onTap: widget.onAiChat),
       (icon: Icons.chat_bubble_outline,            label: 'WhatsApp\nSupport',  sub: '24/7 available', color: const Color(0xFF25D366),
         onTap: () => openWhatsAppSupport(context, _userName)),
@@ -567,150 +566,6 @@ class _MainScreenState extends State<_MainScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: methods.map((m) => _ContactChip(icon: m.icon, label: m.label, color: m.color, isDark: d, onTap: m.onTap)).toList(),
       ),
-    );
-  }
-}
-
-// ─── AI Chat Screen ───────────────────────────────────────────────────────────
-
-class _AIChatScreen extends StatefulWidget {
-  final bool isDark;
-  final VoidCallback onBack;
-  const _AIChatScreen({required this.isDark, required this.onBack});
-  @override
-  State<_AIChatScreen> createState() => _AIChatScreenState();
-}
-
-class _AIChatScreenState extends State<_AIChatScreen> {
-  final _ctrl   = TextEditingController();
-  final _scroll = ScrollController();
-  final List<(bool isUser, String text)> _messages = [];
-  bool _thinking = false;
-
-  @override
-  void dispose() { _ctrl.dispose(); _scroll.dispose(); super.dispose(); }
-
-  Future<void> _send() async {
-    final q = _ctrl.text.trim();
-    if (q.isEmpty) return;
-    _ctrl.clear();
-    setState(() { _messages.add((true, q)); _thinking = true; });
-    await Future.delayed(const Duration(milliseconds: 800));
-
-    // Simple keyword search over FAQ data
-    final ql = q.toLowerCase();
-    FaqItem? match;
-    for (final cat in faqData) {
-      for (final item in cat.items) {
-        if (item.question.toLowerCase().contains(ql) || ql.split(' ').any((w) => w.length > 3 && item.answer.toLowerCase().contains(w))) {
-          match = item; break;
-        }
-      }
-      if (match != null) break;
-    }
-
-    final reply = match?.answer ?? 'I was not able to find a specific answer for that. I can help with payments, calling, shopping, utility bills, wallet, and account questions. Try rephrasing, or I can connect you with a human agent.';
-    if (!mounted) return;
-    setState(() { _messages.add((false, reply)); _thinking = false; });
-    await Future.delayed(const Duration(milliseconds: 100));
-    if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
-  }
-
-  Color _bg(bool d)   => d ? const Color(0xFF0D1117) : const Color(0xFFF4F6FA);
-  Color _card(bool d) => d ? const Color(0xFF161B22) : Colors.white;
-  Color _text(bool d) => d ? Colors.white : const Color(0xFF1A1A2E);
-
-  @override
-  Widget build(BuildContext context) {
-    final d = widget.isDark;
-    return Scaffold(
-      backgroundColor: _bg(d),
-      appBar: AppBar(
-        backgroundColor: _card(d), elevation: 0,
-        leading: IconButton(icon: Icon(Icons.arrow_back_ios, color: _text(d), size: 20), onPressed: widget.onBack),
-        title: Row(children: [
-          Container(width: 36, height: 36, decoration: BoxDecoration(color: const Color(0xFF9C27B0).withValues(alpha: 0.15), shape: BoxShape.circle),
-              child: const Icon(Icons.smart_toy_outlined, color: Color(0xFF9C27B0), size: 20)),
-          const SizedBox(width: 10),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('AI Assistant', style: TextStyle(color: _text(d), fontWeight: FontWeight.w600, fontSize: 16)),
-            Text('Powered by FirstStreet AI', style: TextStyle(color: d ? Colors.white38 : Colors.black38, fontSize: 11)),
-          ]),
-        ]),
-      ),
-      body: Column(children: [
-        Expanded(child: _messages.isEmpty ? _buildWelcome(d) : ListView.builder(
-          controller: _scroll, padding: const EdgeInsets.all(16),
-          itemCount: _messages.length + (_thinking ? 1 : 0),
-          itemBuilder: (_, i) {
-            if (i == _messages.length) return _ThinkingBubble(isDark: d);
-            final (isUser, text) = _messages[i];
-            return _ChatBubble(text: text, isUser: isUser, isDark: d);
-          },
-        )),
-        _buildInput(d),
-      ]),
-    );
-  }
-
-  Widget _buildWelcome(bool d) {
-    final examples = ['Why did my payment fail?', 'I haven\'t received my airtime', 'How do I pay ZESA?', 'How do I return an order?'];
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(children: [
-        Container(width: 72, height: 72, decoration: BoxDecoration(color: const Color(0xFF9C27B0).withValues(alpha: 0.12), shape: BoxShape.circle),
-            child: const Icon(Icons.smart_toy_outlined, size: 36, color: Color(0xFF9C27B0))),
-        const SizedBox(height: 16),
-        Text('Ask AI Assistant', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: d ? Colors.white : Colors.black87)),
-        const SizedBox(height: 6),
-        Text('I can answer questions about payments, orders,\ncalling, bills, and your account.',
-            textAlign: TextAlign.center, style: TextStyle(color: d ? Colors.white54 : Colors.black54, fontSize: 13, height: 1.4)),
-        const SizedBox(height: 28),
-        ...examples.map((e) => GestureDetector(
-          onTap: () { _ctrl.text = e; _send(); },
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 8), width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: d ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF0F3FA),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: d ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
-            ),
-            child: Row(children: [
-              const Icon(Icons.help_outline, size: 16, color: Color(0xFF9C27B0)),
-              const SizedBox(width: 10),
-              Expanded(child: Text(e, style: TextStyle(fontSize: 13, color: d ? Colors.white70 : Colors.black87))),
-              Icon(Icons.arrow_forward_ios, size: 12, color: d ? Colors.white30 : Colors.black38),
-            ]),
-          ),
-        )),
-      ]),
-    );
-  }
-
-  Widget _buildInput(bool d) {
-    return Container(
-      decoration: BoxDecoration(color: d ? const Color(0xFF161B22) : Colors.white, border: Border(top: BorderSide(color: d ? Colors.white12 : Colors.black12))),
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + MediaQuery.of(context).viewInsets.bottom),
-      child: Row(children: [
-        Expanded(child: TextField(
-          controller: _ctrl, style: TextStyle(color: d ? Colors.white : Colors.black87),
-          decoration: InputDecoration(
-            hintText: 'Ask anything...', hintStyle: TextStyle(color: d ? Colors.white38 : Colors.black38),
-            filled: true, fillColor: d ? Colors.white.withValues(alpha: 0.07) : const Color(0xFFF4F6FA),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          ),
-          onSubmitted: (_) => _send(),
-        )),
-        const SizedBox(width: 10),
-        GestureDetector(
-          onTap: _send,
-          child: Container(width: 46, height: 46,
-              decoration: const BoxDecoration(color: Color(0xFF9C27B0), shape: BoxShape.circle),
-              child: const Icon(Icons.send_rounded, color: Colors.white, size: 20)),
-        ),
-      ]),
     );
   }
 }
@@ -1375,65 +1230,6 @@ class _EmergencyCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ChatBubble extends StatelessWidget {
-  final String text;
-  final bool isUser, isDark;
-  const _ChatBubble({required this.text, required this.isUser, required this.isDark});
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isUser) ...[
-            Container(width: 32, height: 32, decoration: BoxDecoration(color: const Color(0xFF9C27B0).withValues(alpha: 0.15), shape: BoxShape.circle),
-                child: const Icon(Icons.smart_toy_outlined, size: 18, color: Color(0xFF9C27B0))),
-            const SizedBox(width: 8),
-          ],
-          Flexible(child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: isUser ? const Color(0xFF185FA5) : (isDark ? const Color(0xFF1E2530) : const Color(0xFFF0F3FA)),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(isUser ? 18 : 4),
-                topRight: Radius.circular(isUser ? 4 : 18),
-                bottomLeft: const Radius.circular(18),
-                bottomRight: const Radius.circular(18),
-              ),
-            ),
-            child: Text(text, style: TextStyle(color: isUser ? Colors.white : (isDark ? Colors.white : Colors.black87), fontSize: 14, height: 1.4)),
-          )),
-          if (isUser) const SizedBox(width: 8),
-        ],
-      ),
-    );
-  }
-}
-
-class _ThinkingBubble extends StatelessWidget {
-  final bool isDark;
-  const _ThinkingBubble({required this.isDark});
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: Row(children: [
-      Container(width: 32, height: 32, decoration: BoxDecoration(color: const Color(0xFF9C27B0).withValues(alpha: 0.15), shape: BoxShape.circle),
-          child: const Icon(Icons.smart_toy_outlined, size: 18, color: Color(0xFF9C27B0))),
-      const SizedBox(width: 8),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(color: isDark ? const Color(0xFF1E2530) : const Color(0xFFF0F3FA), borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(4), topRight: Radius.circular(18), bottomLeft: Radius.circular(18), bottomRight: Radius.circular(18))),
-        child: Row(mainAxisSize: MainAxisSize.min, children: List.generate(3, (i) =>
-            Container(margin: const EdgeInsets.symmetric(horizontal: 2), width: 6, height: 6,
-                decoration: BoxDecoration(color: const Color(0xFF9C27B0).withValues(alpha: 0.6), shape: BoxShape.circle)))),
-      ),
-    ]),
-  );
 }
 
 class _AttachBtn extends StatelessWidget {
