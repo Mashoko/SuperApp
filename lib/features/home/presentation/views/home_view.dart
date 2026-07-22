@@ -11,6 +11,7 @@ import 'package:mvvm_sip_demo/features/account_summary/presentation/viewmodels/a
 import 'package:mvvm_sip_demo/features/dashboard/presentation/viewmodels/dashboard_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/call_history_widget.dart';
+import 'package:mvvm_sip_demo/features/dash/presentation/widgets/dash_bubble.dart';
 import 'package:mvvm_sip_demo/features/dialpad/presentation/views/dialpad_view.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/explore_tab.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/glass_bottom_nav.dart';
@@ -198,6 +199,11 @@ class _HomeViewState extends State<HomeView> {
                 ),
               ),
             ),
+          ),
+          Positioned(
+            right: 16,
+            bottom: 18 + 96 + 16 + MediaQuery.of(context).padding.bottom,
+            child: const DashBubble(),
           ),
         ],
       ),
