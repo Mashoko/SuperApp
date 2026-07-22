@@ -113,4 +113,20 @@ void main() {
     expect(fakeLauncher.launchedUrls, isNotEmpty);
     expect(fakeLauncher.launchedUrls.single, contains('wa.me'));
   });
+
+  testWidgets('FAQ chips are visible before the first message',
+      (tester) async {
+    await _openSheet(tester, DashViewModel());
+    expect(find.text('Bundle prices'), findsOneWidget);
+  });
+
+  testWidgets('FAQ chips disappear once the conversation starts',
+      (tester) async {
+    await _openSheet(tester, DashViewModel());
+    await tester.tap(find.text('Check data balance'));
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+    expect(find.text('Bundle prices'), findsNothing);
+    expect(find.text('How do I top up?'), findsNothing);
+    expect(find.text('Talk to a human'), findsNothing);
+  });
 }

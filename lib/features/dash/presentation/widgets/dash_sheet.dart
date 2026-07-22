@@ -98,7 +98,7 @@ class _DashSheetState extends State<DashSheet> {
                         },
                       ),
               ),
-              _buildChips(),
+              if (dashVm.messages.isEmpty) _buildChips(),
               _buildInput(),
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
