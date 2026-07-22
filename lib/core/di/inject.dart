@@ -99,7 +99,7 @@ Future<void> configureDependencies() async {
     () => RegistrationViewModel(getIt(), getIt(), getIt(), getIt()),
   );
   getIt.registerFactory(() => CallViewModel(getIt(), getIt(), getIt(), getIt()));
-  getIt.registerLazySingleton(() => DialpadViewModel(getIt(), getIt(), getIt<OtpAuthService>(), getIt<DialpadRepository>()));
+  getIt.registerLazySingleton(() => DialpadViewModel(getIt(), getIt(), getIt<OtpAuthService>(), getIt<DialpadRepository>(), getIt<PaymentsClient>()));
   getIt.registerFactory(() => LoginViewModel(getIt<OtpAuthService>(), getIt<RegisterUser>(), getIt<UsersClient>()));
   getIt.registerFactory(() => AccountSummaryViewModel(getIt<OtpAuthService>(), getIt<PaymentsClient>()));
 

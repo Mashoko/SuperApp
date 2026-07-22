@@ -5,14 +5,16 @@ import '../../../../core/utils/result.dart';
 import '../../../../core/services/otp_auth_service.dart';
 import '../../domain/repositories/dialpad_repository.dart';
 import '../../../recents/data/models/recent_call.dart';
+import '../../../../payments_client.dart';
 
 class DialpadViewModel extends ChangeNotifier {
   final SaveDestination saveDestinationUseCase;
   final SIPUAHelper sipHelper;
   final OtpAuthService authService;
   final DialpadRepository repository;
+  final PaymentsClient paymentsClient;
 
-  DialpadViewModel(this.saveDestinationUseCase, this.sipHelper, this.authService, this.repository);
+  DialpadViewModel(this.saveDestinationUseCase, this.sipHelper, this.authService, this.repository, this.paymentsClient);
 
   String _destination = '';
   String _registrationStatus = '';
@@ -76,14 +78,22 @@ class DialpadViewModel extends ChangeNotifier {
   Future<void> loadAccountInfo() async {
     final creds = await authService.getStoredCredentials();
     if (creds != null && creds['username'] != null) {
-      final summary = await authService.fetchAccountSummary(creds['username']!);
+      final username = creds['username']!;
+      final summary = await authService.fetchAccountSummary(username, password: creds['password']);
       if (summary != null) {
         final bal = summary['balance'];
         final balNum = bal is num ? bal.toDouble() : 0.0;
-        _accountBalance = '\$${balNum.toStringAsFixed(2)}';
         _voiceBalance = _formatVoiceBalance(balNum);
         _scheduleNotify();
       }
+
+      final resp = await paymentsClient.dealerAccountBalances(
+        username: username,
+        password: creds['password'] ?? '',
+      );
+      final ok = resp.status == Status.SUCCESSFUL || resp.status == Status.INFORMATION;
+      _accountBalance = ok ? '\$${resp.balance.toStringAsFixed(2)}' : '';
+      _scheduleNotify();
     }
   }
 
