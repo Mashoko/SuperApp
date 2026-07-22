@@ -610,13 +610,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
+import 'package:url_launcher_platform_interface/link.dart' show LinkDelegate;
+import 'package:mvvm_sip_demo/core/di/inject.dart' show getIt;
 import 'package:mvvm_sip_demo/core/services/otp_auth_service.dart';
 import 'package:mvvm_sip_demo/features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/dash/presentation/viewmodels/dash_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/dash/presentation/widgets/dash_sheet.dart';
 import 'package:mvvm_sip_demo/payments_client.dart';
 import 'package:mvvm_sip_demo/users_client.dart';
+
+// Note: `LinkDelegate` is not re-exported by the main
+// `url_launcher_platform_interface.dart` barrel file, hence the direct
+// `link.dart` import above.
 
 class _FakeUrlLauncher extends UrlLauncherPlatform {
   final List<String> launchedUrls = [];
@@ -664,6 +671,26 @@ void main() {
   setUp(() {
     fakeLauncher = _FakeUrlLauncher();
     UrlLauncherPlatform.instance = fakeLauncher;
+    // `openWhatsAppSupport` reads stored credentials via SharedPreferences;
+    // without a mock store, `SharedPreferences.getInstance()` never resolves
+    // in a widget test (no platform channel handler is registered), which
+    // would hang `_submit` forever.
+    SharedPreferences.setMockInitialValues({});
+    // `openWhatsAppSupport` (used by DashSheet's "Talk to a human" escalation)
+    // reads `getIt<OtpAuthService>()` directly from the global service
+    // locator rather than via provider, so it must be registered here even
+    // though this test never triggers real network I/O.
+    if (!getIt.isRegistered<OtpAuthService>()) {
+      getIt.registerSingleton<OtpAuthService>(
+        OtpAuthService(UsersClient(packageId: 'test')),
+      );
+    }
+  });
+
+  tearDown(() {
+    if (getIt.isRegistered<OtpAuthService>()) {
+      getIt.unregister<OtpAuthService>();
+    }
   });
 
   testWidgets('shows the empty-state greeting when there are no messages',
