@@ -128,6 +128,7 @@ app.get('/', (req, res) => {
 const Product = require('./models/product.model');
 const User = require('./models/user.model');
 const Category = require('./models/category.model');
+const Faq = require('./models/faq.model');
 const Shop = require('./models/shop.model');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -355,6 +356,48 @@ app.delete('/api/categories/:id', auth, async (req, res) => {
     try {
         await Category.findByIdAndDelete(req.params.id);
         res.json({ message: 'Category deleted' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// --- FAQ Routes ---
+// Get all FAQ categories
+app.get('/api/faqs', async (req, res) => {
+    try {
+        const faqs = await Faq.find();
+        res.json(faqs);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Create FAQ category
+app.post('/api/faqs', auth, async (req, res) => {
+    const faq = new Faq(req.body);
+    try {
+        const newFaq = await faq.save();
+        res.status(201).json(newFaq);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// Update FAQ category
+app.put('/api/faqs/:id', auth, async (req, res) => {
+    try {
+        const updatedFaq = await Faq.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        res.json(updatedFaq);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// Delete FAQ category
+app.delete('/api/faqs/:id', auth, async (req, res) => {
+    try {
+        await Faq.findByIdAndDelete(req.params.id);
+        res.json({ message: 'FAQ category deleted' });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
