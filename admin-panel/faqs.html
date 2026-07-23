@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shops - Admin</title>
+    <title>FAQs - Admin</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -31,10 +31,10 @@
         <nav class="nav-links">
             <a href="index.html" class="nav-item">Products</a>
             <a href="categories.html" class="nav-item">Categories</a>
-            <a href="shops.html" class="nav-item active">Shops</a>
+            <a href="shops.html" class="nav-item">Shops</a>
             <a href="banners.html" class="nav-item">Banners</a>
             <a href="vouchers.html" class="nav-item">Vouchers</a>
-            <a href="faqs.html" class="nav-item">FAQs</a>
+            <a href="faqs.html" class="nav-item active">FAQs</a>
         </nav>
     </div>
 
@@ -47,39 +47,36 @@
 
         <div class="content-wrapper">
             <div class="card">
-                <h2>Add New Shop</h2>
-                <form id="shopForm">
+                <h2 id="formTitle">Add New FAQ Category</h2>
+                <form id="faqForm">
                     <div class="form-grid">
-                        <div class="form-group">
-                            <label for="name">Shop Name</label>
-                            <input type="text" id="name" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="location">Location</label>
-                            <input type="text" id="location" required>
+                        <div class="form-group full-width">
+                            <label for="title">Category Title</label>
+                            <input type="text" id="title" required>
                         </div>
                         <div class="form-group full-width">
-                            <label for="manager">Manager Name (Optional)</label>
-                            <input type="text" id="manager">
+                            <label>Questions &amp; Answers</label>
+                            <div id="itemsList"></div>
+                            <button type="button" class="btn btn-secondary" id="addItemBtn">+ Add Question</button>
                         </div>
                         <div class="form-group full-width" style="text-align: right;">
                             <button type="button" class="btn btn-secondary" id="cancelEdit"
                                 style="display:none;">Cancel</button>
-                            <button type="submit" class="btn" id="submitBtn">Add Shop</button>
+                            <button type="submit" class="btn" id="submitBtn">Add Category</button>
                         </div>
                     </div>
                 </form>
             </div>
 
             <div class="card">
-                <h2>Existing Shops</h2>
-                <div id="shopList"></div>
+                <h2>Existing FAQ Categories</h2>
+                <div id="faqList"></div>
             </div>
         </div>
     </div>
 
     <script src="config.js"></script>
-    <script src="shops.js"></script>
+    <script src="faqs.js"></script>
     <script>
         const user = JSON.parse(localStorage.getItem('user'));
         if (user) {
