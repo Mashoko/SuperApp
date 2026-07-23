@@ -25,6 +25,8 @@ import '../../features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
 import '../../features/login/presentation/viewmodels/login_viewmodel.dart';
 import '../../features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
 import '../../features/dash/presentation/viewmodels/dash_viewmodel.dart';
+import '../../features/faq/data/faq_service.dart';
+import '../../features/faq/presentation/viewmodels/faq_viewmodel.dart';
 import '../../shared/theme/theme_provider.dart';
 
 // Merged Imports
@@ -103,7 +105,9 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton(() => DialpadViewModel(getIt(), getIt(), getIt<OtpAuthService>(), getIt<DialpadRepository>(), getIt<PaymentsClient>()));
   getIt.registerFactory(() => LoginViewModel(getIt<OtpAuthService>(), getIt<RegisterUser>(), getIt<UsersClient>()));
   getIt.registerFactory(() => AccountSummaryViewModel(getIt<OtpAuthService>(), getIt<PaymentsClient>()));
-  getIt.registerLazySingleton(() => DashViewModel());
+  getIt.registerLazySingleton(() => FaqService());
+  getIt.registerLazySingleton(() => FaqViewModel(getIt<FaqService>()));
+  getIt.registerLazySingleton(() => DashViewModel(getIt<FaqViewModel>()));
 
   // Theme Provider
   getIt.registerSingleton<ThemeProvider>(ThemeProvider(getIt<SharedPreferences>()));

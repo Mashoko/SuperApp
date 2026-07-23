@@ -10,6 +10,7 @@ import 'package:mvvm_sip_demo/core/theme.dart';
 import 'package:mvvm_sip_demo/features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/dashboard/presentation/viewmodels/dashboard_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
+import 'package:mvvm_sip_demo/features/faq/presentation/viewmodels/faq_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/call_history_widget.dart';
 import 'package:mvvm_sip_demo/features/dash/presentation/widgets/dash_bubble.dart';
 import 'package:mvvm_sip_demo/features/dialpad/presentation/views/dialpad_view.dart';
@@ -55,6 +56,10 @@ class _HomeViewState extends State<HomeView> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       Provider.of<AccountSummaryViewModel>(context, listen: false)
           .loadCurrentUser();
+
+      final faqVm = Provider.of<FaqViewModel>(context, listen: false);
+      await faqVm.loadCached();
+      faqVm.refresh();
 
       final creds = await getIt<OtpAuthService>().getStoredCredentials();
       final userId = creds?['username'] ?? 'guest';

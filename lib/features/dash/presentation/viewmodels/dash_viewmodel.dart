@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../../../help_support/data/faq_data.dart';
+import '../../../faq/presentation/viewmodels/faq_viewmodel.dart';
 
 class DashMessage {
   final String text;
@@ -15,6 +15,10 @@ class _DashReply {
 }
 
 class DashViewModel extends ChangeNotifier {
+  DashViewModel(this._faqViewModel);
+
+  final FaqViewModel _faqViewModel;
+
   final List<DashMessage> _messages = [];
   List<DashMessage> get messages => List.unmodifiable(_messages);
 
@@ -80,7 +84,7 @@ class DashViewModel extends ChangeNotifier {
       );
     }
 
-    for (final cat in faqData) {
+    for (final cat in _faqViewModel.categories) {
       for (final item in cat.items) {
         final matchesQuestion = item.question.toLowerCase().contains(q);
         final matchesWord = q
