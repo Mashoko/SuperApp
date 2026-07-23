@@ -10,6 +10,8 @@ import '../../../../shared/theme/theme_provider.dart';
 
 import '../../data/faq_data.dart';
 import '../../../dash/presentation/widgets/dash_sheet.dart';
+import '../../../faq/presentation/viewmodels/faq_viewmodel.dart';
+import '../widgets/faq_category_style.dart';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -233,7 +235,7 @@ class _MainScreenState extends State<_MainScreen> {
     final q = _searchCtrl.text.trim().toLowerCase();
     if (q.isEmpty) { setState(() => _searchResults = []); return; }
     final results = <FaqItem>[];
-    for (final cat in faqData) {
+    for (final cat in context.read<FaqViewModel>().categories) {
       for (final item in cat.items) {
         if (item.question.toLowerCase().contains(q) || item.answer.toLowerCase().contains(q)) {
           results.add(item);
@@ -444,7 +446,11 @@ class _MainScreenState extends State<_MainScreen> {
       title: 'Frequently Asked Questions',
       isDark: d,
       child: Column(
-        children: faqData.map((cat) => _buildFaqCategoryRow(cat, d)).toList(),
+        children: context
+            .watch<FaqViewModel>()
+            .categories
+            .map((cat) => _buildFaqCategoryRow(cat, d))
+            .toList(),
       ),
     );
   }
@@ -461,8 +467,8 @@ class _MainScreenState extends State<_MainScreen> {
           border: Border.all(color: d ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
         ),
         child: Row(children: [
-          Container(width: 38, height: 38, decoration: BoxDecoration(color: cat.color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-              child: Icon(cat.icon, color: cat.color, size: 20)),
+          Container(width: 38, height: 38, decoration: BoxDecoration(color: faqCategoryStyle(cat.title).color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+              child: Icon(faqCategoryStyle(cat.title).icon, color: faqCategoryStyle(cat.title).color, size: 20)),
           const SizedBox(width: 14),
           Expanded(child: Text(cat.title, style: TextStyle(fontWeight: FontWeight.w600, color: d ? Colors.white : Colors.black87))),
           Text('${cat.items.length} topics', style: TextStyle(fontSize: 12, color: _sub(d))),
@@ -940,13 +946,14 @@ class _FaqCategoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final d = isDark;
+    final style = faqCategoryStyle(category.title);
     return Scaffold(
       backgroundColor: d ? const Color(0xFF0D1117) : const Color(0xFFF4F6FA),
       appBar: AppBar(
         backgroundColor: _card(d), elevation: 0,
         leading: IconButton(icon: Icon(Icons.arrow_back_ios, color: _text(d), size: 20), onPressed: onBack),
         title: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(category.icon, color: category.color, size: 20),
+          Icon(style.icon, color: style.color, size: 20),
           const SizedBox(width: 8),
           Text(category.title, style: TextStyle(color: _text(d), fontWeight: FontWeight.w600, fontSize: 18)),
         ]),
@@ -963,8 +970,8 @@ class _FaqCategoryScreen extends StatelessWidget {
                 boxShadow: [if (!d) BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)]),
             child: ExpansionTile(
               leading: Container(width: 34, height: 34,
-                  decoration: BoxDecoration(color: category.color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-                  child: Icon(Icons.help_outline, color: category.color, size: 18)),
+                  decoration: BoxDecoration(color: style.color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                  child: Icon(Icons.help_outline, color: style.color, size: 18)),
               title: Text(item.question, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _text(d))),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               children: [Text(item.answer, style: TextStyle(fontSize: 13, color: _sub(d), height: 1.6))],
@@ -989,7 +996,11 @@ class _ServiceHelpScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final d = isDark;
     // Find matching FAQ category
-    final faqCat = faqData.where((c) => c.title.toLowerCase().contains(service.name.toLowerCase().split(' ').first)).firstOrNull;
+    final faqCat = context
+        .watch<FaqViewModel>()
+        .categories
+        .where((c) => c.title.toLowerCase().contains(service.name.toLowerCase().split(' ').first))
+        .firstOrNull;
 
     return Scaffold(
       backgroundColor: d ? const Color(0xFF0D1117) : const Color(0xFFF4F6FA),
@@ -1012,7 +1023,7 @@ class _ServiceHelpScreen extends StatelessWidget {
               decoration: BoxDecoration(color: service.color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: service.color.withValues(alpha: 0.3))),
               child: Row(children: [
-                Icon(faqCat.icon, color: service.color, size: 22),
+                Icon(faqCategoryStyle(faqCat.title).icon, color: service.color, size: 22),
                 const SizedBox(width: 12),
                 Expanded(child: Text('View all ${service.name} FAQs', style: TextStyle(fontWeight: FontWeight.w600, color: d ? Colors.white : Colors.black87))),
                 Icon(Icons.arrow_forward_ios, size: 14, color: service.color),

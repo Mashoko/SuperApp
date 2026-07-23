@@ -11,6 +11,8 @@ import 'package:mvvm_sip_demo/core/services/otp_auth_service.dart';
 import 'package:mvvm_sip_demo/features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/dash/presentation/viewmodels/dash_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/dash/presentation/widgets/dash_sheet.dart';
+import 'package:mvvm_sip_demo/features/faq/data/faq_service.dart';
+import 'package:mvvm_sip_demo/features/faq/presentation/viewmodels/faq_viewmodel.dart';
 import 'package:mvvm_sip_demo/payments_client.dart';
 import 'package:mvvm_sip_demo/users_client.dart';
 
@@ -84,12 +86,12 @@ void main() {
 
   testWidgets('shows the empty-state greeting when there are no messages',
       (tester) async {
-    await _openSheet(tester, DashViewModel());
+    await _openSheet(tester, DashViewModel(FaqViewModel(FaqService())));
     expect(find.textContaining("Hi! I'm Dash"), findsOneWidget);
   });
 
   testWidgets('shows the disclaimer under the input', (tester) async {
-    await _openSheet(tester, DashViewModel());
+    await _openSheet(tester, DashViewModel(FaqViewModel(FaqService())));
     expect(
       find.text('Dash is an AI assistant and can make mistakes.'),
       findsOneWidget,
@@ -98,7 +100,7 @@ void main() {
 
   testWidgets('tapping the "Check data balance" chip adds a user message and a reply',
       (tester) async {
-    await _openSheet(tester, DashViewModel());
+    await _openSheet(tester, DashViewModel(FaqViewModel(FaqService())));
     await tester.tap(find.text('Check data balance'));
     await tester.pumpAndSettle(const Duration(seconds: 1));
     expect(find.text('Check data balance'), findsWidgets);
@@ -107,7 +109,7 @@ void main() {
 
   testWidgets('tapping "Talk to a human" launches WhatsApp support',
       (tester) async {
-    await _openSheet(tester, DashViewModel());
+    await _openSheet(tester, DashViewModel(FaqViewModel(FaqService())));
     await tester.tap(find.text('Talk to a human'));
     await tester.pumpAndSettle(const Duration(seconds: 1));
     expect(fakeLauncher.launchedUrls, isNotEmpty);
@@ -116,13 +118,13 @@ void main() {
 
   testWidgets('FAQ chips are visible before the first message',
       (tester) async {
-    await _openSheet(tester, DashViewModel());
+    await _openSheet(tester, DashViewModel(FaqViewModel(FaqService())));
     expect(find.text('Bundle prices'), findsOneWidget);
   });
 
   testWidgets('FAQ chips disappear once the conversation starts',
       (tester) async {
-    await _openSheet(tester, DashViewModel());
+    await _openSheet(tester, DashViewModel(FaqViewModel(FaqService())));
     await tester.tap(find.text('Check data balance'));
     await tester.pumpAndSettle(const Duration(seconds: 1));
     expect(find.text('Bundle prices'), findsNothing);
