@@ -70,6 +70,18 @@ void main() {
     expect(vm.categories, hasLength(1));
   });
 
+  test('loadCached clears a corrupted cache instead of throwing', () async {
+    SharedPreferences.setMockInitialValues({
+      'faq_cache_v1': 'not valid json{{{',
+    });
+    final vm = FaqViewModel(_FakeFaqService(const FaqFetchResult(categories: [], ok: true)));
+    await vm.loadCached();
+    expect(vm.categories, isEmpty);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('faq_cache_v1'), isNull);
+  });
+
   test('notifies listeners on refresh', () async {
     final vm = FaqViewModel(_FakeFaqService(const FaqFetchResult(categories: [_sampleCategory], ok: true)));
     var notified = 0;

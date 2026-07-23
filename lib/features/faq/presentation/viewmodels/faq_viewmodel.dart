@@ -21,11 +21,15 @@ class FaqViewModel extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final cached = prefs.getString(_cacheKey);
     if (cached == null) return;
-    final decoded = json.decode(cached) as List;
-    _categories = decoded
-        .map((e) => FaqCategory.fromJson(e as Map<String, dynamic>))
-        .toList();
-    notifyListeners();
+    try {
+      final decoded = json.decode(cached) as List;
+      _categories = decoded
+          .map((e) => FaqCategory.fromJson(e as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+    } catch (_) {
+      await prefs.remove(_cacheKey);
+    }
   }
 
   Future<void> refresh() async {
