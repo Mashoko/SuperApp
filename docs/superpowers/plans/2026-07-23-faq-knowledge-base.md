@@ -1518,6 +1518,7 @@ git commit -m "feat(dash): source keyword-matching FAQ data from FaqViewModel"
 
 **Files:**
 - Modify: `lib/features/help_support/presentation/views/help_support_view.dart`
+- Modify: `test/features/dash/dash_bubble_test.dart`, `test/features/dash/dash_sheet_test.dart` — **plan gap found during Task 7's own project-wide `dart analyze` verification step**: Task 6 changed `DashViewModel`'s constructor to require a `FaqViewModel`, but only updated `dash_viewmodel_test.dart`. These two other test files also construct `DashViewModel()` directly and don't compile until each `DashViewModel()` call becomes `DashViewModel(FaqViewModel(FaqService()))` (with the matching `FaqService`/`FaqViewModel` imports added). This is safe in both files: `FaqService()`'s constructor performs no I/O, and neither test triggers `FaqViewModel.refresh()`/`loadCached()`.
 
 **Interfaces:**
 - Consumes: `FaqViewModel` (Task 5), `faqCategoryStyle` (Task 4).
