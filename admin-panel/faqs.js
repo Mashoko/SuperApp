@@ -20,7 +20,7 @@ async function authFetch(url, options = {}) {
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
-    return div.innerHTML;
+    return div.innerHTML.replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 }
 
 function addItemRow(question = '', answer = '') {
