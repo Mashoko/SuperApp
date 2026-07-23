@@ -1493,8 +1493,10 @@ void main() {
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
-Run: `flutter test test/features/dash/ test/features/faq/`
+Run: `flutter test test/features/dash/dash_viewmodel_test.dart test/features/faq/`
 Expected: `All tests passed!`
+
+(Do NOT run the whole `test/features/dash/` directory here — `dash_bubble_test.dart` and `dash_sheet_test.dart` both transitively import `help_support_view.dart`, which is still broken until Task 7. Batch-compiling them together with the still-broken file can crash the shared Dart compiler process entirely, producing misleading, nondeterministic failure counts that look like flaky test failures but are actually a compile error in an unrelated file. Running just `dash_viewmodel_test.dart` — the only test file this task's `DashViewModel` change affects — avoids this entirely.)
 
 - [ ] **Step 7: Verify the scope of this task compiles**
 
