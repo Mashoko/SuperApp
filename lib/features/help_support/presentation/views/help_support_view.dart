@@ -17,7 +17,7 @@ import '../widgets/faq_category_style.dart';
 
 // Replace with your actual WhatsApp support number (digits only, country code first)
 const _kWhatsAppNumber = '263771234567';
-const _kAppVersion     = '4.11.50';
+const _kAppVersion     = '4.11.51';
 const _kSupportEmail   = 'support@firststreet.co.zw';
 const _kSupportPhone   = 'tel:+263771234567';
 const _kWebsite        = 'https://firststreet.co.zw';
