@@ -104,7 +104,7 @@ Future<void> configureDependencies() async {
   getIt.registerFactory(() => CallViewModel(getIt(), getIt(), getIt(), getIt()));
   getIt.registerLazySingleton(() => DialpadViewModel(getIt(), getIt(), getIt<OtpAuthService>(), getIt<DialpadRepository>(), getIt<PaymentsClient>()));
   getIt.registerFactory(() => LoginViewModel(getIt<OtpAuthService>(), getIt<RegisterUser>(), getIt<UsersClient>()));
-  getIt.registerFactory(() => AccountSummaryViewModel(getIt<OtpAuthService>(), getIt<PaymentsClient>()));
+  getIt.registerLazySingleton(() => AccountSummaryViewModel(getIt<OtpAuthService>(), getIt<PaymentsClient>()));
   getIt.registerLazySingleton(() => FaqService());
   getIt.registerLazySingleton(() => FaqViewModel(getIt<FaqService>()));
   getIt.registerLazySingleton(() => DashViewModel(getIt<FaqViewModel>()));

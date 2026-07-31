@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../../../../core/services/otp_auth_service.dart';
+import '../../../../core/utils/balance_resolution.dart';
 import '../../../../payments_client.dart';
 
 /// Fetches and holds the account summary for the logged-in SIP user.
@@ -109,19 +110,23 @@ class AccountSummaryViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> _fetchPaymentsBalance(String username,
+  Future<bool> _fetchPaymentsBalance(String username,
       {required String password}) async {
     _paymentsLoading = true;
     notifyListeners();
+    var ok = false;
     try {
       final resp = await _paymentsClient.dealerAccountBalances(
         username: username,
         password: password,
       );
 
-      final ok =
-          resp.status == Status.SUCCESSFUL || resp.status == Status.INFORMATION;
-      _paymentsBalance = ok ? resp.balance : null;
+      ok = resp.status == Status.SUCCESSFUL || resp.status == Status.INFORMATION;
+      _paymentsBalance = resolveOnFetch(
+        previous: _paymentsBalance,
+        ok: ok,
+        onSuccess: resp.balance,
+      );
 
       debugPrint('[Balance] status=${resp.status}  balance=${resp.balance}');
     } catch (e) {
@@ -130,17 +135,19 @@ class AccountSummaryViewModel extends ChangeNotifier {
       _paymentsLoading = false;
       notifyListeners();
     }
+    return ok;
   }
 
   /// Refresh only the RTGS balance without re-loading the full user summary.
-  /// Use this for quick wallet-card refresh.
-  Future<void> fetchBalance() async {
+  /// Use this for quick wallet-card refresh. Returns `true` if the fetch
+  /// succeeded (balance updated), `false` otherwise (previous balance kept).
+  Future<bool> fetchBalance() async {
     final creds = await _authService.getStoredCredentials();
-    if (creds == null) return;
+    if (creds == null) return false;
     final username = creds['username'];
     final password = creds['password'] ?? '';
-    if (username == null) return;
-    await _fetchPaymentsBalance(username, password: password);
+    if (username == null) return false;
+    return _fetchPaymentsBalance(username, password: password);
   }
 
   /// Add [minutes] voice minutes to the logged-in account via RechargeAccount.
