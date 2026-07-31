@@ -6,6 +6,7 @@ import '../../../../core/services/otp_auth_service.dart';
 import '../../domain/repositories/dialpad_repository.dart';
 import '../../../recents/data/models/recent_call.dart';
 import '../../../../payments_client.dart';
+import '../../../../core/utils/balance_resolution.dart';
 
 class DialpadViewModel extends ChangeNotifier {
   final SaveDestination saveDestinationUseCase;
@@ -75,26 +76,35 @@ class DialpadViewModel extends ChangeNotifier {
 
   bool get isSipReady => sipHelper.connected && sipHelper.registered;
 
-  Future<void> loadAccountInfo() async {
+  /// Loads the voice-minutes and account balance for the logged-in user.
+  /// Returns `true` if the account-balance fetch succeeded (balance
+  /// updated), `false` otherwise (previous balance kept) — mirrors
+  /// `AccountSummaryViewModel.fetchBalance()`'s contract.
+  Future<bool> loadAccountInfo() async {
     final creds = await authService.getStoredCredentials();
-    if (creds != null && creds['username'] != null) {
-      final username = creds['username']!;
-      final summary = await authService.fetchAccountSummary(username, password: creds['password']);
-      if (summary != null) {
-        final bal = summary['balance'];
-        final balNum = bal is num ? bal.toDouble() : 0.0;
-        _voiceBalance = _formatVoiceBalance(balNum);
-        _scheduleNotify();
-      }
+    if (creds == null || creds['username'] == null) return false;
 
-      final resp = await paymentsClient.dealerAccountBalances(
-        username: username,
-        password: creds['password'] ?? '',
-      );
-      final ok = resp.status == Status.SUCCESSFUL || resp.status == Status.INFORMATION;
-      _accountBalance = ok ? '\$${resp.balance.toStringAsFixed(2)}' : '';
+    final username = creds['username']!;
+    final summary = await authService.fetchAccountSummary(username, password: creds['password']);
+    if (summary != null) {
+      final bal = summary['balance'];
+      final balNum = bal is num ? bal.toDouble() : 0.0;
+      _voiceBalance = _formatVoiceBalance(balNum);
       _scheduleNotify();
     }
+
+    final resp = await paymentsClient.dealerAccountBalances(
+      username: username,
+      password: creds['password'] ?? '',
+    );
+    final ok = resp.status == Status.SUCCESSFUL || resp.status == Status.INFORMATION;
+    _accountBalance = resolveOnFetch(
+      previous: _accountBalance,
+      ok: ok,
+      onSuccess: '\$${resp.balance.toStringAsFixed(2)}',
+    );
+    _scheduleNotify();
+    return ok;
   }
 
   void _scheduleNotify() {
