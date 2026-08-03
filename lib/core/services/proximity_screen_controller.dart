@@ -52,6 +52,13 @@ class ProximityScreenController {
         _isActive = false;
         _subscription?.cancel();
         _subscription = null;
+        // Best-effort cleanup: disable the native screen-off that was successfully enabled
+        // before the subsequent .events or .listen() failed
+        try {
+          await _gateway.setScreenOffEnabled(false);
+        } catch (cleanupError) {
+          debugPrint('ProximityScreenController: Error during cleanup after activation failure: $cleanupError');
+        }
       }
     } else {
       try {

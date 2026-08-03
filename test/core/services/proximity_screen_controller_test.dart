@@ -7,10 +7,14 @@ class FakeProximitySensorGateway implements ProximitySensorGateway {
   final _controller = StreamController<int>.broadcast();
   final List<String> callLog = [];
   bool _throwOnSetScreenOff = false;
+  bool _throwOnEvents = false;
 
   @override
   Stream<int> get events {
     callLog.add('listen');
+    if (_throwOnEvents) {
+      throw Exception('events getter failed');
+    }
     return _controller.stream;
   }
 
@@ -25,6 +29,8 @@ class FakeProximitySensorGateway implements ProximitySensorGateway {
   void emitError(Object error) => _controller.addError(error);
 
   void throwOnSetScreenOff() => _throwOnSetScreenOff = true;
+
+  void throwOnEvents() => _throwOnEvents = true;
 
   Future<void> close() => _controller.close();
 }
@@ -116,8 +122,8 @@ void main() {
 
       // Controller should be inactive
       expect(controller.isActive, isFalse);
-      // Gateway should have tried to enable
-      expect(gateway.callLog, ['screenOff(true)']);
+      // Gateway should have tried to enable, then tried to cleanup disable (which also throws)
+      expect(gateway.callLog, ['screenOff(true)', 'screenOff(false)']);
 
       // Reset the gateway so it doesn't throw
       gateway._throwOnSetScreenOff = false;
@@ -140,6 +146,30 @@ void main() {
       expect(controller.isActive, isFalse);
       // The important fix: stream error should trigger setScreenOffEnabled(false)
       expect(gateway.callLog, ['screenOff(true)', 'listen', 'screenOff(false)']);
+    });
+
+    test('exception during subscription cleanup disables native screen-off before returning', () async {
+      gateway.throwOnEvents();
+
+      // First attempt: setScreenOffEnabled(true) succeeds, but events getter throws
+      await controller.setActive(true);
+
+      // Controller should be inactive
+      expect(controller.isActive, isFalse);
+      // Gateway should have enabled, then attempted listen (which threw in events getter),
+      // then cleanup should have disabled
+      expect(gateway.callLog, ['screenOff(true)', 'listen', 'screenOff(false)']);
+
+      // Reset the gateway so it doesn't throw
+      gateway._throwOnEvents = false;
+      gateway.callLog.clear();
+
+      // A subsequent setActive(true) should work (proves _pending is not poisoned
+      // and controller stays usable despite the earlier activation failure)
+      await controller.setActive(true);
+
+      expect(controller.isActive, isTrue);
+      expect(gateway.callLog, ['screenOff(true)', 'listen']);
     });
   });
 }
