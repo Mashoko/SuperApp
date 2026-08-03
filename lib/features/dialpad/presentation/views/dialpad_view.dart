@@ -254,15 +254,47 @@ class _DialpadViewState extends State<DialpadView>
                          ),
                        ),
                        const SizedBox(width: 8),
-                       Text(
-                         "Voice Bal: ${viewModel.voiceBalance}",
-                         style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.normal),
+                       AnimatedSwitcher(
+                         duration: const Duration(milliseconds: 320),
+                         switchInCurve: Curves.easeOutCubic,
+                         switchOutCurve: Curves.easeInCubic,
+                         transitionBuilder: (child, anim) => FadeTransition(
+                           opacity: anim,
+                           child: SlideTransition(
+                             position: Tween<Offset>(
+                               begin: const Offset(0, 0.08),
+                               end: Offset.zero,
+                             ).animate(anim),
+                             child: child,
+                           ),
+                         ),
+                         child: Text(
+                           "Voice Bal: ${viewModel.voiceBalance}",
+                           key: ValueKey<String>('voice_${viewModel.voiceBalance}'),
+                           style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.normal),
+                         ),
                        ),
                      ],
                    ),
-                   Text(
-                     "Balance: ${viewModel.accountBalance}",
-                     style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.normal),
+                   AnimatedSwitcher(
+                     duration: const Duration(milliseconds: 320),
+                     switchInCurve: Curves.easeOutCubic,
+                     switchOutCurve: Curves.easeInCubic,
+                     transitionBuilder: (child, anim) => FadeTransition(
+                       opacity: anim,
+                       child: SlideTransition(
+                         position: Tween<Offset>(
+                           begin: const Offset(0, 0.08),
+                           end: Offset.zero,
+                         ).animate(anim),
+                         child: child,
+                       ),
+                     ),
+                     child: Text(
+                       "Balance: ${viewModel.accountBalance}",
+                       key: ValueKey<String>('account_${viewModel.accountBalance}'),
+                       style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.normal),
+                     ),
                    ),
                 ],
               ),
