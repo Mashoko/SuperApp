@@ -85,8 +85,8 @@ class _HomeViewState extends State<HomeView> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.9,
+        clipBehavior: Clip.antiAlias,
         decoration: const BoxDecoration(
-          color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
         ),
         child: const DialpadView(),
