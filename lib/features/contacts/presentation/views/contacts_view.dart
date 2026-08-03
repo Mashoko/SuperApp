@@ -167,6 +167,12 @@ class _ContactsViewState extends State<ContactsView> {
   }
 
   Widget _buildPermissionEmptyState() {
+    return widget.darkTheme
+        ? _buildPermissionEmptyStateDark()
+        : _buildPermissionEmptyStateLight();
+  }
+
+  Widget _buildPermissionEmptyStateLight() {
     final isPermanentlyDenied =
         _permissionState == _ContactsPermissionState.permanentlyDenied;
     return Center(
@@ -195,14 +201,52 @@ class _ContactsViewState extends State<ContactsView> {
     );
   }
 
+  Widget _buildPermissionEmptyStateDark() {
+    final isPermanentlyDenied =
+        _permissionState == _ContactsPermissionState.permanentlyDenied;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.contacts_outlined, size: 56, color: Colors.white38),
+            const SizedBox(height: 16),
+            Text(
+              isPermanentlyDenied
+                  ? 'Contacts access is disabled. Enable it in Settings to see your contacts here.'
+                  : 'Allow access to your contacts to see them here.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: isPermanentlyDenied ? openAppSettings : _requestPermission,
+              child: const Text('Grant Access'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildContactsList() {
     final contacts = _filteredContacts ?? const [];
     if (contacts.isEmpty) {
-      return const Center(child: Text('No contacts found'));
+      return Center(
+        child: Text(
+          'No contacts found',
+          style: TextStyle(
+              color: widget.darkTheme ? Colors.white54 : Colors.black54),
+        ),
+      );
     }
 
     final grouped = groupContactsByLetter(contacts);
     final letters = grouped.keys.toList();
+    final headerColor = widget.darkTheme ? Colors.white54 : Colors.grey;
+    final titleColor = widget.darkTheme ? Colors.white : Colors.black87;
+    final subtitleColor = widget.darkTheme ? Colors.white54 : Colors.black54;
 
     return RefreshIndicator(
       onRefresh: _fetchContacts,
@@ -218,8 +262,7 @@ class _ContactsViewState extends State<ContactsView> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: Text(
                   letter,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.grey),
+                  style: TextStyle(fontWeight: FontWeight.bold, color: headerColor),
                 ),
               ),
               for (final contact in letterContacts)
@@ -229,9 +272,11 @@ class _ContactsViewState extends State<ContactsView> {
                           backgroundImage:
                               MemoryImage(contact.photoOrThumbnail!))
                       : const CircleAvatar(child: Icon(Icons.person)),
-                  title: Text(contact.displayName),
+                  title: Text(contact.displayName,
+                      style: TextStyle(color: titleColor)),
                   subtitle: contact.phones.isNotEmpty
-                      ? Text(contact.phones.first.number)
+                      ? Text(contact.phones.first.number,
+                          style: TextStyle(color: subtitleColor))
                       : null,
                   onTap: () => _onContactTapped(contact),
                 ),
@@ -244,6 +289,24 @@ class _ContactsViewState extends State<ContactsView> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.darkTheme) {
+      return Column(
+        children: [
+          _buildSearchField(dark: true),
+          Expanded(
+            child: _permissionState == _ContactsPermissionState.denied ||
+                    _permissionState ==
+                        _ContactsPermissionState.permanentlyDenied
+                ? _buildPermissionEmptyState()
+                : _contacts == null
+                    ? const Center(
+                        child: CircularProgressIndicator(color: Colors.white70))
+                    : _buildContactsList(),
+          ),
+        ],
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Contacts'),
@@ -266,31 +329,7 @@ class _ContactsViewState extends State<ContactsView> {
       backgroundColor: const Color(0xFFF5F7FA),
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.transparent,
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search contacts...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding:
-                    const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
-                ),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () => _searchController.clear(),
-                      )
-                    : null,
-              ),
-            ),
-          ),
+          _buildSearchField(dark: false),
           Expanded(
             child: _permissionState == _ContactsPermissionState.denied ||
                     _permissionState ==
@@ -301,6 +340,36 @@ class _ContactsViewState extends State<ContactsView> {
                     : _buildContactsList(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchField({required bool dark}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Colors.transparent,
+      child: TextField(
+        controller: _searchController,
+        style: TextStyle(color: dark ? Colors.white : Colors.black87),
+        decoration: InputDecoration(
+          hintText: 'Search contacts...',
+          hintStyle: TextStyle(color: dark ? Colors.white38 : Colors.black38),
+          prefixIcon: Icon(Icons.search, color: dark ? Colors.white54 : null),
+          filled: true,
+          fillColor: dark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide.none,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.clear, color: dark ? Colors.white54 : null),
+                  onPressed: () => _searchController.clear(),
+                )
+              : null,
+        ),
       ),
     );
   }
