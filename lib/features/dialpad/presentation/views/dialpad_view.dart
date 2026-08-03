@@ -3,16 +3,17 @@ import 'package:provider/provider.dart';
 import 'package:sip_ua/sip_ua.dart';
 import '../viewmodels/dialpad_viewmodel.dart';
 import '../../../../core/di/inject.dart';
+import '../../../../core/routes.dart';
+import '../../../../core/theme.dart';
 import '../../../../core/utils/result.dart';
 import '../../../../core/utils/sip_utils.dart';
-
-
 import '../../../call/presentation/views/call_view.dart';
-
-
 import '../../../recents/presentation/views/recents_view.dart';
 import '../../../contacts/presentation/views/contacts_view.dart';
-import '../../../speed_test/presentation/views/speed_test_view.dart';
+import '../widgets/dialer_gradient_background.dart';
+import '../widgets/dialer_glass_nav.dart';
+
+enum _DialerSection { keypad, recents, contacts }
 
 class DialpadView extends StatefulWidget {
   const DialpadView({super.key});
@@ -27,21 +28,17 @@ class _DialpadViewState extends State<DialpadView>
   late SIPUAHelper _sipHelper;
   final TextEditingController _textController = TextEditingController();
 
-  // Removed duplicate initState
-  // Note: The logic from the original initState (lines 29-36) is less comprehensive 
-  // than the new one at lines 172-180, so we keep the new one (which will be at the bottom).
-  // However, usually initState should be at the top. 
-  // Let's merged them:
+  _DialerSection _section = _DialerSection.keypad;
+
   @override
   void initState() {
     super.initState();
     _viewModel = getIt<DialpadViewModel>();
     _sipHelper = getIt<SIPUAHelper>();
     _sipHelper.addSipUaHelperListener(this);
-    // _loadDestination(); // Removed per user request
     _updateRegistrationStatus();
-    _viewModel.loadAccountInfo(); // Load balance
-    _viewModel.loadRecents(); // Load recents
+    _viewModel.loadAccountInfo();
+    _viewModel.loadRecents();
   }
 
   @override
@@ -50,8 +47,6 @@ class _DialpadViewState extends State<DialpadView>
     _sipHelper.removeSipUaHelperListener(this);
     super.dispose();
   }
-
-
 
   void _updateRegistrationStatus() {
     final state = _sipHelper.registerState.state?.name ?? '';
@@ -124,96 +119,217 @@ class _DialpadViewState extends State<DialpadView>
     });
   }
 
+  void _onNavTabSelected(int index) {
+    setState(() {
+      _section =
+          index == 1 ? _DialerSection.contacts : _DialerSection.recents;
+    });
+  }
 
-
-  // Removed second initState since we merged it into the first one.
-
-  int _selectedIndex = 0;
+  void _onMarketPlaceTap() {
+    Navigator.of(context).pop();
+    Navigator.of(context).pushNamed(Routes.shopping);
+  }
 
   Widget _buildBody(DialpadViewModel viewModel) {
-    switch (_selectedIndex) {
-      case 0:
+    switch (_section) {
+      case _DialerSection.keypad:
         return _buildDialpadScreen(viewModel);
-      case 1:
+      case _DialerSection.recents:
         return const RecentsView();
-      case 2:
-        return const ContactsView();
-      case 3:
-        return const SpeedTestView();
-      default:
-        return _buildDialpadScreen(viewModel);
+      case _DialerSection.contacts:
+        return const ContactsView(darkTheme: true);
     }
   }
 
+  Widget _buildTopBar(DialpadViewModel viewModel) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Row(
+        children: [
+          _GhostIconButton(
+            icon: Icons.search,
+            onTap: () {
+              // Search functionality or focus search bar
+            },
+          ),
+          Expanded(
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _sipStatusColor(viewModel),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 320),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, anim) => FadeTransition(
+                        opacity: anim,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.08),
+                            end: Offset.zero,
+                          ).animate(anim),
+                          child: child,
+                        ),
+                      ),
+                      child: Text(
+                        "Voice Bal: ${viewModel.voiceBalance}",
+                        key: ValueKey<String>('voice_${viewModel.voiceBalance}'),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 320),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, anim) => FadeTransition(
+                    opacity: anim,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.08),
+                        end: Offset.zero,
+                      ).animate(anim),
+                      child: child,
+                    ),
+                  ),
+                  child: Text(
+                    "Balance: ${viewModel.accountBalance}",
+                    key: ValueKey<String>('account_${viewModel.accountBalance}'),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.white54,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuButton<String>(
+            icon: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.more_vert, color: Colors.white70, size: 22),
+            ),
+            color: const Color(0xFF1E1E2E),
+            onSelected: (String value) {
+              switch (value) {
+                case 'account':
+                  Navigator.pushNamed(context, '/account');
+                  break;
+                case 'about':
+                  Navigator.pushNamed(context, '/about');
+                  break;
+                case 'refresh':
+                  viewModel.loadAccountInfo();
+                  break;
+              }
+            },
+            itemBuilder: (BuildContext context) => const <PopupMenuEntry<String>>[
+              PopupMenuItem(
+                value: 'account',
+                child: Text('Account', style: TextStyle(color: Colors.white)),
+              ),
+              PopupMenuItem(
+                value: 'about',
+                child: Text('About', style: TextStyle(color: Colors.white)),
+              ),
+              PopupMenuItem(
+                value: 'refresh',
+                child: Text('Refresh', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDialpadScreen(DialpadViewModel viewModel) {
+    final hasDigits = _textController.text.isNotEmpty;
     return Column(
       children: [
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         const Spacer(),
-
-        // Display Area (Number)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32.0),
+          child: Text(
+            hasDigits ? _textController.text : 'Enter number',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 34,
+              fontWeight: FontWeight.w300,
+              letterSpacing: 1.2,
+              color: hasDigits ? Colors.white : Colors.white38,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(children: _buildNumPadGrid()),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 24.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: Text(
-                  _textController.text,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w400,
-                    color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black87, 
+              GestureDetector(
+                onTap: () => _handleCall(true),
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    gradient: WunzaColors.dialerCallGradient,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: WunzaColors.blueAccent.withValues(alpha: 0.4),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
+                  child: const Icon(Icons.call, color: Colors.white, size: 32),
                 ),
               ),
-              if (_textController.text.isNotEmpty)
-                IconButton(
-                  icon: Icon(Icons.backspace, color: Theme.of(context).iconTheme.color ?? Colors.grey),
-                  onPressed: () => _handleBackSpace(),
+              if (hasDigits) ...[
+                const SizedBox(width: 20),
+                GestureDetector(
+                  onTap: () => _handleBackSpace(),
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: const BoxDecoration(
+                      color: WunzaColors.dialerKeypadFill,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.backspace_outlined,
+                        color: Colors.white54, size: 22),
+                  ),
                 ),
+              ],
             ],
-          ),
-        ),
-
-        const SizedBox(height: 10),
-
-        // Keypad
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Column(
-            children: _buildNumPadGrid(),
-          ),
-        ),
-
-        const SizedBox(height: 10),
-
-        // Call Button
-        Padding(
-          padding: const EdgeInsets.only(bottom: 20.0),
-          child: GestureDetector(
-            onTap: () => _handleCall(true),
-            child: Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor, // Uses theme primary color
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.call,
-                color: Colors.white,
-                size: 36,
-              ),
-            ),
           ),
         ),
       ],
@@ -226,151 +342,37 @@ class _DialpadViewState extends State<DialpadView>
       value: _viewModel,
       child: Consumer<DialpadViewModel>(
         builder: (context, viewModel, child) {
-
-          
           return Scaffold(
-            backgroundColor: const Color(0xFFF5F7FA),
-            appBar: AppBar(
-              backgroundColor: Colors.white,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.search, color: Colors.grey, size: 28),
-                onPressed: () {
-                   // Search functionality or focus search bar
-                },
-              ),
-              title: Column(
-                children: [
-                   Row(
-                     mainAxisAlignment: MainAxisAlignment.center,
-                     children: [
-                       Container(
-                         width: 8,
-                         height: 8,
-                         decoration: BoxDecoration(
-                           color: _sipStatusColor(viewModel),
-                           shape: BoxShape.circle,
-                         ),
-                       ),
-                       const SizedBox(width: 8),
-                       AnimatedSwitcher(
-                         duration: const Duration(milliseconds: 320),
-                         switchInCurve: Curves.easeOutCubic,
-                         switchOutCurve: Curves.easeInCubic,
-                         transitionBuilder: (child, anim) => FadeTransition(
-                           opacity: anim,
-                           child: SlideTransition(
-                             position: Tween<Offset>(
-                               begin: const Offset(0, 0.08),
-                               end: Offset.zero,
-                             ).animate(anim),
-                             child: child,
-                           ),
-                         ),
-                         child: Text(
-                           "Voice Bal: ${viewModel.voiceBalance}",
-                           key: ValueKey<String>('voice_${viewModel.voiceBalance}'),
-                           style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.normal),
-                         ),
-                       ),
-                     ],
-                   ),
-                   AnimatedSwitcher(
-                     duration: const Duration(milliseconds: 320),
-                     switchInCurve: Curves.easeOutCubic,
-                     switchOutCurve: Curves.easeInCubic,
-                     transitionBuilder: (child, anim) => FadeTransition(
-                       opacity: anim,
-                       child: SlideTransition(
-                         position: Tween<Offset>(
-                           begin: const Offset(0, 0.08),
-                           end: Offset.zero,
-                         ).animate(anim),
-                         child: child,
-                       ),
-                     ),
-                     child: Text(
-                       "Balance: ${viewModel.accountBalance}",
-                       key: ValueKey<String>('account_${viewModel.accountBalance}'),
-                       style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.normal),
-                     ),
-                   ),
-                ],
-              ),
-              centerTitle: true,
-              actions: [
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: Colors.grey),
-                  onSelected: (String value) {
-                     switch (value) {
-                      case 'account':
-                        Navigator.pushNamed(context, '/account');
-                        break;
-                      case 'about':
-                        Navigator.pushNamed(context, '/about');
-                        break;
-                      case 'refresh':
-                        viewModel.loadAccountInfo();
-                        break;
-                    }
-                  },
-                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                     const PopupMenuItem(
-                      value: 'account',
-                      child: Text('Account'),
+            backgroundColor: Colors.transparent,
+            body: DialerGradientBackground(
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: GlassPanelContainer(
+                        child: Column(
+                          children: [
+                            _buildTopBar(viewModel),
+                            Expanded(child: _buildBody(viewModel)),
+                          ],
+                        ),
+                      ),
                     ),
-                     const PopupMenuItem(
-                      value: 'about',
-                      child: Text('About'),
-                    ),
-                     const PopupMenuItem(
-                      value: 'refresh',
-                      child: Text('Refresh'),
+                    DialerGlassNav(
+                      activeIndex:
+                          _section == _DialerSection.contacts ? 1 : 0,
+                      onTabSelected: _onNavTabSelected,
+                      onMarketPlaceTap: _onMarketPlaceTap,
                     ),
                   ],
                 ),
-              ],
-            ),
-            body: SafeArea(
-              child: _buildBody(viewModel),
-            ),
-            bottomNavigationBar: BottomNavigationBar(
-              currentIndex: _selectedIndex,
-              onTap: (index) {
-                setState(() {
-                  _selectedIndex = index;
-                });
-              },
-              type: BottomNavigationBarType.fixed,
-              selectedItemColor: Colors.blue,
-              unselectedItemColor: Colors.grey,
-              showUnselectedLabels: true,
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.phone),
-                  label: 'Phone',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.access_time),
-                  label: 'Recents',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.contacts),
-                  label: 'Contacts',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.speed),
-                  label: 'Speed Test',
-                ),
-              ],
+              ),
             ),
           );
         },
       ),
     );
   }
-
-
 
   List<Widget> _buildNumPadGrid() {
     final labels = [
@@ -389,7 +391,7 @@ class _DialpadViewState extends State<DialpadView>
 
     return labels.map((row) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10.0),
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: row.map((key) {
@@ -401,24 +403,15 @@ class _DialpadViewState extends State<DialpadView>
   }
 
   Widget _buildKeypadButton(String label, String sub) {
-    final theme = Theme.of(context);
-    
     return InkWell(
       onTap: () => _handleNum(label),
-      borderRadius: BorderRadius.circular(40),
+      borderRadius: BorderRadius.circular(44),
       child: Container(
-        height: 75,
-        width: 75,
-        decoration: BoxDecoration(
+        height: 72,
+        width: 72,
+        decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          color: theme.cardColor, 
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          color: WunzaColors.dialerKeypadFill,
         ),
         alignment: Alignment.center,
         child: Column(
@@ -426,10 +419,10 @@ class _DialpadViewState extends State<DialpadView>
           children: [
             Text(
               label,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w400,
-                color: theme.textTheme.bodyLarge?.color,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
               ),
             ),
             if (sub.isNotEmpty)
@@ -437,7 +430,7 @@ class _DialpadViewState extends State<DialpadView>
                 sub,
                 style: const TextStyle(
                   fontSize: 10,
-                  color: Colors.grey,
+                  color: Colors.white54,
                   letterSpacing: 1.5,
                 ),
               ),
@@ -469,7 +462,6 @@ class _DialpadViewState extends State<DialpadView>
         break;
       case CallStateEnum.FAILED:
       case CallStateEnum.ENDED:
-        // Handle re-registration if needed
         break;
       default:
     }
@@ -488,3 +480,25 @@ class _DialpadViewState extends State<DialpadView>
   void onNewReinvite(ReInvite event) {}
 }
 
+class _GhostIconButton extends StatelessWidget {
+  const _GhostIconButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.06),
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Icon(icon, color: Colors.white70, size: 22),
+        ),
+      ),
+    );
+  }
+}

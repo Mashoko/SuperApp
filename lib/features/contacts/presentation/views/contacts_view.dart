@@ -9,7 +9,14 @@ import '../../../call/presentation/viewmodels/call_viewmodel.dart';
 import '../../../dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
 
 class ContactsView extends StatefulWidget {
-  const ContactsView({super.key});
+  const ContactsView({super.key, this.darkTheme = false});
+
+  /// When true, renders with the dark glass styling used inside the
+  /// redesigned dialer sheet. Defaults to false so this widget's other
+  /// caller (CallingView's Contacts tab) is completely unaffected until
+  /// Task 9 gives this flag real visual behavior — for now it is accepted
+  /// but not yet acted on.
+  final bool darkTheme;
 
   @override
   State<ContactsView> createState() => _ContactsViewState();
