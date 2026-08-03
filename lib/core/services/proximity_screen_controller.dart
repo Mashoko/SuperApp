@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import 'proximity_sensor_gateway.dart';
 
 /// Drives the device's native proximity screen-off behavior on and off
@@ -30,22 +32,39 @@ class ProximityScreenController {
     if (active == _isActive) return;
 
     if (active) {
-      await _gateway.setScreenOffEnabled(true);
-      _subscription = _gateway.events.listen(
-        (_) {},
-        onError: (Object _) {
-          _isActive = false;
-          _subscription?.cancel();
-          _subscription = null;
-        },
-      );
-      _isActive = true;
+      try {
+        await _gateway.setScreenOffEnabled(true);
+        _subscription = _gateway.events.listen(
+          (_) {},
+          onError: (Object _) {
+            _isActive = false;
+            _subscription?.cancel();
+            _subscription = null;
+            // Call setScreenOffEnabled(false) asynchronously; catch errors to avoid pollution
+            _gateway.setScreenOffEnabled(false).catchError((e) {
+              debugPrint('ProximityScreenController: Error disabling screen-off in stream error handler: $e');
+            });
+          },
+        );
+        _isActive = true;
+      } catch (e) {
+        debugPrint('ProximityScreenController: Error activating screen-off: $e');
+        _isActive = false;
+        _subscription?.cancel();
+        _subscription = null;
+      }
     } else {
-      final subscription = _subscription;
-      _subscription = null;
-      await subscription?.cancel();
-      await _gateway.setScreenOffEnabled(false);
-      _isActive = false;
+      try {
+        final subscription = _subscription;
+        _subscription = null;
+        await subscription?.cancel();
+        await _gateway.setScreenOffEnabled(false);
+        _isActive = false;
+      } catch (e) {
+        debugPrint('ProximityScreenController: Error deactivating screen-off: $e');
+        _isActive = false;
+        _subscription = null;
+      }
     }
   }
 

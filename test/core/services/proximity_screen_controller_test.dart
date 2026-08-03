@@ -6,6 +6,7 @@ import 'package:mvvm_sip_demo/core/services/proximity_sensor_gateway.dart';
 class FakeProximitySensorGateway implements ProximitySensorGateway {
   final _controller = StreamController<int>.broadcast();
   final List<String> callLog = [];
+  bool _throwOnSetScreenOff = false;
 
   @override
   Stream<int> get events {
@@ -16,9 +17,14 @@ class FakeProximitySensorGateway implements ProximitySensorGateway {
   @override
   Future<void> setScreenOffEnabled(bool enabled) async {
     callLog.add(enabled ? 'screenOff(true)' : 'screenOff(false)');
+    if (_throwOnSetScreenOff) {
+      throw Exception('setScreenOffEnabled failed');
+    }
   }
 
   void emitError(Object error) => _controller.addError(error);
+
+  void throwOnSetScreenOff() => _throwOnSetScreenOff = true;
 
   Future<void> close() => _controller.close();
 }
@@ -100,6 +106,40 @@ void main() {
 
       expect(gateway.callLog, ['screenOff(true)', 'listen', 'screenOff(false)']);
       expect(controller.isActive, isFalse);
+    });
+
+    test('exception from setScreenOffEnabled(true) does not escape and does not poison _pending', () async {
+      gateway.throwOnSetScreenOff();
+
+      // First attempt throws internally but should not escape
+      await controller.setActive(true);
+
+      // Controller should be inactive
+      expect(controller.isActive, isFalse);
+      // Gateway should have tried to enable
+      expect(gateway.callLog, ['screenOff(true)']);
+
+      // Reset the gateway so it doesn't throw
+      gateway._throwOnSetScreenOff = false;
+      gateway.callLog.clear();
+
+      // A subsequent setActive(true) should work (proves _pending is not poisoned)
+      await controller.setActive(true);
+
+      expect(controller.isActive, isTrue);
+      expect(gateway.callLog, ['screenOff(true)', 'listen']);
+    });
+
+    test('stream error triggers setScreenOffEnabled(false) call', () async {
+      await controller.setActive(true);
+      expect(gateway.callLog, ['screenOff(true)', 'listen']);
+
+      gateway.emitError(Exception('sensor unavailable'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.isActive, isFalse);
+      // The important fix: stream error should trigger setScreenOffEnabled(false)
+      expect(gateway.callLog, ['screenOff(true)', 'listen', 'screenOff(false)']);
     });
   });
 }
