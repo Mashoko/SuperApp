@@ -9,6 +9,8 @@ import 'package:sip_ua/sip_ua.dart';
 import '../viewmodels/call_viewmodel.dart';
 import '../../domain/entities/phone_call_state.dart';
 import '../../../../core/di/inject.dart';
+import '../../../../core/services/proximity_screen_controller.dart';
+import '../../../../core/services/proximity_sensor_gateway.dart';
 import '../../../../core/utils/sip_utils.dart';
 import '../../../../shared/widgets/action_button.dart';
 
@@ -25,6 +27,7 @@ class _CallViewState extends State<CallView>
     implements SipUaHelperListener {
   late CallViewModel _viewModel;
   late SIPUAHelper _sipHelper;
+  late final ProximityScreenController _proximityController;
 
   // ── WebRTC ─────────────────────────────────────────────────────────────────
   RTCVideoRenderer? _localRenderer = RTCVideoRenderer();
@@ -56,6 +59,8 @@ class _CallViewState extends State<CallView>
 
     _viewModel = getIt<CallViewModel>();
     _sipHelper = getIt<SIPUAHelper>();
+    _proximityController =
+        ProximityScreenController(getIt<ProximitySensorGateway>());
 
     _sipHelper.addSipUaHelperListener(this);
     _initRenderers();
@@ -76,6 +81,7 @@ class _CallViewState extends State<CallView>
     _pulseController.dispose();
     _audioPlayer.stop();
     _audioPlayer.dispose();
+    _proximityController.dispose();
     _endScreenTimer?.cancel();
     _sipHelper.removeSipUaHelperListener(this);
     _disposeRenderers();
@@ -94,6 +100,14 @@ class _CallViewState extends State<CallView>
     } else {
       if (_pulseController.isAnimating) _pulseController.stop();
     }
+
+    // Sync proximity screen-off. Must run on every change (including
+    // speaker toggling, which doesn't change `state`), so this sits above
+    // the audio-state early-return below rather than inside the switch.
+    final shouldMonitorProximity = state == PhoneCallState.connected &&
+        _viewModel.isVoiceOnly &&
+        !_viewModel.isSpeakerOn;
+    _proximityController.setActive(shouldMonitorProximity);
 
     // Sync audio — only change if state changed.
     if (_lastAudioState == state) return;
@@ -824,6 +838,7 @@ class _CallViewState extends State<CallView>
               child: const Text('Accept'),
               onPressed: () {
                 event.accept!.call({});
+                _viewModel.setVoiceOnly(false);
                 setState(() => widget.call.voiceOnly = false);
                 Navigator.of(ctx).pop();
               },

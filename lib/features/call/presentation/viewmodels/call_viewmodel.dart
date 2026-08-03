@@ -293,6 +293,15 @@ class CallViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Updates voice/video mode outside the normal call-setup paths — e.g.
+  /// when a mid-call re-invite upgrades a voice call to video. No-ops if
+  /// the value doesn't change.
+  void setVoiceOnly(bool voiceOnly) {
+    if (_isVoiceOnly == voiceOnly) return;
+    _isVoiceOnly = voiceOnly;
+    notifyListeners();
+  }
+
   // ── Timer management ───────────────────────────────────────────────────────
 
   void _startDurationTimer() {
