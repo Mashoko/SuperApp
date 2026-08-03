@@ -44,6 +44,21 @@ class WunzaColors {
   static const Color navIndicator = Color(0xFF9B8CFF); // violet, active-tab glow only
   static const Color padGradientStart = Color(0xFFFF7A45); // coral
   static const Color padGradientEnd = Color(0xFFFF4D6D); // pink
+
+  // --- Dark dialer redesign tokens (dialer + contacts dark variant only) ---
+  static const LinearGradient dialerBackgroundGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFF2A1F4D), Color(0xFF0B0A17)],
+  );
+  static const Color dialerPanelFill = Color(0x0AFFFFFF); // rgba(255,255,255,0.04)
+  static const Color dialerKeypadFill = Color(0x14FFFFFF); // rgba(255,255,255,0.08)
+  static const Color dialerNavActive = Color(0xFF4DD8E0); // cyan/teal
+  static const LinearGradient dialerCallGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [indigo, blueAccent],
+  );
 }
 
 class WunzaTheme {
