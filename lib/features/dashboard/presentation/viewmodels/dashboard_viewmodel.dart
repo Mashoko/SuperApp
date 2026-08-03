@@ -1,15 +1,16 @@
 import 'package:flutter/foundation.dart';
-import 'package:mvvm_sip_demo/services/calling_service.dart';
+import 'package:mvvm_sip_demo/features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
+import 'package:mvvm_sip_demo/features/recents/data/models/recent_call.dart';
 import 'package:mvvm_sip_demo/services/shopping_service.dart';
 import 'package:mvvm_sip_demo/services/utility_bills_service.dart';
 
 class DashboardViewModel extends ChangeNotifier {
-  final CallingService _callingService;
+  final DialpadViewModel _dialpadViewModel;
   final ShoppingService _shoppingService;
   final UtilityBillsService _utilityBillsService;
 
   DashboardViewModel(
-    this._callingService,
+    this._dialpadViewModel,
     this._shoppingService,
     this._utilityBillsService,
   );
@@ -32,13 +33,31 @@ class DashboardViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Aggregates real call-log entries into the same shape the dashboard
+  /// card renders. Static and pure so it's testable without constructing
+  /// a full DashboardViewModel or its other service dependencies.
+  static Map<String, dynamic> callStatsFrom(List<RecentCall> recents) {
+    final totalDuration = recents.fold<int>(
+      0,
+      (sum, call) => sum + (call.durationSeconds ?? 0),
+    );
+    final missedCalls = recents.where((call) => call.isMissed).length;
+
+    return {
+      'total_calls': recents.length,
+      'missed_calls': missedCalls,
+      'total_duration_seconds': totalDuration,
+    };
+  }
+
   Future<void> loadDashboard(String userId) async {
     try {
       _setLoading(true);
       _setError(null);
 
-      // Get calling stats
-      final callStats = _callingService.getCallStatistics(userId);
+      // Get calling stats from real call history.
+      await _dialpadViewModel.loadRecents();
+      final callStats = callStatsFrom(_dialpadViewModel.recents);
 
       // Get shopping info
       final cart = await _shoppingService.fetchCart(userId);
@@ -51,11 +70,7 @@ class DashboardViewModel extends ChangeNotifier {
 
       _dashboardData = {
         'user_id': userId,
-        'calling': {
-          'total_calls': callStats['total_calls'],
-          'missed_calls': callStats['missed_calls'],
-          'total_duration_seconds': callStats['total_duration_seconds'],
-        },
+        'calling': callStats,
         'shopping': {
           'cart_items': cart['item_count'],
           'cart_total': cart['total'],

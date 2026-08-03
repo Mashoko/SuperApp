@@ -125,7 +125,8 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<AfricomPaymentService>(
       () => const AfricomPaymentService());
   // ViewModels
-  getIt.registerFactory(() => DashboardViewModel(getIt(), getIt(), getIt()));
+  getIt.registerFactory(() => DashboardViewModel(
+      getIt<DialpadViewModel>(), getIt(), getIt()));
   getIt.registerFactory(() => ShoppingViewModel(getIt()));
   getIt.registerFactory(() => PostsViewModel(getIt()));
   getIt.registerFactory(() => UtilityBillsViewModel(getIt()));
