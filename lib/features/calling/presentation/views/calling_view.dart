@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:mvvm_sip_demo/features/calling/presentation/viewmodels/calling_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/contacts/presentation/views/contacts_view.dart';
 import 'package:mvvm_sip_demo/features/calling/presentation/views/tabs/dialer_view.dart';
 import 'package:mvvm_sip_demo/features/calling/presentation/views/tabs/recents_view.dart';
 import 'package:mvvm_sip_demo/features/calling/presentation/views/tabs/speed_test_view.dart';
 import 'package:mvvm_sip_demo/core/theme.dart';
 import 'package:mvvm_sip_demo/shared/widgets/glass_container.dart';
+import 'package:mvvm_sip_demo/features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
+import 'package:mvvm_sip_demo/core/di/inject.dart';
 
 class CallingView extends StatefulWidget {
   final int initialIndex;
@@ -44,9 +44,7 @@ class _CallingViewState extends State<CallingView> {
   }
 
   void _loadData() {
-    final viewModel = Provider.of<CallingViewModel>(context, listen: false);
-    viewModel.loadActiveCalls();
-    viewModel.loadCallHistory();
+    getIt<DialpadViewModel>().loadRecents();
   }
 
   void _onTabTapped(int index) {

@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:mvvm_sip_demo/features/calling/presentation/viewmodels/calling_viewmodel.dart';
 import 'package:intl/intl.dart';
+import 'package:mvvm_sip_demo/features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
+import 'package:mvvm_sip_demo/features/call/presentation/viewmodels/call_viewmodel.dart';
+import 'package:mvvm_sip_demo/features/recents/data/models/call_log_status.dart';
 
 class RecentsView extends StatelessWidget {
   const RecentsView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<CallingViewModel>(
+    return Consumer<DialpadViewModel>(
       builder: (context, viewModel, child) {
-        if (viewModel.callHistory.isEmpty) {
+        final recents = viewModel.recents;
+
+        if (recents.isEmpty) {
           return const Center(
             child: Text('No recent calls'),
           );
@@ -18,35 +22,59 @@ class RecentsView extends StatelessWidget {
 
         return ListView.separated(
           padding: const EdgeInsets.all(16.0),
-          itemCount: viewModel.callHistory.length,
+          itemCount: recents.length,
           separatorBuilder: (context, index) => const Divider(),
           itemBuilder: (context, index) {
-            final call = viewModel.callHistory[index];
-            final isMissed = call.status.toString().contains('missed');
-            
+            final call = recents[index];
+            final visuals = _visualsFor(call.status);
+
             return ListTile(
               leading: CircleAvatar(
-                backgroundColor: isMissed ? Colors.red[50] : const Color(0xFFE0F2F1),
-                child: Icon(
-                  isMissed ? Icons.call_missed : Icons.call_made,
-                  color: isMissed ? Colors.red : const Color(0xFF00897B),
-                ),
+                backgroundColor: visuals.tint.withValues(alpha: 0.12),
+                child: Icon(visuals.icon, color: visuals.tint),
               ),
               title: Text(
-                call.receiverId,
+                call.name ?? call.number,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: isMissed ? Colors.red : Colors.black,
+                  color: call.isMissed ? Colors.red : Colors.black,
                 ),
               ),
               subtitle: Text(
-                DateFormat('MMM d, h:mm a').format(call.startTime ?? DateTime.now()),
+                DateFormat('MMM d, h:mm a').format(call.timestamp),
               ),
-              trailing: const Icon(Icons.info_outline, color: Color(0xFF00897B)),
+              trailing: IconButton(
+                icon: const Icon(Icons.call, color: Color(0xFF00897B)),
+                onPressed: () async {
+                  final callViewModel =
+                      Provider.of<CallViewModel>(context, listen: false);
+                  final error = await callViewModel.makeCall(
+                    call.number,
+                    voiceOnly: true,
+                  );
+                  if (!context.mounted || error == null) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(error)),
+                  );
+                },
+              ),
             );
           },
         );
       },
     );
+  }
+}
+
+({IconData icon, Color tint}) _visualsFor(CallLogStatus status) {
+  switch (status) {
+    case CallLogStatus.missed:
+      return (icon: Icons.call_missed, tint: Colors.red);
+    case CallLogStatus.declined:
+      return (icon: Icons.call_missed_outgoing, tint: Colors.orange);
+    case CallLogStatus.failed:
+      return (icon: Icons.error_outline, tint: Colors.red);
+    case CallLogStatus.completed:
+      return (icon: Icons.call_made, tint: const Color(0xFF00897B));
   }
 }
