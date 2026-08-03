@@ -8,6 +8,7 @@ import 'package:sip_ua/sip_ua.dart';
 import 'core/di/inject.dart';
 import 'core/managers/sip_call_manager.dart';
 import 'core/routes.dart';
+import 'core/services/balance_refresh_coordinator.dart';
 import 'core/theme.dart';
 import 'features/call/presentation/views/call_view.dart';
 import 'features/call/presentation/viewmodels/call_viewmodel.dart';
@@ -41,11 +42,26 @@ void main() async {
 
   // Initialize SipCallManager
   final sipHelper = getIt<SIPUAHelper>();
+  final balanceRefreshCoordinator = BalanceRefreshCoordinator(
+    refreshAccountSummary: () => getIt<AccountSummaryViewModel>().fetchBalance(),
+    refreshDialpad: () => getIt<DialpadViewModel>().loadAccountInfo(),
+    showRetryingNotice: () {
+      final context = navigatorKey.currentContext;
+      if (context == null) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to refresh balance. Retrying...'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    },
+  );
   // ignore: unused_local_variable
   final sipCallManager = SipCallManager(
-    sipHelper, 
-    navigatorKey, 
+    sipHelper,
+    navigatorKey,
     getIt<DialpadViewModel>(),
+    balanceRefreshCoordinator,
   );
 
   runApp(const MyApp());

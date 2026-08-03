@@ -3,16 +3,23 @@ import 'package:sip_ua/sip_ua.dart';
 import '../../features/call/presentation/views/call_view.dart';
 import '../../features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
 import '../../features/recents/data/models/recent_call.dart';
+import '../services/balance_refresh_coordinator.dart';
 
 class SipCallManager implements SipUaHelperListener {
   final SIPUAHelper _sipHelper;
   final GlobalKey<NavigatorState> navigatorKey;
   final DialpadViewModel _dialpadViewModel;
+  final BalanceRefreshCoordinator _balanceRefreshCoordinator;
 
   /// Tracks when each call was answered so we can compute accurate duration.
   final Map<String, DateTime> _connectedAt = {};
 
-  SipCallManager(this._sipHelper, this.navigatorKey, this._dialpadViewModel) {
+  SipCallManager(
+    this._sipHelper,
+    this.navigatorKey,
+    this._dialpadViewModel,
+    this._balanceRefreshCoordinator,
+  ) {
     _sipHelper.addSipUaHelperListener(this);
   }
 
@@ -43,12 +50,14 @@ class SipCallManager implements SipUaHelperListener {
       // ── Log completed call on end ──────────────────────────────────────────
       case CallStateEnum.ENDED:
         _handleCallEnded(call, callState, callId);
+        _balanceRefreshCoordinator.refreshAfterCall();
 
       case CallStateEnum.FAILED:
         _connectedAt.remove(callId);
         if (call.direction.toString().toUpperCase().contains('INCOMING')) {
           _logCall(call, status: 'failed', durationSeconds: null);
         }
+        _balanceRefreshCoordinator.refreshAfterCall();
 
       default:
         break;
