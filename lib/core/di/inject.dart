@@ -41,6 +41,7 @@ import '../../features/home/presentation/viewmodels/posts_viewmodel.dart';
 import '../../features/utility_bills/presentation/viewmodels/utility_bills_viewmodel.dart';
 import '../../features/calling/presentation/viewmodels/calling_viewmodel.dart';
 import '../../services/shipping_address_service.dart';
+import '../services/proximity_sensor_gateway.dart';
 import '../../features/profile/presentation/viewmodels/profile_summary_viewmodel.dart';
 
 final getIt = GetIt.instance;
@@ -118,6 +119,8 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<ShoppingService>(() => ShoppingService());
   getIt.registerLazySingleton<PostsService>(() => PostsService());
   getIt.registerLazySingleton<ShippingAddressService>(() => ShippingAddressService());
+  getIt.registerLazySingleton<ProximitySensorGateway>(
+      () => PackageProximitySensorGateway());
   getIt.registerLazySingleton<UtilityBillsService>(() => UtilityBillsService());
   getIt.registerLazySingleton<AfricomPaymentService>(
       () => const AfricomPaymentService());
