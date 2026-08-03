@@ -100,20 +100,31 @@ class AccountSummaryViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _fetchUserSummary(String username, {String? password}) async {
+  /// Returns `true` if the summary was fetched successfully. On failure the
+  /// previously loaded summary (and its derived voice-minutes) is kept as-is.
+  /// When [silent] is true, no `_error` is set on failure — used for
+  /// background refreshes that must not surface a full-screen error state.
+  Future<bool> _fetchUserSummary(String username,
+      {String? password, bool silent = false}) async {
     final result =
         await _authService.fetchAccountSummary(username, password: password);
     if (result == null) {
-      _error = 'Failed to load account details.';
-    } else {
-      _summary = result;
+      if (!silent) _error = 'Failed to load account details.';
+      return false;
     }
+    _summary = result;
+    return true;
   }
 
+  /// When [silent] is true, this is a background refresh: `_paymentsLoading`
+  /// is never toggled, so the UI doesn't flash a loading state over an
+  /// already-known balance while this runs.
   Future<bool> _fetchPaymentsBalance(String username,
-      {required String password}) async {
-    _paymentsLoading = true;
-    notifyListeners();
+      {required String password, bool silent = false}) async {
+    if (!silent) {
+      _paymentsLoading = true;
+      notifyListeners();
+    }
     var ok = false;
     try {
       final resp = await _paymentsClient.dealerAccountBalances(
@@ -132,22 +143,31 @@ class AccountSummaryViewModel extends ChangeNotifier {
     } catch (e) {
       debugPrint('[Balance] error: $e');
     } finally {
-      _paymentsLoading = false;
-      notifyListeners();
+      if (!silent) {
+        _paymentsLoading = false;
+        notifyListeners();
+      }
     }
     return ok;
   }
 
-  /// Refresh only the RTGS balance without re-loading the full user summary.
-  /// Use this for quick wallet-card refresh. Returns `true` if the fetch
-  /// succeeded (balance updated), `false` otherwise (previous balance kept).
+  /// Background refresh of both the RTGS balance and voice-minute summary,
+  /// without disturbing `loading`/`error`/`paymentsLoading` — used after a
+  /// call ends so the UI updates in place instead of flashing a loading
+  /// state over an already-known balance. Returns `true` only if both
+  /// fetches succeeded; on any failure the previous values are kept.
   Future<bool> fetchBalance() async {
     final creds = await _authService.getStoredCredentials();
     if (creds == null) return false;
     final username = creds['username'];
     final password = creds['password'] ?? '';
     if (username == null) return false;
-    return _fetchPaymentsBalance(username, password: password);
+    final results = await Future.wait([
+      _fetchUserSummary(username, password: password, silent: true),
+      _fetchPaymentsBalance(username, password: password, silent: true),
+    ]);
+    notifyListeners();
+    return results[0] && results[1];
   }
 
   /// Add [minutes] voice minutes to the logged-in account via RechargeAccount.
