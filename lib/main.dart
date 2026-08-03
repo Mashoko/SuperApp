@@ -13,7 +13,6 @@ import 'core/theme.dart';
 import 'features/call/presentation/views/call_view.dart';
 import 'features/call/presentation/viewmodels/call_viewmodel.dart';
 import 'features/calling/presentation/views/calling_view.dart';
-import 'features/calling/presentation/viewmodels/calling_viewmodel.dart';
 import 'features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
 
 
@@ -82,7 +81,6 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => getIt<ShoppingViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<PostsViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<UtilityBillsViewModel>()),
-        ChangeNotifierProvider(create: (_) => getIt<CallingViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<DialpadViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<AccountSummaryViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<FaqViewModel>()),
