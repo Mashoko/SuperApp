@@ -53,11 +53,18 @@ class SipCallManager implements SipUaHelperListener {
       // ── Log the call, either direction, exactly once, on failure ───────────
       case CallStateEnum.FAILED:
         _connectedAt.remove(callId);
-        _logCall(
-          call,
-          status: CallLogStatus.failed,
-          durationSeconds: null,
-        );
+        if (_isSystemFailure(callState.cause)) {
+          _logCall(call, status: CallLogStatus.failed, durationSeconds: null);
+        } else {
+          final isIncoming =
+              call.direction.toString().toUpperCase().contains('INCOMING');
+          final status = resolveCallLogStatus(
+            isIncoming: isIncoming,
+            didConnect: false,
+            causeCode: callState.cause?.status_code?.toString() ?? '',
+          );
+          _logCall(call, status: status, durationSeconds: null);
+        }
         _balanceRefreshCoordinator.refreshAfterCall();
 
       default:
@@ -80,7 +87,7 @@ class SipCallManager implements SipUaHelperListener {
     final status = resolveCallLogStatus(
       isIncoming: isIncoming,
       didConnect: didConnect,
-      causeCode: callState.cause?.cause ?? '',
+      causeCode: callState.cause?.status_code?.toString() ?? '',
     );
 
     _logCall(call, status: status, durationSeconds: durationSeconds);
@@ -108,6 +115,23 @@ class SipCallManager implements SipUaHelperListener {
       durationSeconds: durationSeconds,
     ));
   }
+
+  static const _systemFailureCauses = {
+    'Connection Error',
+    'Internal Error',
+    'WebRTC Error',
+    'Dialog Error',
+    'Bad Media Description',
+    'User Denied Media Access',
+    'SIP Failure Code',
+    'Authentication Error',
+    'RTP Timeout',
+    'Incompatible SDP',
+    'Missing SDP',
+  };
+
+  bool _isSystemFailure(dynamic cause) =>
+      _systemFailureCauses.contains(cause?.cause);
 
   // ── Unused overrides ───────────────────────────────────────────────────────
 

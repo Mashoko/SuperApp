@@ -74,7 +74,6 @@ class _DialpadViewState extends State<DialpadView>
     }
 
     await _viewModel.saveDestination(dest);
-    await _viewModel.addToRecents(dest);
 
     final result = await SipUtils.placeOutgoingCall(
       _sipHelper,

@@ -124,15 +124,6 @@ class DialpadViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> addToRecents(String number) async {
-    final call = RecentCall(
-      number: number,
-      timestamp: DateTime.now(),
-      direction: 'outgoing',
-    );
-    await addRecentCall(call);
-  }
-
   Future<void> addRecentCall(RecentCall call) async {
     final result = await repository.addRecent(call);
     if (result is Success) {
