@@ -12,8 +12,8 @@ import '../../../../shared/theme/theme_provider.dart';
 import '../../../shopping/presentation/views/order_history_view.dart';
 import '../../../shopping/presentation/views/wishlist_view.dart';
 import '../../../payment_methods/presentation/views/payment_methods_view.dart';
-import '../../../help_support/presentation/views/help_support_view.dart';
 import '../../../login/presentation/views/login_view.dart';
+import '../../../../shared/widgets/maintenance_screen.dart';
 import '../viewmodels/profile_summary_viewmodel.dart';
 import 'shipping_addresses_view.dart';
 
@@ -289,8 +289,15 @@ class _ProfileViewState extends State<ProfileView> {
                             title: 'Help & Support',
                             subtitle: 'FAQ and customer service',
                             isDark: isDark,
-                            onTap: () => _navigateTo(context,
-                                const HelpSupportView()),
+                            underMaintenance: true,
+                            onTap: () => _navigateTo(
+                              context,
+                              const MaintenanceScreen(
+                                label: 'Help & Support',
+                                icon: Icons.help_outline,
+                                color: Colors.blueAccent,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -454,6 +461,7 @@ class _ProfileViewState extends State<ProfileView> {
     required VoidCallback onTap,
     Widget? trailing,
     bool showBadge = false,
+    bool underMaintenance = false,
   }) {
     return ListTile(
       contentPadding:
@@ -480,6 +488,27 @@ class _ProfileViewState extends State<ProfileView> {
                 decoration: const BoxDecoration(
                   color: Colors.orange,
                   shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          if (underMaintenance)
+            Positioned(
+              right: -6,
+              top: -6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.orange,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Soon',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
