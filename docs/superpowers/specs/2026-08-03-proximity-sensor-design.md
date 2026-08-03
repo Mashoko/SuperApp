@@ -36,8 +36,16 @@ Discovered while scoping this spec:
     was called before the stream was subscribed to; `onCancel` releases it.
     Gracefully checks `Sensor.TYPE_PROXIMITY` availability via
     `isProximitySensorAvailable()`, and `onListen` throws
-    `UnsupportedOperationException` (surfaces as a `PlatformException` on
-    the stream, not a raw crash) if the hardware is missing.
+    `UnsupportedOperationException` if the hardware is missing — **correction
+    made during final review:** this does *not* surface as a stream error.
+    Flutter's `EventChannel.receiveBroadcastStream` routes an `onListen`
+    throw to `FlutterError.reportError`, not to the stream's `onError`; the
+    listen call itself simply returns without ever emitting an event. In
+    practice this is still safe (no wake lock is taken, cleanup is a
+    no-op), but `ProximityScreenController`'s `onError` handler cannot
+    actually be triggered by a missing sensor on either platform — it is
+    defensive depth for a path this package doesn't exercise, not the
+    mechanism that makes a missing sensor safe.
   - iOS (`SwiftProximitySensorPlugin.swift`): `onListen` sets
     `UIDevice.current.isProximityMonitoringEnabled = true` (enabling
     Apple's native screen-dimming) and listens for
@@ -101,7 +109,8 @@ abstract class ProximitySensorGateway {
 `PackageProximitySensorGateway` implements it by delegating to
 `ProximitySensor.events` / `ProximitySensor.setProximityScreenOff`.
 Registered in `lib/core/di/inject.dart` as the `ProximitySensorGateway`
-implementation (factory registration — stateless wrapper, cheap to create).
+implementation (registered as a lazy singleton in the actual implementation
+— stateless wrapper, either registration style is safe).
 
 **`ProximityScreenController`** (new, `lib/core/services/proximity_screen_controller.dart`) —
 plain Dart class, one injected dependency (`ProximitySensorGateway`), no
