@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:sip_ua/sip_ua.dart';
 import '../../features/call/presentation/views/call_view.dart';
 import '../../features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
+import '../../features/recents/data/models/call_log_status.dart';
 import '../../features/recents/data/models/recent_call.dart';
 import '../services/balance_refresh_coordinator.dart';
+import '../utils/call_log_status_resolution.dart';
 
 class SipCallManager implements SipUaHelperListener {
   final SIPUAHelper _sipHelper;
@@ -37,26 +39,25 @@ class SipCallManager implements SipUaHelperListener {
         navigatorKey.currentState?.push(
           MaterialPageRoute(builder: (_) => CallView(call: call)),
         );
-        // Pre-log outgoing calls immediately so they show in recents.
-        if (!call.direction.toString().toUpperCase().contains('INCOMING')) {
-          _logCall(call, status: 'initiated', durationSeconds: null);
-        }
 
       // ── Record the moment the call is answered ─────────────────────────────
       case CallStateEnum.ACCEPTED:
       case CallStateEnum.CONFIRMED:
         _connectedAt[callId] = DateTime.now();
 
-      // ── Log completed call on end ──────────────────────────────────────────
+      // ── Log the call, either direction, exactly once, on end ───────────────
       case CallStateEnum.ENDED:
         _handleCallEnded(call, callState, callId);
         _balanceRefreshCoordinator.refreshAfterCall();
 
+      // ── Log the call, either direction, exactly once, on failure ───────────
       case CallStateEnum.FAILED:
         _connectedAt.remove(callId);
-        if (call.direction.toString().toUpperCase().contains('INCOMING')) {
-          _logCall(call, status: 'failed', durationSeconds: null);
-        }
+        _logCall(
+          call,
+          status: CallLogStatus.failed,
+          durationSeconds: null,
+        );
         _balanceRefreshCoordinator.refreshAfterCall();
 
       default:
@@ -69,28 +70,25 @@ class SipCallManager implements SipUaHelperListener {
     final isIncoming =
         call.direction.toString().toUpperCase().contains('INCOMING');
 
-    if (!isIncoming) return; // Outgoing already logged at initiation.
-
     int? durationSeconds;
-    String status;
+    final didConnect = connectedTime != null;
 
-    if (connectedTime != null) {
-      durationSeconds =
-          DateTime.now().difference(connectedTime).inSeconds;
-      status = 'completed';
-    } else {
-      // Never connected — missed or declined.
-      final cause = callState.cause?.cause ?? '';
-      final callerCancelled = cause == '487' || cause == '408';
-      status = callerCancelled ? 'missed' : 'declined';
+    if (didConnect) {
+      durationSeconds = DateTime.now().difference(connectedTime).inSeconds;
     }
+
+    final status = resolveCallLogStatus(
+      isIncoming: isIncoming,
+      didConnect: didConnect,
+      causeCode: callState.cause?.cause ?? '',
+    );
 
     _logCall(call, status: status, durationSeconds: durationSeconds);
   }
 
   Future<void> _logCall(
     Call call, {
-    required String status,
+    required CallLogStatus status,
     required int? durationSeconds,
   }) async {
     String number = call.remote_identity ?? 'Unknown';
@@ -105,7 +103,7 @@ class SipCallManager implements SipUaHelperListener {
     await _dialpadViewModel.addRecentCall(RecentCall(
       number: number,
       timestamp: DateTime.now(),
-      isMissed: status == 'missed',
+      status: status,
       direction: isIncoming ? 'incoming' : 'outgoing',
       durationSeconds: durationSeconds,
     ));
