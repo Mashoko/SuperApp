@@ -138,8 +138,15 @@ class _DialpadViewState extends State<DialpadView>
       case _DialerSection.recents:
         return const RecentsView();
       case _DialerSection.contacts:
-        return const ContactsView(darkTheme: true);
+        return ContactsView(darkTheme: true, onNumberCopied: _onNumberCopiedFromContacts);
     }
+  }
+
+  void _onNumberCopiedFromContacts() {
+    setState(() {
+      _textController.text = _viewModel.destination;
+      _section = _DialerSection.keypad;
+    });
   }
 
   Widget _buildTopBar(DialpadViewModel viewModel) {

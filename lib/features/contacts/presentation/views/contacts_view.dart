@@ -8,16 +8,23 @@ import '../../../../core/di/inject.dart';
 import '../../../call/presentation/viewmodels/call_viewmodel.dart';
 import '../../../dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
 import '../../data/utils/contact_grouping.dart';
-
-enum _ContactsPermissionState { unknown, granted, denied, permanentlyDenied }
+import '../../data/utils/contacts_permission_resolution.dart';
 
 class ContactsView extends StatefulWidget {
-  const ContactsView({super.key, this.darkTheme = false});
+  const ContactsView({super.key, this.darkTheme = false, this.onNumberCopied});
 
   /// When true, renders with the dark glass styling used inside the
   /// redesigned dialer sheet. Defaults to false so CallingView's Contacts
   /// tab (the other caller of this widget) is unaffected.
   final bool darkTheme;
+
+  /// Called after "Copy to Dialpad" successfully updates the shared
+  /// DialpadViewModel's destination. Only provided by DialpadView (the
+  /// redesigned dialer sheet), which uses it to sync its own local
+  /// TextEditingController and switch back to the keypad. Null when
+  /// embedded in CallingView (its "Copy to Dialpad" keeps today's
+  /// existing behavior — just updating the ViewModel — unchanged).
+  final VoidCallback? onNumberCopied;
 
   @override
   State<ContactsView> createState() => _ContactsViewState();
@@ -26,7 +33,7 @@ class ContactsView extends StatefulWidget {
 class _ContactsViewState extends State<ContactsView> {
   List<Contact>? _contacts;
   List<Contact>? _filteredContacts;
-  _ContactsPermissionState _permissionState = _ContactsPermissionState.unknown;
+  ContactsPermissionState _permissionState = ContactsPermissionState.unknown;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -59,10 +66,10 @@ class _ContactsViewState extends State<ContactsView> {
     });
   }
 
-  Future<void> _fetchContacts() async {
+  Future<void> _fetchContacts({bool showLoadingSpinner = true}) async {
     setState(() {
-      _contacts = null;
-      _permissionState = _ContactsPermissionState.unknown;
+      if (showLoadingSpinner) _contacts = null;
+      _permissionState = ContactsPermissionState.unknown;
     });
 
     bool isMobile = false;
@@ -76,37 +83,33 @@ class _ContactsViewState extends State<ContactsView> {
       setState(() {
         _contacts = [];
         _filteredContacts = [];
-        _permissionState = _ContactsPermissionState.granted;
+        _permissionState = ContactsPermissionState.granted;
       });
       return;
     }
 
     final status = await Permission.contacts.status;
-    if (status.isGranted) {
+    final resolved = resolvePermissionState(status);
+    if (resolved == ContactsPermissionState.granted) {
       final contacts = await FlutterContacts.getContacts(
           withProperties: true, withPhoto: true);
       setState(() {
         _contacts = contacts;
         _filteredContacts = contacts;
-        _permissionState = _ContactsPermissionState.granted;
+        _permissionState = resolved;
       });
-    } else if (status.isPermanentlyDenied) {
-      setState(() =>
-          _permissionState = _ContactsPermissionState.permanentlyDenied);
     } else {
-      setState(() => _permissionState = _ContactsPermissionState.denied);
+      setState(() => _permissionState = resolved);
     }
   }
 
   Future<void> _requestPermission() async {
     final result = await Permission.contacts.request();
-    if (result.isGranted) {
+    final resolved = resolvePermissionState(result);
+    if (resolved == ContactsPermissionState.granted) {
       await _fetchContacts();
-    } else if (result.isPermanentlyDenied) {
-      setState(() =>
-          _permissionState = _ContactsPermissionState.permanentlyDenied);
     } else {
-      setState(() => _permissionState = _ContactsPermissionState.denied);
+      setState(() => _permissionState = resolved);
     }
   }
 
@@ -154,6 +157,7 @@ class _ContactsViewState extends State<ContactsView> {
                   final dialpadViewModel =
                       Provider.of<DialpadViewModel>(context, listen: false);
                   dialpadViewModel.setDestination(number);
+                  widget.onNumberCopied?.call();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Number copied to Dialpad')),
                   );
@@ -174,70 +178,99 @@ class _ContactsViewState extends State<ContactsView> {
 
   Widget _buildPermissionEmptyStateLight() {
     final isPermanentlyDenied =
-        _permissionState == _ContactsPermissionState.permanentlyDenied;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.contacts_outlined, size: 56, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(
-              isPermanentlyDenied
-                  ? 'Contacts access is disabled. Enable it in Settings to see your contacts here.'
-                  : 'Allow access to your contacts to see them here.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54),
+        _permissionState == ContactsPermissionState.permanentlyDenied;
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.5,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.contacts_outlined,
+                      size: 56, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text(
+                    isPermanentlyDenied
+                        ? 'Contacts access is disabled. Enable it in Settings to see your contacts here.'
+                        : 'Allow access to your contacts to see them here.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed:
+                        isPermanentlyDenied ? openAppSettings : _requestPermission,
+                    child: const Text('Grant Access'),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: isPermanentlyDenied ? openAppSettings : _requestPermission,
-              child: const Text('Grant Access'),
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
   Widget _buildPermissionEmptyStateDark() {
     final isPermanentlyDenied =
-        _permissionState == _ContactsPermissionState.permanentlyDenied;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.contacts_outlined, size: 56, color: Colors.white38),
-            const SizedBox(height: 16),
-            Text(
-              isPermanentlyDenied
-                  ? 'Contacts access is disabled. Enable it in Settings to see your contacts here.'
-                  : 'Allow access to your contacts to see them here.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70),
+        _permissionState == ContactsPermissionState.permanentlyDenied;
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.5,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.contacts_outlined,
+                      size: 56, color: Colors.white38),
+                  const SizedBox(height: 16),
+                  Text(
+                    isPermanentlyDenied
+                        ? 'Contacts access is disabled. Enable it in Settings to see your contacts here.'
+                        : 'Allow access to your contacts to see them here.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed:
+                        isPermanentlyDenied ? openAppSettings : _requestPermission,
+                    child: const Text('Grant Access'),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: isPermanentlyDenied ? openAppSettings : _requestPermission,
-              child: const Text('Grant Access'),
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
   Widget _buildContactsList() {
     final contacts = _filteredContacts ?? const [];
     if (contacts.isEmpty) {
-      return Center(
-        child: Text(
-          'No contacts found',
-          style: widget.darkTheme ? const TextStyle(color: Colors.white54) : null,
-        ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Center(
+              child: Text(
+                'No contacts found',
+                style:
+                    widget.darkTheme ? const TextStyle(color: Colors.white54) : null,
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -245,46 +278,44 @@ class _ContactsViewState extends State<ContactsView> {
     final letters = grouped.keys.toList();
     final headerColor = widget.darkTheme ? Colors.white54 : Colors.grey;
 
-    return RefreshIndicator(
-      onRefresh: _fetchContacts,
-      child: ListView.builder(
-        itemCount: letters.length,
-        itemBuilder: (context, letterIndex) {
-          final letter = letters[letterIndex];
-          final letterContacts = grouped[letter]!;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Text(
-                  letter,
-                  style: TextStyle(fontWeight: FontWeight.bold, color: headerColor),
-                ),
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      itemCount: letters.length,
+      itemBuilder: (context, letterIndex) {
+        final letter = letters[letterIndex];
+        final letterContacts = grouped[letter]!;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                letter,
+                style: TextStyle(fontWeight: FontWeight.bold, color: headerColor),
               ),
-              for (final contact in letterContacts)
-                ListTile(
-                  leading: (contact.photoOrThumbnail != null)
-                      ? CircleAvatar(
-                          backgroundImage:
-                              MemoryImage(contact.photoOrThumbnail!))
-                      : const CircleAvatar(child: Icon(Icons.person)),
-                  title: Text(contact.displayName,
-                      style: widget.darkTheme
-                          ? const TextStyle(color: Colors.white)
-                          : null),
-                  subtitle: contact.phones.isNotEmpty
-                      ? Text(contact.phones.first.number,
-                          style: widget.darkTheme
-                              ? const TextStyle(color: Colors.white54)
-                              : null)
-                      : null,
-                  onTap: () => _onContactTapped(contact),
-                ),
-            ],
-          );
-        },
-      ),
+            ),
+            for (final contact in letterContacts)
+              ListTile(
+                leading: (contact.photoOrThumbnail != null)
+                    ? CircleAvatar(
+                        backgroundImage:
+                            MemoryImage(contact.photoOrThumbnail!))
+                    : const CircleAvatar(child: Icon(Icons.person)),
+                title: Text(contact.displayName,
+                    style: widget.darkTheme
+                        ? const TextStyle(color: Colors.white)
+                        : null),
+                subtitle: contact.phones.isNotEmpty
+                    ? Text(contact.phones.first.number,
+                        style: widget.darkTheme
+                            ? const TextStyle(color: Colors.white54)
+                            : null)
+                    : null,
+                onTap: () => _onContactTapped(contact),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -295,14 +326,17 @@ class _ContactsViewState extends State<ContactsView> {
         children: [
           _buildSearchField(dark: true),
           Expanded(
-            child: _permissionState == _ContactsPermissionState.denied ||
-                    _permissionState ==
-                        _ContactsPermissionState.permanentlyDenied
-                ? _buildPermissionEmptyState()
-                : _contacts == null
-                    ? const Center(
-                        child: CircularProgressIndicator(color: Colors.white70))
-                    : _buildContactsList(),
+            child: RefreshIndicator(
+              onRefresh: () => _fetchContacts(showLoadingSpinner: false),
+              child: _permissionState == ContactsPermissionState.denied ||
+                      _permissionState ==
+                          ContactsPermissionState.permanentlyDenied
+                  ? _buildPermissionEmptyState()
+                  : _contacts == null
+                      ? const Center(
+                          child: CircularProgressIndicator(color: Colors.white70))
+                      : _buildContactsList(),
+            ),
           ),
         ],
       );
@@ -332,13 +366,16 @@ class _ContactsViewState extends State<ContactsView> {
         children: [
           _buildSearchField(dark: false),
           Expanded(
-            child: _permissionState == _ContactsPermissionState.denied ||
-                    _permissionState ==
-                        _ContactsPermissionState.permanentlyDenied
-                ? _buildPermissionEmptyState()
-                : _contacts == null
-                    ? const Center(child: CircularProgressIndicator())
-                    : _buildContactsList(),
+            child: RefreshIndicator(
+              onRefresh: () => _fetchContacts(showLoadingSpinner: false),
+              child: _permissionState == ContactsPermissionState.denied ||
+                      _permissionState ==
+                          ContactsPermissionState.permanentlyDenied
+                  ? _buildPermissionEmptyState()
+                  : _contacts == null
+                      ? const Center(child: CircularProgressIndicator())
+                      : _buildContactsList(),
+            ),
           ),
         ],
       ),
