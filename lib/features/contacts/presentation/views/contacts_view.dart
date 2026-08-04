@@ -236,8 +236,7 @@ class _ContactsViewState extends State<ContactsView> {
       return Center(
         child: Text(
           'No contacts found',
-          style: TextStyle(
-              color: widget.darkTheme ? Colors.white54 : Colors.black54),
+          style: widget.darkTheme ? const TextStyle(color: Colors.white54) : null,
         ),
       );
     }
@@ -245,8 +244,6 @@ class _ContactsViewState extends State<ContactsView> {
     final grouped = groupContactsByLetter(contacts);
     final letters = grouped.keys.toList();
     final headerColor = widget.darkTheme ? Colors.white54 : Colors.grey;
-    final titleColor = widget.darkTheme ? Colors.white : Colors.black87;
-    final subtitleColor = widget.darkTheme ? Colors.white54 : Colors.black54;
 
     return RefreshIndicator(
       onRefresh: _fetchContacts,
@@ -273,10 +270,14 @@ class _ContactsViewState extends State<ContactsView> {
                               MemoryImage(contact.photoOrThumbnail!))
                       : const CircleAvatar(child: Icon(Icons.person)),
                   title: Text(contact.displayName,
-                      style: TextStyle(color: titleColor)),
+                      style: widget.darkTheme
+                          ? const TextStyle(color: Colors.white)
+                          : null),
                   subtitle: contact.phones.isNotEmpty
                       ? Text(contact.phones.first.number,
-                          style: TextStyle(color: subtitleColor))
+                          style: widget.darkTheme
+                              ? const TextStyle(color: Colors.white54)
+                              : null)
                       : null,
                   onTap: () => _onContactTapped(contact),
                 ),
