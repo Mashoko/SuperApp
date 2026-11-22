@@ -212,3 +212,82 @@ describe('resolveUser on user-scoped routes', () => {
     expect(res.body.totalProducts).toBe(1);
   });
 });
+
+describe('req.auth from resolveUser', () => {
+  const { resolveUser } = require('../middleware/resolve_user.middleware');
+
+  // Runs the middleware on a fake request; resolves with next() or the rejection status.
+  const call = (opts, req) => {
+    const mwReq = { headers: {}, query: {}, body: {}, ...req };
+    return new Promise((resolve) => {
+      const res = { status: (code) => ({ json: () => resolve({ status: code, req: mwReq }) }) };
+      resolveUser(opts)(mwReq, res, () => resolve({ next: true, req: mwReq }));
+    });
+  };
+
+  test('token request: via token with the token subject', async () => {
+    const id = new mongoose.Types.ObjectId();
+    const token = mw.signAppToken({ _id: id, sipUsername: '+263771234567' });
+    const out = await call(
+      { field: 'userId' },
+      { headers: { authorization: `Bearer ${token}` } }
+    );
+    expect(out.next).toBe(true);
+    expect(out.req.userId).toBe('+263771234567');
+    expect(out.req.auth).toEqual({ via: 'token', appUserId: String(id) });
+  });
+
+  test('legacy request: via legacy, no app user id', async () => {
+    process.env.LEGACY_USERID_ROUTES = 'true';
+    const out = await call({ field: 'userId' }, { body: { userId: '263771234567' } });
+    expect(out.next).toBe(true);
+    expect(out.req.userId).toBe('+263771234567');
+    expect(out.req.auth).toEqual({ via: 'legacy' });
+  });
+
+  test('anonymous request on an optional route: req.auth undefined', async () => {
+    process.env.LEGACY_USERID_ROUTES = 'true';
+    const out = await call({ field: 'userId', required: false }, {});
+    expect(out.next).toBe(true);
+    expect(out.req.userId).toBeUndefined();
+    expect(out.req.auth).toBeUndefined();
+
+    const invalid = await call(
+      { field: 'userId', required: false },
+      { headers: { authorization: 'Bearer not-a-real-token' } }
+    );
+    expect(invalid.next).toBe(true);
+    expect(invalid.req.auth).toBeUndefined();
+  });
+});
+
+describe('GET /api/admin/legacy-usage', () => {
+  const adminToken = (role) =>
+    mw.signAdminToken({ _id: new mongoose.Types.ObjectId(), role, username: `${role}1` });
+  const usage = (token) => {
+    const r = request(app).get('/api/admin/legacy-usage');
+    return token ? r.set('Authorization', `Bearer ${token}`) : r;
+  };
+
+  test('counts token and legacy requests; super_admin only', async () => {
+    const before = await usage(adminToken('super_admin'));
+    expect(before.status).toBe(200);
+    expect(Object.keys(before.body).sort()).toEqual(['legacyRequests', 'since', 'tokenRequests']);
+    expect(Number.isNaN(Date.parse(before.body.since))).toBe(false);
+
+    await request(app).get('/api/cart').set('Authorization', bearer('A'));
+    process.env.LEGACY_USERID_ROUTES = 'true';
+    await request(app).get('/api/cart?userId=B');
+    await request(app).get('/api/cart?userId=C');
+    await request(app).get('/api/products'); // anonymous: counted as neither
+
+    const after = await usage(adminToken('super_admin'));
+    expect(after.body.tokenRequests - before.body.tokenRequests).toBe(1);
+    expect(after.body.legacyRequests - before.body.legacyRequests).toBe(2);
+    expect(after.body.since).toBe(before.body.since);
+
+    expect((await usage(adminToken('staff'))).status).toBe(403);
+    expect((await usage(tokenFor('A'))).status).toBe(401);
+    expect((await usage()).status).toBe(401);
+  });
+});

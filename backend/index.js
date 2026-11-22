@@ -40,7 +40,7 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const { requireAdmin, signAdminToken } = require('./middleware/auth.middleware');
-const { resolveUser } = require('./middleware/resolve_user.middleware');
+const { resolveUser, getLegacyUsage } = require('./middleware/resolve_user.middleware');
 
 // Ensure uploads directory exists
 const uploadDir = 'uploads';
@@ -148,6 +148,11 @@ app.post('/api/auth/register', authLimiter, requireAdmin(['super_admin']), async
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
+});
+
+// Token vs legacy-fallback request counts since this process started (see docs/app-sessions.md).
+app.get('/api/admin/legacy-usage', requireAdmin(['super_admin']), (req, res) => {
+    res.json(getLegacyUsage());
 });
 
 app.post('/api/auth/login', authLimiter, async (req, res) => {
