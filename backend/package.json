@@ -6,6 +6,12 @@
     "test": "jest",
     "dev": "nodemon index.js"
   },
+  "jest": {
+    "setupFiles": [
+      "<rootDir>/tests/setup-env.js"
+    ],
+    "testTimeout": 30000
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

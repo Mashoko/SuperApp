@@ -38,7 +38,7 @@ app.use(express.json());
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
-const auth = require('./middleware/auth.middleware');
+const { requireAdmin, signAdminToken } = require('./middleware/auth.middleware');
 
 // Ensure uploads directory exists
 const uploadDir = 'uploads';
@@ -107,7 +107,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/uploads', express.static('uploads'));
 
 // Routes
-app.post('/api/upload', auth, upload.single('image'), (req, res) => {
+app.post('/api/upload', requireAdmin(), upload.single('image'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded.' });
     }
@@ -130,11 +130,10 @@ const User = require('./models/user.model');
 const Category = require('./models/category.model');
 const Faq = require('./models/faq.model');
 const Shop = require('./models/shop.model');
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 // Auth Routes
-app.post('/api/auth/register', authLimiter, async (req, res) => {
+app.post('/api/auth/register', authLimiter, requireAdmin(['super_admin']), async (req, res) => {
     try {
         const { username, password } = req.body;
         if (!username || !password) {
@@ -161,11 +160,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        const token = jwt.sign(
-            { id: user._id, role: user.role, username: user.username },
-            process.env.JWT_SECRET,
-            { expiresIn: '1d' }
-        );
+        const token = signAdminToken(user);
 
         res.json({ token, user: { id: user._id, username: user.username, role: user.role } });
     } catch (err) {
@@ -253,7 +248,7 @@ app.get('/api/products', async (req, res) => {
 });
 
 // Create a product
-app.post('/api/products', auth, async (req, res) => {
+app.post('/api/products', requireAdmin(), async (req, res) => {
     const product = new Product({
         name: req.body.name,
         description: req.body.description,
@@ -274,7 +269,7 @@ app.post('/api/products', auth, async (req, res) => {
 });
 
 // Update a product
-app.put('/api/products/:id', auth, async (req, res) => {
+app.put('/api/products/:id', requireAdmin(), async (req, res) => {
     try {
         const allowed = ['name', 'description', 'price', 'imageUrl', 'category', 'stock', 'discountPrice', 'isAvailable'];
         const update = {};
@@ -296,7 +291,7 @@ app.put('/api/products/:id', auth, async (req, res) => {
 });
 
 // Soft Delete a product
-app.delete('/api/products/:id', auth, async (req, res) => {
+app.delete('/api/products/:id', requireAdmin(), async (req, res) => {
     try {
         await Product.findByIdAndUpdate(req.params.id, { isDeleted: true });
         res.json({ message: 'Product deleted' });
@@ -331,7 +326,7 @@ app.get('/api/categories', async (req, res) => {
 });
 
 // Create Category
-app.post('/api/categories', auth, async (req, res) => {
+app.post('/api/categories', requireAdmin(), async (req, res) => {
     const category = new Category(req.body);
     try {
         const newCategory = await category.save();
@@ -342,7 +337,7 @@ app.post('/api/categories', auth, async (req, res) => {
 });
 
 // Update Category
-app.put('/api/categories/:id', auth, async (req, res) => {
+app.put('/api/categories/:id', requireAdmin(), async (req, res) => {
     try {
         const updatedCategory = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
         res.json(updatedCategory);
@@ -352,7 +347,7 @@ app.put('/api/categories/:id', auth, async (req, res) => {
 });
 
 // Delete Category
-app.delete('/api/categories/:id', auth, async (req, res) => {
+app.delete('/api/categories/:id', requireAdmin(), async (req, res) => {
     try {
         await Category.findByIdAndDelete(req.params.id);
         res.json({ message: 'Category deleted' });
@@ -373,7 +368,7 @@ app.get('/api/faqs', async (req, res) => {
 });
 
 // Create FAQ category
-app.post('/api/faqs', auth, async (req, res) => {
+app.post('/api/faqs', requireAdmin(), async (req, res) => {
     const faq = new Faq(req.body);
     try {
         const newFaq = await faq.save();
@@ -384,7 +379,7 @@ app.post('/api/faqs', auth, async (req, res) => {
 });
 
 // Update FAQ category
-app.put('/api/faqs/:id', auth, async (req, res) => {
+app.put('/api/faqs/:id', requireAdmin(), async (req, res) => {
     try {
         const updatedFaq = await Faq.findByIdAndUpdate(req.params.id, req.body, { new: true });
         res.json(updatedFaq);
@@ -394,7 +389,7 @@ app.put('/api/faqs/:id', auth, async (req, res) => {
 });
 
 // Delete FAQ category
-app.delete('/api/faqs/:id', auth, async (req, res) => {
+app.delete('/api/faqs/:id', requireAdmin(), async (req, res) => {
     try {
         await Faq.findByIdAndDelete(req.params.id);
         res.json({ message: 'FAQ category deleted' });
@@ -415,7 +410,7 @@ app.get('/api/shops', async (req, res) => {
 });
 
 // Create Shop
-app.post('/api/shops', auth, async (req, res) => {
+app.post('/api/shops', requireAdmin(), async (req, res) => {
     const shop = new Shop(req.body);
     try {
         const newShop = await shop.save();
@@ -426,7 +421,7 @@ app.post('/api/shops', auth, async (req, res) => {
 });
 
 // Update Shop
-app.put('/api/shops/:id', auth, async (req, res) => {
+app.put('/api/shops/:id', requireAdmin(), async (req, res) => {
     try {
         const updatedShop = await Shop.findByIdAndUpdate(req.params.id, req.body, { new: true });
         res.json(updatedShop);
@@ -436,7 +431,7 @@ app.put('/api/shops/:id', auth, async (req, res) => {
 });
 
 // Delete Shop
-app.delete('/api/shops/:id', auth, async (req, res) => {
+app.delete('/api/shops/:id', requireAdmin(), async (req, res) => {
     try {
         await Shop.findByIdAndDelete(req.params.id);
         res.json({ message: 'Shop deleted' });
@@ -459,7 +454,7 @@ app.get('/api/banners', async (req, res) => {
 });
 
 // Create Banner
-app.post('/api/banners', auth, async (req, res) => {
+app.post('/api/banners', requireAdmin(), async (req, res) => {
     const banner = new Banner(req.body);
     try {
         const newBanner = await banner.save();
@@ -470,7 +465,7 @@ app.post('/api/banners', auth, async (req, res) => {
 });
 
 // Update Banner
-app.put('/api/banners/:id', auth, async (req, res) => {
+app.put('/api/banners/:id', requireAdmin(), async (req, res) => {
     try {
         const updatedBanner = await Banner.findByIdAndUpdate(req.params.id, req.body, { new: true });
         res.json(updatedBanner);
@@ -480,7 +475,7 @@ app.put('/api/banners/:id', auth, async (req, res) => {
 });
 
 // Delete Banner
-app.delete('/api/banners/:id', auth, async (req, res) => {
+app.delete('/api/banners/:id', requireAdmin(), async (req, res) => {
     try {
         await Banner.findByIdAndDelete(req.params.id);
         res.json({ message: 'Banner deleted' });
@@ -503,7 +498,7 @@ app.get('/api/vouchers', async (req, res) => {
 });
 
 // Create Voucher
-app.post('/api/vouchers', auth, async (req, res) => { // Auth required for creation
+app.post('/api/vouchers', requireAdmin(), async (req, res) => { // Auth required for creation
     const voucher = new Voucher(req.body);
     try {
         const newVoucher = await voucher.save();
@@ -776,7 +771,7 @@ app.get('/api/orders', async (req, res) => {
 });
 
 // PATCH /api/orders/:id/status  (admin)
-app.patch('/api/orders/:id/status', auth, async (req, res) => {
+app.patch('/api/orders/:id/status', requireAdmin(), async (req, res) => {
   try {
     const { status } = req.body;
     const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];

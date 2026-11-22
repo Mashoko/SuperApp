@@ -1,6 +1,6 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
-const jwt = require('jsonwebtoken');
+const { signAdminToken } = require('../middleware/auth.middleware');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
 let mongoServer;
@@ -17,7 +17,7 @@ beforeAll(async () => {
     mongoose.connection.once('open', resolve);
   });
   Faq = require('../models/faq.model');
-  authToken = jwt.sign({ id: 'test-admin' }, process.env.JWT_SECRET);
+  authToken = signAdminToken({ _id: 'test-admin', role: 'staff', username: 'test-admin' });
 });
 
 afterAll(async () => {
