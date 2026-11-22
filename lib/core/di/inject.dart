@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../users_client.dart';
 import '../../payments_client.dart';
 import '../services/otp_auth_service.dart';
+import '../services/backend_session_service.dart';
+import '../services/authed_http_client.dart';
 
 import '../../features/registration/data/datasources/registration_local_data_source.dart';
 import '../../features/registration/data/repositories/registration_repository_impl.dart';
@@ -113,14 +115,21 @@ Future<void> configureDependencies() async {
 
   // --- Merged Dependencies ---
   // Services
-  getIt.registerLazySingleton<ShoppingService>(() => ShoppingService());
-  getIt.registerLazySingleton<PostsService>(() => PostsService());
-  getIt.registerLazySingleton<ShippingAddressService>(() => ShippingAddressService());
+  getIt.registerLazySingleton<BackendSessionService>(
+      () => BackendSessionService(getIt<SharedPreferences>()));
+  getIt.registerLazySingleton<AuthedHttpClient>(
+      () => AuthedHttpClient(getIt<BackendSessionService>()));
+  getIt.registerLazySingleton<ShoppingService>(
+      () => ShoppingService(client: getIt<AuthedHttpClient>()));
+  getIt.registerLazySingleton<PostsService>(
+      () => PostsService(client: getIt<AuthedHttpClient>()));
+  getIt.registerLazySingleton<ShippingAddressService>(
+      () => ShippingAddressService(client: getIt<AuthedHttpClient>()));
   getIt.registerLazySingleton<ProximitySensorGateway>(
       () => PackageProximitySensorGateway());
   getIt.registerLazySingleton<UtilityBillsService>(() => UtilityBillsService());
   getIt.registerLazySingleton<AfricomPaymentService>(
-      () => const AfricomPaymentService());
+      () => AfricomPaymentService(client: getIt<AuthedHttpClient>()));
   // ViewModels
   getIt.registerFactory(() => DashboardViewModel(
       getIt<DialpadViewModel>(), getIt(), getIt()));

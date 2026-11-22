@@ -34,11 +34,16 @@ class ShippingAddress {
 }
 
 class ShippingAddressService {
+  ShippingAddressService({http.Client? client})
+      : _client = client ?? http.Client();
+
   static const String _base = 'https://superapp-diht.onrender.com/api';
+
+  final http.Client _client;
 
   Future<List<ShippingAddress>> fetchAddresses(String userId) async {
     try {
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$_base/shipping-addresses?userId=${Uri.encodeComponent(userId)}'),
       );
       if (response.statusCode == 200) {
@@ -60,7 +65,7 @@ class ShippingAddressService {
     bool isDefault = false,
   }) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$_base/shipping-addresses'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
@@ -83,7 +88,7 @@ class ShippingAddressService {
 
   Future<bool> deleteAddress(String id, String userId) async {
     try {
-      final response = await http.delete(
+      final response = await _client.delete(
         Uri.parse('$_base/shipping-addresses/$id?userId=${Uri.encodeComponent(userId)}'),
       );
       return response.statusCode == 200;

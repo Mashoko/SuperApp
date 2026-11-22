@@ -34,7 +34,10 @@ class AfricomPaymentService {
   static const String _paymentEndpoint =
       'https://superapp-diht.onrender.com/api/payments/africom/superapp-pay';
 
-  const AfricomPaymentService();
+  AfricomPaymentService({http.Client? client})
+      : _client = client ?? http.Client();
+
+  final http.Client _client;
 
   /// Initiates a payment with Africom SuperApp Pay.
   ///
@@ -52,7 +55,7 @@ class AfricomPaymentService {
   }) async {
     try {
       print('[HTTP] → POST $_paymentEndpoint');
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse(_paymentEndpoint),
         headers: <String, String>{
           'Content-Type': 'application/json',

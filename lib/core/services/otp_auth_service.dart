@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:random_string/random_string.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../di/inject.dart';
 import '../utils/constants.dart';
+import 'backend_session_service.dart';
 import '../utils/crypto_utils.dart';
 
 import '../../users_client.dart';
@@ -112,6 +116,12 @@ class OtpAuthService {
       await prefs.remove('temp_username');
       await prefs.remove('temp_password');
 
+      // Fire-and-forget: login must not wait on the backend. AuthedHttpClient
+      // retries lazily on the first 401 if this fails.
+      if (getIt.isRegistered<BackendSessionService>()) {
+        unawaited(getIt<BackendSessionService>().refresh());
+      }
+
       return {
         'username': finalUsername,
         'password': tempPassword,
@@ -140,6 +150,9 @@ class OtpAuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.keyAuthUser);
     await prefs.remove(AppConstants.keyPassword);
+    if (getIt.isRegistered<BackendSessionService>()) {
+      await getIt<BackendSessionService>().clear();
+    }
   }
 
   /// Fetch full account summary (alias, balance, domain, status).

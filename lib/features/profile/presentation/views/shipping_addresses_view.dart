@@ -12,7 +12,7 @@ class ShippingAddressesView extends StatefulWidget {
 }
 
 class _ShippingAddressesViewState extends State<ShippingAddressesView> {
-  final ShippingAddressService _service = ShippingAddressService();
+  final ShippingAddressService _service = getIt<ShippingAddressService>();
   List<ShippingAddress> _addresses = [];
   bool _isLoading = true;
   String _userId = '';
