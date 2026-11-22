@@ -2,8 +2,10 @@ import 'package:http/http.dart' as http;
 
 import 'backend_session_service.dart';
 
-/// Adds the app-user bearer token to every request. On a 401 it refreshes the
-/// session once and retries once; refresh failure returns the original 401.
+/// Adds the app-user bearer token to every request. With no stored token but
+/// stored credentials it starts a session before the first attempt. On a 401
+/// it refreshes the session once and retries once; refresh failure returns the
+/// original 401. Other statuses (including 429) never trigger a refresh.
 class AuthedHttpClient extends http.BaseClient {
   AuthedHttpClient(this._session, {http.Client? inner})
       : _inner = inner ?? http.Client();
@@ -14,7 +16,12 @@ class AuthedHttpClient extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final bytes = await request.finalize().toBytes();
-    final usedToken = await _session.token();
+    var usedToken = await _session.token();
+    // Users upgrading while legacy mode is on never see a 401, so start the
+    // session up front. Null (failure or cooldown) sends without a token.
+    if (usedToken == null && _session.hasCredentials()) {
+      usedToken = await _session.refresh();
+    }
 
     final first = await _inner.send(_build(request, bytes, usedToken));
     if (first.statusCode != 401) return first;

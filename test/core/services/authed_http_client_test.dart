@@ -57,6 +57,39 @@ void main() {
     expect(h.log.single.headers['Authorization'], 'Bearer tok');
   });
 
+  test('no stored token: starts a session before the first request',
+      () async {
+    final h = await _build((req, _) async => http.Response('ok', 200));
+    final res = await h.client.get(Uri.parse('https://x.test/api/cart'));
+    expect(res.statusCode, 200);
+    expect(h.log.length, 2);
+    expect(h.log[0].url.path, endsWith('/app-auth/session'));
+    expect(h.log[1].url.path, '/api/cart');
+    expect(h.log[1].headers['Authorization'], 'Bearer jwt1');
+  });
+
+  test('no stored token and refresh fails: sends without a token', () async {
+    final h = await _build((req, _) async => http.Response('ok', 200),
+        sessionStatus: 503);
+    final res = await h.client.get(Uri.parse('https://x.test/api/cart'));
+    expect(res.statusCode, 200);
+    expect(h.sessionCalls, 1);
+    expect(h.log.last.headers.containsKey('Authorization'), isFalse);
+
+    // Within the cooldown the next request makes no session call.
+    await h.client.get(Uri.parse('https://x.test/api/cart'));
+    expect(h.sessionCalls, 1);
+  });
+
+  test('a 429 on a user route does not refresh', () async {
+    final h = await _build((req, _) async => http.Response('slow down', 429),
+        storedToken: 'tok');
+    final res = await h.client.get(Uri.parse('https://x.test/api/cart'));
+    expect(res.statusCode, 429);
+    expect(h.sessionCalls, 0);
+    expect(h.log.length, 1);
+  });
+
   test('refreshes once on 401 then retries once', () async {
     final h = await _build(
         (req, n) async => http.Response('', n == 1 ? 401 : 200),
