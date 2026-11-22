@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:sip_ua/sip_ua.dart';
+import '../../../../core/di/inject.dart';
+import '../../../../core/services/backend_session_service.dart';
 import '../../../../core/services/otp_auth_service.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/utils/sip_utils.dart';
@@ -86,6 +90,12 @@ class LoginViewModel extends ChangeNotifier {
     // Configure SIPUAHelper and persist user via existing pipeline.
     debugPrint('--- Login Flow: Initiating SIP Registration... ---');
     await _registerUser(user);
+
+    // Fire-and-forget: credentials are saved now; login must not wait on the
+    // backend. AuthedHttpClient retries lazily on the first 401.
+    if (getIt.isRegistered<BackendSessionService>()) {
+      unawaited(getIt<BackendSessionService>().refresh());
+    }
 
     // Fetch account summary (alias, balance, etc.) after registration.
     debugPrint('--- Login Flow: Fetching Account Summary... ---');
