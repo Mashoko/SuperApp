@@ -17,15 +17,28 @@ Previously the backend trusted a user id sent by the Flutter app on user-scoped 
 | `AFRICOM_GRPC_SECURE` | Use TLS for Afri Com gRPC | `false` |
 | `AFRICOM_PACKAGE_ID` | Package id sent to Afri Com | `org.duri.maswerasei` |
 | `AFRICOM_DOMAIN` | Afri Com SIP domain | `localvoip.ai.co.zw` |
+| `TRUST_PROXY` | Optional. Number of reverse-proxy hops to trust for the client IP (integer). Rate limits key on that IP | `1` on Render (detected via `RENDER`), otherwise off |
 | `LEGACY_USERID_ROUTES` | `true` (exact string) allows tokenless requests to use the client-supplied user id | off |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Used only by `scripts/create-super-admin.js` | none |
 
 ## Rollout order
 
-1. Deploy the backend with `LEGACY_USERID_ROUTES=true`. Security trade-off: while this is on, anyone can still act as any user by omitting the token and sending a user id, so the fix is not effective yet. Old app versions keep working only because of this flag. Keep this step short.
+1. Deploy the backend with `LEGACY_USERID_ROUTES=true`. Security trade-off: while this is on, anyone can still act as any user by omitting the token and sending a user id, so the fix is not effective yet. Old app versions keep working only because of this flag. Keep this step short. Immediately after this deploy, run the canonical user id migration (see "Canonical user ids" below).
 2. If no super_admin exists, run `ADMIN_USERNAME=... ADMIN_PASSWORD=... node scripts/create-super-admin.js` from `backend/`. Tell staff to log in again.
-3. Ship the app update. It starts a session after OTP verification and after password login, and lazily on the first 401.
-4. Once most active users are on the new app, set `LEGACY_USERID_ROUTES=false` (or remove it) and redeploy. Users still on old versions will get 401 until they update.
+3. Ship the app update. It starts a session after OTP verification and after password login, before its first backend request whenever it has credentials but no token, and again on a 401. After a failed attempt it waits 60 seconds (or the server's `Retry-After`) before trying again.
+4. Decide when to turn legacy mode off with `GET /api/admin/legacy-usage` (super_admin token). It returns `{ tokenRequests, legacyRequests, since }`: how many user-scoped requests were identified by a session token and how many by the legacy client-supplied id since `since`. The counters are in memory and reset on every deploy or restart, so read them after the service has been up long enough to be representative. Once `legacyRequests` is a small share of the total, set `LEGACY_USERID_ROUTES=false` (or remove it) and redeploy. Users still on old versions will get 401 until they update.
+
+## Canonical user ids (run right after the step 1 deploy, and before step 4)
+
+User ids are now stored as `+` followed by digits, so `263…` and `+263…` logins are the same user. From the step 1 deploy on, both session tokens and legacy requests use that canonical form, so data written earlier under another form (for example `263…`) is not visible to its owner until it is rewritten. Run the migration as soon as step 1 is live; the longer it waits, the more Cart and Wishlist conflicts appear.
+
+From `backend/`, with `MONGO_URI` pointing at the production database:
+
+1. `node scripts/migrate-canonical-userids.js` is a dry run. It writes nothing and prints, per collection, how many documents would be rewritten and how many conflicts would be skipped (counts only, never ids).
+2. Review the counts.
+3. `node scripts/migrate-canonical-userids.js --apply` performs the rewrites.
+
+It covers `Cart.userId`, `Wishlist.userId`, `Order.user_id`, `ShippingAddress.userId`, `Post.authorUserId` and `Post.likedBy`. Cart and Wishlist hold one document per user: when a document already exists under the canonical id, the other one is not merged; it is counted as a conflict and left untouched for manual review. Running it again is safe.
 
 ## Open item: Afri Com must accept gRPC from the backend host
 
@@ -43,5 +56,6 @@ curl -i -X POST https://<BACKEND_HOST>/api/app-auth/session \
 
 ## Known limitations
 
-- The rate limiter `authLimiter` (20 requests per 15 minutes per IP) is shared by staff login, staff register and app sessions. Users behind one NAT, or heavy staff use, can exhaust it for each other.
+- Rate limits are in memory per process and reset on deploy. `POST /api/app-auth/session` allows 100 requests per 15 minutes per IP and 10 per 15 minutes per account (canonical phone number). Staff login and register share a separate 20 per 15 minutes per IP. Limits key on the client IP only when the proxy is trusted (see `TRUST_PROXY`).
+- Stage 2: KYC enforcement requires `LEGACY_USERID_ROUTES=false`; legacy requests carry no verified identity (`req.auth.via === 'legacy'`), so any check that needs a proven user must reject them.
 - Calls to Afri Com use plaintext on port 50000 unless `AFRICOM_GRPC_SECURE=true` is configured, so the phone number and password cross the network unencrypted. Confirm with Afri Com whether a TLS endpoint exists.
