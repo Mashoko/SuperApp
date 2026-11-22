@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 
-const getToken = (req) => req.cookies?.token || req.headers.authorization?.split(' ')[1];
+// Bearer header only. No cookie auth: there is no cookie-parser, and cookies would need CSRF protection.
+const getToken = (req) => req.headers.authorization?.split(' ')[1];
 
 const signAdminToken = (user) =>
     jwt.sign(
