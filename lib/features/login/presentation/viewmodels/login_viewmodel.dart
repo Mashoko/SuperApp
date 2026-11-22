@@ -91,10 +91,13 @@ class LoginViewModel extends ChangeNotifier {
     debugPrint('--- Login Flow: Initiating SIP Registration... ---');
     await _registerUser(user);
 
-    // Fire-and-forget: credentials are saved now; login must not wait on the
-    // backend. AuthedHttpClient retries lazily on the first 401.
+    // Drop any previous account's backend token, then start a session
+    // fire-and-forget: login must not wait on the backend. If this fails,
+    // AuthedHttpClient starts one before its next request.
     if (getIt.isRegistered<BackendSessionService>()) {
-      unawaited(getIt<BackendSessionService>().refresh());
+      final session = getIt<BackendSessionService>();
+      await session.clear();
+      unawaited(session.refresh());
     }
 
     // Fetch account summary (alias, balance, etc.) after registration.

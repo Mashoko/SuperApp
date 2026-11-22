@@ -116,10 +116,13 @@ class OtpAuthService {
       await prefs.remove('temp_username');
       await prefs.remove('temp_password');
 
-      // Fire-and-forget: login must not wait on the backend. AuthedHttpClient
-      // retries lazily on the first 401 if this fails.
+      // Drop any previous account's backend token, then start a session
+      // fire-and-forget: login must not wait on the backend. If this fails,
+      // AuthedHttpClient starts one before its next request.
       if (getIt.isRegistered<BackendSessionService>()) {
-        unawaited(getIt<BackendSessionService>().refresh());
+        final session = getIt<BackendSessionService>();
+        await session.clear();
+        unawaited(session.refresh());
       }
 
       return {
