@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package users;
+option go_package = "momariserver/services/users/userpb";
+
+// Request message on API request
+message request {
+  string username = 1;        // username/account of the user (required)
+  string domain = 2;          // domain for the service (required)
+  string password = 3;        // password for the user (required)
+  double balance = 4;         // balance of the user
+  string email = 5;           // email of the user
+  string package_id = 6;      // package id for the Application (required)
+  string token = 7;           // token for the user if any
+  string verificationCode = 8; // verification code for the user (OTP)
+  string debugInfo = 9;        // debug information (optional)
+}
+
+// Response message on reply to API request
+message response {
+  string username = 1;
+  string domain = 2;
+  string password = 3;
+  double balance = 4;
+  string email = 5;
+  Status status = 6;
+  string token = 7;
+  Error error = 8;
+  Info info = 9;
+  Success success = 10;
+  string alias = 11; // alias number for the user
+}
+
+// Error message
+message Error {
+  string localizedDescription = 1;
+  string debugDescription = 2;
+}
+
+// Success message
+message Success {
+  string localizedDescription = 1;
+  string debugDescription = 2;
+}
+
+// Info message
+message Info {
+  string information = 1;
+}
+
+// Status Enum
+enum Status {
+  INFORMATION = 0; // request processed with info
+  SUCCESS = 1;     // success
+  ERROR = 2;       // error
+  FAILED = 3;      // failed to process request
+}
+
+// Users service definition
+service userService {
+  rpc SendVerificationCode(request) returns (response);
+  rpc SendWhatsAppOTP(request) returns (response);
+  rpc GetDomainForPackageID(request) returns (response);
+  rpc GetWebsocketUrl(request) returns (response);
+  rpc GetOrignUrl(request) returns (response);
+  rpc CreateAccount(request) returns (response);
+  rpc AccountBalance(request) returns (response);
+  rpc DeregisterAccount(request) returns (response);
+  rpc GetAliasNumber(request) returns (response);
+}
+
