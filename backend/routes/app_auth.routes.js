@@ -3,6 +3,7 @@ const AppUser = require('../models/app_user.model');
 const { verifyCredentials } = require('../africom/verifier');
 const { requireAppUser, signAppToken } = require('../middleware/auth.middleware');
 const { authLimiter } = require('../middleware/rate_limits');
+const { canonicalUsername } = require('../lib/phone');
 
 const router = express.Router();
 
@@ -38,13 +39,16 @@ router.post('/session', authLimiter, async (req, res) => {
       return res.status(401).json({ message: 'Phone number or password is incorrect.' });
     }
 
+    // The verifier may accept the number with or without '+'; store one canonical form
+    // so both logins map to the same AppUser and the same user-scoped data.
+    const sipUsername = canonicalUsername(result.username);
     const set = { lastSessionAt: new Date() };
     const name = typeof displayName === 'string' ? displayName.trim().slice(0, 80) : '';
     if (name) set.displayName = name;
 
     const user = await AppUser.findOneAndUpdate(
-      { sipUsername: result.username },
-      { $set: set, $setOnInsert: { sipUsername: result.username } },
+      { sipUsername },
+      { $set: set, $setOnInsert: { sipUsername } },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
     return res.json({ token: signAppToken(user), user: toUserDto(user) });

@@ -94,6 +94,21 @@ describe('resolveUser on user-scoped routes', () => {
     expect(await Cart.findOne({ userId: 'legacyUser' })).not.toBeNull();
   });
 
+  test('legacy fallback canonicalises a phone-number user id', async () => {
+    process.env.LEGACY_USERID_ROUTES = 'true';
+    const product = await makeProduct();
+
+    const add = await request(app)
+      .post('/api/cart/add')
+      .send({ userId: '263771234567', productId: String(product._id) });
+    expect(add.status).toBe(200);
+    expect(await Cart.findOne({ userId: '+263771234567' })).not.toBeNull();
+    expect(await Cart.findOne({ userId: '263771234567' })).toBeNull();
+
+    const res = await request(app).get('/api/cart?userId=%2B263771234567');
+    expect(res.body.items).toHaveLength(1);
+  });
+
   test('legacy flag only accepts the exact string "true"', async () => {
     process.env.LEGACY_USERID_ROUTES = '1';
     const res = await request(app).get('/api/cart?userId=A');

@@ -43,10 +43,10 @@ describe('POST /api/app-auth/session', () => {
     expect(res.status).toBe(200);
     const decoded = jwt.verify(res.body.token, process.env.JWT_SECRET);
     expect(decoded.aud).toBe('app');
-    expect(decoded.username).toBe('263771234567');
+    expect(decoded.username).toBe('+263771234567');
     expect(res.body.user).toEqual({
       id: String(decoded.sub),
-      username: '263771234567',
+      username: '+263771234567',
       displayName: 'Tendai',
     });
     expect(await AppUser.countDocuments()).toBe(1);
@@ -61,13 +61,29 @@ describe('POST /api/app-auth/session', () => {
     expect(await AppUser.countDocuments()).toBe(1);
   });
 
-  test('plus-prefixed login maps to existing stripped user', async () => {
-    stubOk('263771234567');
+  test('logins with and without + map to one canonical AppUser', async () => {
+    // Mimics the real verifier on an account Afri Com knows without '+':
+    // it accepts the bare number and, for '+…', retries and returns the stripped form.
+    verifier.setVerifierForTests(async (u) => ({ ok: true, username: u.replace(/^\+/, '') }));
     const a = await session({ username: '263771234567', password: 'pw' });
     const b = await session({ username: '+263771234567', password: 'pw' });
+    expect(a.status).toBe(200);
+    expect(b.status).toBe(200);
     expect(b.body.user.id).toBe(a.body.user.id);
-    expect(b.body.user.username).toBe('263771234567');
+    expect(a.body.user.username).toBe('+263771234567');
+    expect(b.body.user.username).toBe('+263771234567');
+    for (const res of [a, b]) {
+      expect(jwt.verify(res.body.token, process.env.JWT_SECRET).username).toBe('+263771234567');
+    }
     expect(await AppUser.countDocuments()).toBe(1);
+    expect((await AppUser.findOne()).sipUsername).toBe('+263771234567');
+  });
+
+  test('verifier is called with the submitted form, not the canonical one', async () => {
+    const spy = jest.fn(async (u) => ({ ok: true, username: u }));
+    verifier.setVerifierForTests(spy);
+    await session({ username: ' 263771234567 ', password: 'pw' });
+    expect(spy.mock.calls[0].slice(0, 2)).toEqual(['263771234567', 'pw']);
   });
 
   test('invalid credentials return 401 with generic message', async () => {

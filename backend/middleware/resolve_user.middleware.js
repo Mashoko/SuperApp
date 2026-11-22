@@ -1,5 +1,6 @@
 const fs = require('fs');
 const { getToken, verifyAppToken } = require('./auth.middleware');
+const { canonicalUsername } = require('../lib/phone');
 
 const ID_FIELDS = ['userId', 'user_id', 'authorUserId'];
 
@@ -45,7 +46,7 @@ const resolveUser = ({ field, required = true }) => (req, res, next) => {
         }
     } else if (legacyEnabled()) {
         const legacyId = req.body?.[field] ?? req.query?.[field];
-        if (typeof legacyId === 'string' && legacyId) userId = legacyId;
+        if (typeof legacyId === 'string' && legacyId.trim()) userId = canonicalUsername(legacyId);
     }
 
     stripBodyIds(req);
