@@ -61,4 +61,4 @@ const requireAppUser = (req, res, next) => {
     next();
 };
 
-module.exports = { requireAdmin, requireAppUser, signAdminToken, signAppToken, verifyAppToken };
+module.exports = { getToken, requireAdmin, requireAppUser, signAdminToken, signAppToken, verifyAppToken };

@@ -1,6 +1,7 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const { signAppToken } = require('../middleware/auth.middleware');
 
 let mongoServer;
 let app;
@@ -22,19 +23,22 @@ afterAll(async () => {
   await mongoServer.stop();
 });
 
+const bearer = (sipUsername) =>
+  `Bearer ${signAppToken({ _id: new mongoose.Types.ObjectId(), sipUsername })}`;
+
 afterEach(async () => {
   await Post.deleteMany({});
 });
 
 describe('DELETE /api/posts/:id', () => {
-  test('soft-deletes when authorUserId matches, and it disappears from the feed', async () => {
+  test('soft-deletes when the signed-in user is the author, and it disappears from the feed', async () => {
     const post = await Post.create({
       type: 'text', caption: 'mine', authorUserId: 'user1', authorName: 'Alice',
     });
 
     const res = await request(app)
       .delete(`/api/posts/${post._id}`)
-      .send({ authorUserId: 'user1' });
+      .set('Authorization', bearer('user1'));
     expect(res.status).toBe(200);
 
     const feed = await request(app).get('/api/posts');
@@ -44,14 +48,14 @@ describe('DELETE /api/posts/:id', () => {
     expect(stillInDb.isDeleted).toBe(true);
   });
 
-  test('returns 403 when authorUserId does not match', async () => {
+  test('returns 403 when the signed-in user is not the author', async () => {
     const post = await Post.create({
       type: 'text', caption: 'not yours', authorUserId: 'user1', authorName: 'Alice',
     });
 
     const res = await request(app)
       .delete(`/api/posts/${post._id}`)
-      .send({ authorUserId: 'user2' });
+      .set('Authorization', bearer('user2'));
     expect(res.status).toBe(403);
   });
 
@@ -59,21 +63,24 @@ describe('DELETE /api/posts/:id', () => {
     const fakeId = new mongoose.Types.ObjectId();
     const res = await request(app)
       .delete(`/api/posts/${fakeId}`)
-      .send({ authorUserId: 'user1' });
+      .set('Authorization', bearer('user1'));
     expect(res.status).toBe(404);
   });
 
-  test('returns 400 when authorUserId is missing', async () => {
+  test('returns 401 when the caller is not signed in', async () => {
     const post = await Post.create({
       type: 'text', caption: 'mine', authorUserId: 'user1', authorName: 'Alice',
     });
 
-    const res = await request(app).delete(`/api/posts/${post._id}`).send({});
-    expect(res.status).toBe(400);
+    const res = await request(app).delete(`/api/posts/${post._id}`).send({ authorUserId: 'user1' });
+    expect(res.status).toBe(401);
+
+    const stillThere = await Post.findById(post._id);
+    expect(stillThere.isDeleted).toBe(false);
   });
 
   test('returns 404 (not 500) for a malformed post id', async () => {
-    const res = await request(app).delete('/api/posts/not-a-real-id').send({ authorUserId: 'user1' });
+    const res = await request(app).delete('/api/posts/not-a-real-id').set('Authorization', bearer('user1'));
     expect(res.status).toBe(404);
   });
 });

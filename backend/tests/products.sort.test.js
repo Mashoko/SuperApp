@@ -1,6 +1,7 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const { signAppToken } = require('../middleware/auth.middleware');
 
 let mongoServer;
 let app;
@@ -25,6 +26,9 @@ afterAll(async () => {
   await mongoose.disconnect();
   await mongoServer.stop();
 });
+
+const bearer = (sipUsername) =>
+  `Bearer ${signAppToken({ _id: new mongoose.Types.ObjectId(), sipUsername })}`;
 
 afterEach(async () => {
   await Product.deleteMany({});
@@ -66,7 +70,9 @@ describe('GET /api/products?sort=recommended', () => {
     await Wishlist.create({ userId: 'user1', productIds: [wishlisted._id] });
     await Cart.create({ userId: 'user1', items: [{ productId: inCart._id, quantity: 1 }] });
 
-    const res = await request(app).get('/api/products?sort=recommended&userId=user1');
+    const res = await request(app)
+      .get('/api/products?sort=recommended')
+      .set('Authorization', bearer('user1'));
 
     expect(res.status).toBe(200);
     const names = res.body.products.map((p) => p.name);
@@ -78,13 +84,15 @@ describe('GET /api/products?sort=recommended', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
     await Product.create({ name: 'Newer', price: 10 });
 
-    const res = await request(app).get('/api/products?sort=recommended&userId=newuser');
+    const res = await request(app)
+      .get('/api/products?sort=recommended')
+      .set('Authorization', bearer('newuser'));
 
     expect(res.status).toBe(200);
     expect(res.body.products.map((p) => p.name)).toEqual(['Newer', 'Older']);
   });
 
-  test('falls back to newest-first when no userId is supplied', async () => {
+  test('falls back to newest-first for an anonymous caller', async () => {
     await Product.create({ name: 'Older', price: 10 });
     await new Promise((resolve) => setTimeout(resolve, 10));
     await Product.create({ name: 'Newer', price: 10 });

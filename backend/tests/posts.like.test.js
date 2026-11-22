@@ -1,6 +1,7 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const { signAppToken } = require('../middleware/auth.middleware');
 
 let mongoServer;
 let app;
@@ -22,6 +23,9 @@ afterAll(async () => {
   await mongoServer.stop();
 });
 
+const bearer = (sipUsername) =>
+  `Bearer ${signAppToken({ _id: new mongoose.Types.ObjectId(), sipUsername })}`;
+
 afterEach(async () => {
   await Post.deleteMany({});
 });
@@ -32,28 +36,31 @@ describe('POST /api/posts/:id/like', () => {
       type: 'text', caption: 'hi', authorUserId: 'user1', authorName: 'Alice',
     });
 
-    const first = await request(app).post(`/api/posts/${post._id}/like`).send({ userId: 'user2' });
+    const first = await request(app).post(`/api/posts/${post._id}/like`).set('Authorization', bearer('user2'));
     expect(first.body).toEqual({ liked: true, likeCount: 1 });
 
-    const second = await request(app).post(`/api/posts/${post._id}/like`).send({ userId: 'user2' });
+    const second = await request(app).post(`/api/posts/${post._id}/like`).set('Authorization', bearer('user2'));
     expect(second.body).toEqual({ liked: false, likeCount: 0 });
 
-    const third = await request(app).post(`/api/posts/${post._id}/like`).send({ userId: 'user2' });
+    const third = await request(app).post(`/api/posts/${post._id}/like`).set('Authorization', bearer('user2'));
     expect(third.body).toEqual({ liked: true, likeCount: 1 });
   });
 
-  test('returns 400 when userId is missing', async () => {
+  test('returns 401 when the caller is not signed in', async () => {
     const post = await Post.create({
       type: 'text', caption: 'hi', authorUserId: 'user1', authorName: 'Alice',
     });
 
-    const res = await request(app).post(`/api/posts/${post._id}/like`).send({});
-    expect(res.status).toBe(400);
+    const res = await request(app).post(`/api/posts/${post._id}/like`).send({ userId: 'user2' });
+    expect(res.status).toBe(401);
+
+    const unchanged = await Post.findById(post._id);
+    expect(unchanged.likedBy).toHaveLength(0);
   });
 
   test('returns 404 for a nonexistent post', async () => {
     const fakeId = new mongoose.Types.ObjectId();
-    const res = await request(app).post(`/api/posts/${fakeId}/like`).send({ userId: 'user2' });
+    const res = await request(app).post(`/api/posts/${fakeId}/like`).set('Authorization', bearer('user2'));
     expect(res.status).toBe(404);
   });
 
@@ -63,8 +70,8 @@ describe('POST /api/posts/:id/like', () => {
     });
 
     await Promise.all([
-      request(app).post(`/api/posts/${post._id}/like`).send({ userId: 'userA' }),
-      request(app).post(`/api/posts/${post._id}/like`).send({ userId: 'userB' }),
+      request(app).post(`/api/posts/${post._id}/like`).set('Authorization', bearer('userA')),
+      request(app).post(`/api/posts/${post._id}/like`).set('Authorization', bearer('userB')),
     ]);
 
     const fetched = await Post.findById(post._id);
@@ -73,7 +80,7 @@ describe('POST /api/posts/:id/like', () => {
   });
 
   test('returns 404 (not 500) for a malformed post id', async () => {
-    const res = await request(app).post('/api/posts/not-a-real-id/like').send({ userId: 'user2' });
+    const res = await request(app).post('/api/posts/not-a-real-id/like').set('Authorization', bearer('user2'));
     expect(res.status).toBe(404);
   });
 
@@ -82,7 +89,7 @@ describe('POST /api/posts/:id/like', () => {
       type: 'text', caption: 'gone', authorUserId: 'user1', authorName: 'Alice', isDeleted: true,
     });
 
-    const res = await request(app).post(`/api/posts/${post._id}/like`).send({ userId: 'user2' });
+    const res = await request(app).post(`/api/posts/${post._id}/like`).set('Authorization', bearer('user2'));
     expect(res.status).toBe(404);
   });
 });

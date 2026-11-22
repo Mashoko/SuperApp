@@ -1,6 +1,7 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const { signAppToken } = require('../middleware/auth.middleware');
 const path = require('path');
 
 let mongoServer;
@@ -21,6 +22,9 @@ afterAll(async () => {
   await mongoServer.stop();
 });
 
+const bearer = (sipUsername) =>
+  `Bearer ${signAppToken({ _id: new mongoose.Types.ObjectId(), sipUsername })}`;
+
 afterEach(async () => {
   await mongoose.connection.collection('posts').deleteMany({});
 });
@@ -31,7 +35,7 @@ describe('POST /api/posts', () => {
       .post('/api/posts')
       .field('type', 'text')
       .field('caption', 'Hello world')
-      .field('authorUserId', 'user1')
+      .set('Authorization', bearer('user1'))
       .field('authorName', 'Alice');
 
     expect(res.status).toBe(201);
@@ -46,7 +50,7 @@ describe('POST /api/posts', () => {
     const res = await request(app)
       .post('/api/posts')
       .field('type', 'photo')
-      .field('authorUserId', 'user1')
+      .set('Authorization', bearer('user1'))
       .field('authorName', 'Alice')
       .attach('media', tinyPngPath);
 
@@ -58,7 +62,7 @@ describe('POST /api/posts', () => {
   test('rejects a missing type', async () => {
     const res = await request(app)
       .post('/api/posts')
-      .field('authorUserId', 'user1')
+      .set('Authorization', bearer('user1'))
       .field('authorName', 'Alice');
 
     expect(res.status).toBe(400);
@@ -68,7 +72,7 @@ describe('POST /api/posts', () => {
     const res = await request(app)
       .post('/api/posts')
       .field('type', 'photo')
-      .field('authorUserId', 'user1')
+      .set('Authorization', bearer('user1'))
       .field('authorName', 'Alice');
 
     expect(res.status).toBe(400);
@@ -80,7 +84,7 @@ describe('POST /api/posts', () => {
     const res = await request(app)
       .post('/api/posts')
       .field('type', 'photo')
-      .field('authorUserId', 'user1')
+      .set('Authorization', bearer('user1'))
       .field('authorName', 'Alice')
       .attach('media', badFilePath);
 
@@ -95,7 +99,7 @@ describe('POST /api/posts', () => {
     const res = await request(app)
       .post('/api/posts')
       .field('type', 'audio')
-      .field('authorUserId', 'user1')
+      .set('Authorization', bearer('user1'))
       .field('authorName', 'Alice')
       .attach('media', oversizedBuffer, { filename: 'clip.mp3', contentType: 'audio/mpeg' });
 

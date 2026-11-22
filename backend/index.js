@@ -31,6 +31,7 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const { requireAdmin, signAdminToken } = require('./middleware/auth.middleware');
+const { resolveUser } = require('./middleware/resolve_user.middleware');
 
 // Ensure uploads directory exists
 const uploadDir = 'uploads';
@@ -163,7 +164,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
 
 // Get all products (with pagination)
-app.get('/api/products', async (req, res) => {
+app.get('/api/products', resolveUser({ field: 'userId', required: false }), async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
@@ -185,7 +186,7 @@ app.get('/api/products', async (req, res) => {
             filter.isTrending = true;
             sort = { averageRating: -1, createdAt: -1 };
         } else if (req.query.sort === 'recommended') {
-            const userId = req.query.userId;
+            const userId = req.userId;
             let categories = [];
             let excludeIds = [];
 
@@ -610,11 +611,10 @@ async function buildCartResponse(cart) {
   };
 }
 
-// GET /api/cart?userId=<username>
-app.get('/api/cart', async (req, res) => {
+// GET /api/cart  (identity from app session)
+app.get('/api/cart', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
-    const { userId } = req.query;
-    if (!userId) return res.status(400).json({ message: 'userId required' });
+    const { userId } = req;
     const cart = await Cart.findOne({ userId });
     res.json(await buildCartResponse(cart));
   } catch (err) {
@@ -622,11 +622,12 @@ app.get('/api/cart', async (req, res) => {
   }
 });
 
-// POST /api/cart/add  { userId, productId, quantity }
-app.post('/api/cart/add', async (req, res) => {
+// POST /api/cart/add  { productId, quantity }
+app.post('/api/cart/add', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
-    const { userId, productId, quantity = 1 } = req.body;
-    if (!userId || !productId) return res.status(400).json({ message: 'userId and productId required' });
+    const { userId } = req;
+    const { productId, quantity = 1 } = req.body;
+    if (!productId) return res.status(400).json({ message: 'productId required' });
 
     const product = await Product.findById(productId);
     if (!product || product.isDeleted) return res.status(404).json({ message: 'Product not found' });
@@ -648,12 +649,13 @@ app.post('/api/cart/add', async (req, res) => {
   }
 });
 
-// PUT /api/cart/update  { userId, productId, quantity }
-app.put('/api/cart/update', async (req, res) => {
+// PUT /api/cart/update  { productId, quantity }
+app.put('/api/cart/update', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
-    const { userId, productId, quantity } = req.body;
-    if (!userId || !productId || quantity === undefined) {
-      return res.status(400).json({ message: 'userId, productId, and quantity required' });
+    const { userId } = req;
+    const { productId, quantity } = req.body;
+    if (!productId || quantity === undefined) {
+      return res.status(400).json({ message: 'productId and quantity required' });
     }
 
     const cart = await Cart.findOne({ userId });
@@ -675,11 +677,12 @@ app.put('/api/cart/update', async (req, res) => {
   }
 });
 
-// DELETE /api/cart/remove  { userId, productId }
-app.delete('/api/cart/remove', async (req, res) => {
+// DELETE /api/cart/remove  { productId }
+app.delete('/api/cart/remove', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
-    const { userId, productId } = req.body;
-    if (!userId || !productId) return res.status(400).json({ message: 'userId and productId required' });
+    const { userId } = req;
+    const { productId } = req.body ?? {};
+    if (!productId) return res.status(400).json({ message: 'productId required' });
 
     const cart = await Cart.findOne({ userId });
     if (!cart) return res.status(404).json({ message: 'Cart not found' });
@@ -692,11 +695,10 @@ app.delete('/api/cart/remove', async (req, res) => {
   }
 });
 
-// DELETE /api/cart/clear  { userId }
-app.delete('/api/cart/clear', async (req, res) => {
+// DELETE /api/cart/clear
+app.delete('/api/cart/clear', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
-    const { userId } = req.body;
-    if (!userId) return res.status(400).json({ message: 'userId required' });
+    const { userId } = req;
     await Cart.findOneAndUpdate({ userId }, { items: [] });
     res.json({ message: 'Cart cleared' });
   } catch (err) {
@@ -707,11 +709,11 @@ app.delete('/api/cart/clear', async (req, res) => {
 // --- Order Routes ---
 const Order = require('./models/order.model');
 
-// POST /api/orders  { userId, items, shippingAddress, transactionId, paymentStatus, total, discountCode, discountAmount }
-app.post('/api/orders', async (req, res) => {
+// POST /api/orders  { items, shippingAddress, transactionId, paymentStatus, total, discountCode, discountAmount }
+app.post('/api/orders', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
+    const { userId } = req;
     const {
-      userId,
       items,
       shippingAddress,
       transactionId,
@@ -721,8 +723,8 @@ app.post('/api/orders', async (req, res) => {
       discountAmount = 0,
     } = req.body;
 
-    if (!userId || !items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: 'userId and items are required' });
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'items are required' });
     }
 
     const orderId = `order_${Date.now()}_${userId}_${Math.random().toString(36).slice(2, 7)}`;
@@ -751,11 +753,10 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-// GET /api/orders?userId=<username>
-app.get('/api/orders', async (req, res) => {
+// GET /api/orders  (identity from app session)
+app.get('/api/orders', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
-    const { userId } = req.query;
-    if (!userId) return res.status(400).json({ message: 'userId required' });
+    const { userId } = req;
     const orders = await Order.find({ user_id: userId }).sort({ createdAt: -1 });
     res.json(orders);
   } catch (err) {
@@ -782,11 +783,10 @@ app.patch('/api/orders/:id/status', requireAdmin(), async (req, res) => {
 // --- Wishlist Routes ---
 const Wishlist = require('./models/wishlist.model');
 
-// GET /api/wishlist?userId=<username>
-app.get('/api/wishlist', async (req, res) => {
+// GET /api/wishlist  (identity from app session)
+app.get('/api/wishlist', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
-    const { userId } = req.query;
-    if (!userId) return res.status(400).json({ message: 'userId required' });
+    const { userId } = req;
     const wishlist = await Wishlist.findOne({ userId });
     const productIds = wishlist ? wishlist.productIds.map((id) => id.toString()) : [];
     const products = await Product.find({ _id: { $in: productIds }, isDeleted: false });
@@ -796,11 +796,12 @@ app.get('/api/wishlist', async (req, res) => {
   }
 });
 
-// POST /api/wishlist/add  { userId, productId }
-app.post('/api/wishlist/add', async (req, res) => {
+// POST /api/wishlist/add  { productId }
+app.post('/api/wishlist/add', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
-    const { userId, productId } = req.body;
-    if (!userId || !productId) return res.status(400).json({ message: 'userId and productId required' });
+    const { userId } = req;
+    const { productId } = req.body;
+    if (!productId) return res.status(400).json({ message: 'productId required' });
     await Wishlist.findOneAndUpdate(
       { userId },
       { $addToSet: { productIds: productId } },
@@ -812,12 +813,11 @@ app.post('/api/wishlist/add', async (req, res) => {
   }
 });
 
-// DELETE /api/wishlist/remove/:productId?userId=<username>
-app.delete('/api/wishlist/remove/:productId', async (req, res) => {
+// DELETE /api/wishlist/remove/:productId  (identity from app session)
+app.delete('/api/wishlist/remove/:productId', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
-    const { userId } = req.query;
+    const { userId } = req;
     const { productId } = req.params;
-    if (!userId) return res.status(400).json({ message: 'userId required' });
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       return res.status(400).json({ message: 'Invalid productId' });
     }
@@ -831,11 +831,10 @@ app.delete('/api/wishlist/remove/:productId', async (req, res) => {
 // --- Shipping Address Routes ---
 const ShippingAddress = require('./models/shipping_address.model');
 
-// GET /api/shipping-addresses?userId=<username>
-app.get('/api/shipping-addresses', async (req, res) => {
+// GET /api/shipping-addresses  (identity from app session)
+app.get('/api/shipping-addresses', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
-    const { userId } = req.query;
-    if (!userId) return res.status(400).json({ message: 'userId required' });
+    const { userId } = req;
     const addresses = await ShippingAddress.find({ userId }).sort({ isDefault: -1, createdAt: -1 });
     res.json(addresses);
   } catch (err) {
@@ -843,12 +842,13 @@ app.get('/api/shipping-addresses', async (req, res) => {
   }
 });
 
-// POST /api/shipping-addresses  { userId, label, address, city, phone, isDefault }
-app.post('/api/shipping-addresses', async (req, res) => {
+// POST /api/shipping-addresses  { label, address, city, phone, isDefault }
+app.post('/api/shipping-addresses', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
-    const { userId, label, address, city, phone, isDefault } = req.body;
-    if (!userId || !label || !address) {
-      return res.status(400).json({ message: 'userId, label, and address are required' });
+    const { userId } = req;
+    const { label, address, city, phone, isDefault } = req.body;
+    if (!label || !address) {
+      return res.status(400).json({ message: 'label and address are required' });
     }
     if (isDefault) {
       await ShippingAddress.updateMany({ userId }, { isDefault: false });
@@ -861,11 +861,10 @@ app.post('/api/shipping-addresses', async (req, res) => {
   }
 });
 
-// DELETE /api/shipping-addresses/:id?userId=<username>
-app.delete('/api/shipping-addresses/:id', async (req, res) => {
+// DELETE /api/shipping-addresses/:id  (identity from app session)
+app.delete('/api/shipping-addresses/:id', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
-    const { userId } = req.query;
-    if (!userId) return res.status(400).json({ message: 'userId required' });
+    const { userId } = req;
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: 'Invalid address id' });
     }
@@ -878,11 +877,12 @@ app.delete('/api/shipping-addresses/:id', async (req, res) => {
 
 // --- Payment Proxy ---
 // POST /api/payments/africom/superapp-pay
-app.post('/api/payments/africom/superapp-pay', async (req, res) => {
+app.post('/api/payments/africom/superapp-pay', resolveUser({ field: 'user_id' }), async (req, res) => {
   try {
-    const { amount, currency, reference, user_id, channel } = req.body;
-    if (!amount || !currency || !reference || !user_id) {
-      return res.status(400).json({ message: 'amount, currency, reference, and user_id are required' });
+    const user_id = req.userId;
+    const { amount, currency, reference, channel } = req.body;
+    if (!amount || !currency || !reference) {
+      return res.status(400).json({ message: 'amount, currency, and reference are required' });
     }
 
     // ── Africom integration placeholder ──────────────────────────────────────
@@ -916,15 +916,16 @@ app.post('/api/payments/africom/superapp-pay', async (req, res) => {
 // ── Posts ──────────────────────────────────────────────────────────────────
 const Post = require('./models/post.model');
 
-app.post('/api/posts', postUpload.single('media'), async (req, res) => {
+app.post('/api/posts', postUpload.single('media'), resolveUser({ field: 'authorUserId' }), async (req, res) => {
   try {
-    const { type, caption, authorUserId, authorName, audioTitle, durationSeconds } = req.body;
+    const authorUserId = req.userId;
+    const { type, caption, authorName, audioTitle, durationSeconds } = req.body;
 
     if (!type || !['photo', 'video', 'text', 'audio'].includes(type)) {
       return res.status(400).json({ message: 'type must be one of: photo, video, text, audio' });
     }
-    if (!authorUserId || !authorName) {
-      return res.status(400).json({ message: 'authorUserId and authorName are required' });
+    if (!authorName) {
+      return res.status(400).json({ message: 'authorName is required' });
     }
     if (type !== 'text' && !req.file) {
       return res.status(400).json({ message: 'media file is required for photo, video, and audio posts' });
@@ -978,12 +979,9 @@ app.get('/api/posts', async (req, res) => {
   }
 });
 
-app.post('/api/posts/:id/like', async (req, res) => {
+app.post('/api/posts/:id/like', resolveUser({ field: 'userId' }), async (req, res) => {
   try {
-    const { userId } = req.body;
-    if (!userId) {
-      return res.status(400).json({ message: 'userId is required' });
-    }
+    const { userId } = req;
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(404).json({ message: 'Post not found' });
     }
@@ -1023,12 +1021,9 @@ app.post('/api/posts/:id/like', async (req, res) => {
   }
 });
 
-app.delete('/api/posts/:id', async (req, res) => {
+app.delete('/api/posts/:id', resolveUser({ field: 'authorUserId' }), async (req, res) => {
   try {
-    const { authorUserId } = req.body;
-    if (!authorUserId) {
-      return res.status(400).json({ message: 'authorUserId is required' });
-    }
+    const authorUserId = req.userId;
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(404).json({ message: 'Post not found' });
     }
