@@ -7,6 +7,15 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Behind a reverse proxy (Render) req.ip is the proxy's address unless Express trusts
+// X-Forwarded-For; without this every client shares one rate-limit bucket.
+// TRUST_PROXY is the number of proxy hops; on Render it defaults to 1.
+if (process.env.TRUST_PROXY) {
+  app.set('trust proxy', Number(process.env.TRUST_PROXY));
+} else if (process.env.RENDER) {
+  app.set('trust proxy', 1);
+}
+
 // Security headers
 // crossOriginResourcePolicy is relaxed so that images served from /uploads
 // can be loaded by the Flutter app and admin panel from different origins.

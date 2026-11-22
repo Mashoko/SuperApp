@@ -38,24 +38,24 @@ const session = (body) => request(app).post('/api/app-auth/session').send(body);
 
 describe('POST /api/app-auth/session', () => {
   test('creates AppUser and returns app token on valid credentials', async () => {
-    stubOk('263771234567');
-    const res = await session({ username: '263771234567', password: 'pw', displayName: ' Tendai ' });
+    stubOk('263771000001');
+    const res = await session({ username: '263771000001', password: 'pw', displayName: ' Tendai ' });
     expect(res.status).toBe(200);
     const decoded = jwt.verify(res.body.token, process.env.JWT_SECRET);
     expect(decoded.aud).toBe('app');
-    expect(decoded.username).toBe('+263771234567');
+    expect(decoded.username).toBe('+263771000001');
     expect(res.body.user).toEqual({
       id: String(decoded.sub),
-      username: '+263771234567',
+      username: '+263771000001',
       displayName: 'Tendai',
     });
     expect(await AppUser.countDocuments()).toBe(1);
   });
 
   test('second session reuses the same AppUser', async () => {
-    stubOk('263771234567');
-    const a = await session({ username: '263771234567', password: 'pw', displayName: 'Tendai' });
-    const b = await session({ username: '263771234567', password: 'pw' });
+    stubOk('263771000002');
+    const a = await session({ username: '263771000002', password: 'pw', displayName: 'Tendai' });
+    const b = await session({ username: '263771000002', password: 'pw' });
     expect(b.body.user.id).toBe(a.body.user.id);
     expect(b.body.user.displayName).toBe('Tendai');
     expect(await AppUser.countDocuments()).toBe(1);
@@ -82,13 +82,13 @@ describe('POST /api/app-auth/session', () => {
   test('verifier is called with the submitted form, not the canonical one', async () => {
     const spy = jest.fn(async (u) => ({ ok: true, username: u }));
     verifier.setVerifierForTests(spy);
-    await session({ username: ' 263771234567 ', password: 'pw' });
-    expect(spy.mock.calls[0].slice(0, 2)).toEqual(['263771234567', 'pw']);
+    await session({ username: ' 263771000004 ', password: 'pw' });
+    expect(spy.mock.calls[0].slice(0, 2)).toEqual(['263771000004', 'pw']);
   });
 
   test('invalid credentials return 401 with generic message', async () => {
     verifier.setVerifierForTests(async () => ({ ok: false, reason: 'invalid' }));
-    const res = await session({ username: '263771234567', password: 'bad' });
+    const res = await session({ username: '263771000005', password: 'bad' });
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ message: 'Phone number or password is incorrect.' });
     expect(await AppUser.countDocuments()).toBe(0);
@@ -96,7 +96,7 @@ describe('POST /api/app-auth/session', () => {
 
   test('verifier unavailable returns 503', async () => {
     verifier.setVerifierForTests(async () => ({ ok: false, reason: 'unavailable' }));
-    const res = await session({ username: '263771234567', password: 'pw' });
+    const res = await session({ username: '263771000006', password: 'pw' });
     expect(res.status).toBe(503);
     expect(res.body).toEqual({ message: 'Verification service unavailable. Try again shortly.' });
   });
@@ -113,6 +113,8 @@ describe('POST /api/app-auth/session', () => {
       { username: { $ne: '' }, password: 'pw' },
       { username: '263771234567', password: { $ne: '' } },
       { username: '263771234567', password: 'pw', displayName: 5 },
+      { username: '2'.repeat(33), password: 'pw' },
+      { username: '263771234567', password: 'p'.repeat(129) },
     ]) {
       const res = await session(body);
       expect(res.status).toBe(400);
@@ -120,12 +122,18 @@ describe('POST /api/app-auth/session', () => {
     }
     expect(spy).not.toHaveBeenCalled();
   });
+
+  test('accepts inputs at the length caps', async () => {
+    stubOk('+263771000008');
+    const res = await session({ username: `+${'2'.repeat(31)}`, password: 'p'.repeat(128) });
+    expect(res.status).toBe(200);
+  });
 });
 
 describe('GET /api/app-auth/me', () => {
   test('returns user with app token, 401 with admin token', async () => {
-    stubOk('263771234567');
-    const s = await session({ username: '263771234567', password: 'pw', displayName: 'Tendai' });
+    stubOk('263771000007');
+    const s = await session({ username: '263771000007', password: 'pw', displayName: 'Tendai' });
     const ok = await request(app)
       .get('/api/app-auth/me')
       .set('Authorization', `Bearer ${s.body.token}`);
