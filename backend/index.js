@@ -2,7 +2,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const app = express();
@@ -24,14 +23,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Rate limiting on auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20,
-  message: { message: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+const { authLimiter } = require('./middleware/rate_limits');
 
 app.use(express.json());
 
@@ -133,6 +125,7 @@ const Shop = require('./models/shop.model');
 const bcrypt = require('bcryptjs');
 
 // Auth Routes
+app.use('/api/app-auth', require('./routes/app_auth.routes'));
 app.post('/api/auth/register', authLimiter, requireAdmin(['super_admin']), async (req, res) => {
     try {
         const { username, password } = req.body;
