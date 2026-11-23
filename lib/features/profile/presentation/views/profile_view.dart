@@ -4,15 +4,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../../core/di/inject.dart';
-import '../../../../core/services/otp_auth_service.dart';
 import '../../../../features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
 import '../../../../features/account_summary/presentation/views/account_summary_view.dart';
 import '../../../../shared/theme/theme_provider.dart';
 import '../../../shopping/presentation/views/order_history_view.dart';
 import '../../../shopping/presentation/views/wishlist_view.dart';
 import '../../../payment_methods/presentation/views/payment_methods_view.dart';
-import '../../../login/presentation/views/login_view.dart';
+import '../../../login/presentation/sign_out.dart';
 import '../../../../shared/widgets/maintenance_screen.dart';
 import '../../../kyc/presentation/kyc_labels.dart';
 import '../../../kyc/presentation/kyc_status_controller.dart';
@@ -64,15 +62,8 @@ class _ProfileViewState extends State<ProfileView> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => view));
   }
 
-  Future<void> _handleLogout(BuildContext context) async {
-    await getIt<OtpAuthService>().clearStoredCredentials();
-    if (!context.mounted) return;
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginView()),
-      (_) => false,
-    );
-  }
+  Future<void> _handleLogout(BuildContext context) =>
+      signOutToLogin(Navigator.of(context));
 
   @override
   Widget build(BuildContext context) {

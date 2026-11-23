@@ -13,6 +13,7 @@ import 'package:mvvm_sip_demo/features/dialpad/presentation/viewmodels/dialpad_v
 import 'package:mvvm_sip_demo/features/faq/presentation/viewmodels/faq_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/call_history_widget.dart';
 import 'package:mvvm_sip_demo/features/kyc/presentation/widgets/kyc_banner.dart';
+import 'package:mvvm_sip_demo/features/kyc/presentation/widgets/kyc_reminder_sheet.dart';
 import 'package:mvvm_sip_demo/features/dash/presentation/widgets/dash_bubble.dart';
 import 'package:mvvm_sip_demo/features/dialpad/presentation/views/dialpad_view.dart';
 import 'package:mvvm_sip_demo/features/home/presentation/widgets/explore_tab.dart';
@@ -147,71 +148,74 @@ class _HomeViewState extends State<HomeView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [WunzaColors.glideNeutral, Color(0xFFE8E8ED)],
-              ),
-            ),
-          ),
-          Positioned(
-            top: -80,
-            right: -60,
-            child: Container(
-              width: 220,
-              height: 220,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: WunzaColors.glidePrimary.withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          SafeArea(
-            bottom: false,
-            child: NotificationListener<UserScrollNotification>(
-              onNotification: _onScrollNotification,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                transitionBuilder: (child, animation) =>
-                    FadeTransition(opacity: animation, child: child),
-                child: Container(
-                  key: ValueKey<int>(_currentIndex),
-                  child: _buildCurrentTab(),
+    // Shows a pending KYC reminder once, after the first frame.
+    return KycReminderHost(
+      child: Scaffold(
+        body: Stack(
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [WunzaColors.glideNeutral, Color(0xFFE8E8ED)],
                 ),
               ),
             ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 18 + MediaQuery.of(context).padding.bottom,
-            child: Center(
-              child: SizedBox(
-                width: (MediaQuery.of(context).size.width - 28)
-                    .clamp(0.0, 420.0)
-                    .toDouble(),
-                child: GlassBottomNav(
-                  tabs: _tabs,
-                  activeIndex: _currentIndex,
-                  onTabSelected: _onTabChange,
-                  onDialerTap: _openDialpadSheet,
-                  quickActions: _quickActions(),
-                  visible: _navVisible,
+            Positioned(
+              top: -80,
+              right: -60,
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: WunzaColors.glidePrimary.withValues(alpha: 0.08),
                 ),
               ),
             ),
-          ),
-          Positioned(
-            right: 16,
-            bottom: 18 + 96 + 16 + MediaQuery.of(context).padding.bottom,
-            child: const DashBubble(),
-          ),
-        ],
+            SafeArea(
+              bottom: false,
+              child: NotificationListener<UserScrollNotification>(
+                onNotification: _onScrollNotification,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: (child, animation) =>
+                      FadeTransition(opacity: animation, child: child),
+                  child: Container(
+                    key: ValueKey<int>(_currentIndex),
+                    child: _buildCurrentTab(),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 18 + MediaQuery.of(context).padding.bottom,
+              child: Center(
+                child: SizedBox(
+                  width: (MediaQuery.of(context).size.width - 28)
+                      .clamp(0.0, 420.0)
+                      .toDouble(),
+                  child: GlassBottomNav(
+                    tabs: _tabs,
+                    activeIndex: _currentIndex,
+                    onTabSelected: _onTabChange,
+                    onDialerTap: _openDialpadSheet,
+                    quickActions: _quickActions(),
+                    visible: _navVisible,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 16,
+              bottom: 18 + 96 + 16 + MediaQuery.of(context).padding.bottom,
+              child: const DashBubble(),
+            ),
+          ],
+        ),
       ),
     );
   }

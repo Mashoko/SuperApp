@@ -24,6 +24,7 @@ import 'features/account_summary/presentation/viewmodels/account_summary_viewmod
 import 'features/dash/presentation/viewmodels/dash_viewmodel.dart';
 import 'features/faq/presentation/viewmodels/faq_viewmodel.dart';
 import 'features/profile/presentation/viewmodels/profile_summary_viewmodel.dart';
+import 'features/kyc/presentation/kyc_gate.dart';
 import 'features/kyc/presentation/kyc_status_controller.dart';
 import 'shared/theme/theme_provider.dart';
 
@@ -103,6 +104,10 @@ class MyApp extends StatelessWidget {
             themeMode: theme.themeMode,
             initialRoute: Routes.root,
             routes: Routes.routes,
+            builder: (context, child) => KycGate(
+              navigatorKey: navigatorKey,
+              child: child ?? const SizedBox.shrink(),
+            ),
             onGenerateRoute: (settings) {
               if (settings.name == Routes.calling) {
                  final args = settings.arguments;
