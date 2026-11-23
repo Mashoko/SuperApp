@@ -95,7 +95,14 @@ Future<void> configureDependencies() async {
   );
 
   getIt.registerLazySingleton(() => RegisterUser(getIt()));
-  getIt.registerLazySingleton(() => MakeCall(getIt()));
+  getIt.registerLazySingleton(
+    () => MakeCall(
+      getIt(),
+      isKycRestricted: () =>
+          getIt.isRegistered<KycStatusController>() &&
+          getIt<KycStatusController>().isRestricted,
+    ),
+  );
   getIt.registerLazySingleton(() => AcceptCall(getIt()));
   getIt.registerLazySingleton(() => HangupCall(getIt()));
   getIt.registerLazySingleton(() => SaveDestination(getIt()));
