@@ -9,11 +9,11 @@ class MakeCall {
   MakeCall(this.repository, {this.isKycRestricted});
 
   Future<Result<void>> call(String destination, {required bool voiceOnly}) async {
-    if (isKycRestricted?.call() == true && !isEmergencyNumber(destination)) {
-      return const Failure(
-        'Calls are paused until you complete your KYC verification. Emergency calls still work.',
-      );
-    }
+    final blocked = kycCallBlockReason(
+      destination,
+      isRestricted: isKycRestricted ?? () => false,
+    );
+    if (blocked != null) return Failure(blocked);
     return repository.makeCall(destination, voiceOnly: voiceOnly);
   }
 }
