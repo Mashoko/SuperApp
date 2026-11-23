@@ -48,6 +48,12 @@ import '../../features/profile/presentation/viewmodels/profile_summary_viewmodel
 
 final getIt = GetIt.instance;
 
+/// True when the registered [KycStatusController] says calls are restricted.
+/// Resolved lazily so registration order does not matter.
+bool kycRestrictedFromGetIt() =>
+    getIt.isRegistered<KycStatusController>() &&
+    getIt<KycStatusController>().isRestricted;
+
 Future<void> configureDependencies() async {
   // Core dependencies
   final sharedPreferences = await SharedPreferences.getInstance();
@@ -98,9 +104,7 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton(
     () => MakeCall(
       getIt(),
-      isKycRestricted: () =>
-          getIt.isRegistered<KycStatusController>() &&
-          getIt<KycStatusController>().isRestricted,
+      isKycRestricted: kycRestrictedFromGetIt,
     ),
   );
   getIt.registerLazySingleton(() => AcceptCall(getIt()));

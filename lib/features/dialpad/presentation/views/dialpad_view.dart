@@ -9,7 +9,6 @@ import '../../../../core/utils/result.dart';
 import '../../../../core/utils/sip_utils.dart';
 import '../../../call/presentation/views/call_view.dart';
 import '../../../kyc/domain/emergency_numbers.dart';
-import '../../../kyc/presentation/kyc_status_controller.dart';
 import '../../../recents/presentation/views/recents_view.dart';
 import '../../../contacts/presentation/views/contacts_view.dart';
 import '../widgets/dialer_gradient_background.dart';
@@ -72,9 +71,7 @@ class _DialpadViewState extends State<DialpadView>
 
     final blocked = kycCallBlockReason(
       dest,
-      isRestricted: () =>
-          getIt.isRegistered<KycStatusController>() &&
-          getIt<KycStatusController>().isRestricted,
+      isRestricted: kycRestrictedFromGetIt,
     );
     if (blocked != null) {
       _showAlert('Cannot place call', blocked);
