@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sip_ua/sip_ua.dart';
 import '../../../../core/di/inject.dart';
 import '../../../../core/services/backend_session_service.dart';
+import '../../../kyc/presentation/kyc_status_controller.dart';
 import '../../../../core/services/otp_auth_service.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/utils/sip_utils.dart';
@@ -98,6 +99,9 @@ class LoginViewModel extends ChangeNotifier {
       final session = getIt<BackendSessionService>();
       await session.clear();
       unawaited(session.refresh());
+    }
+    if (getIt.isRegistered<KycStatusController>()) {
+      unawaited(getIt<KycStatusController>().refresh());
     }
 
     // Fetch account summary (alias, balance, etc.) after registration.

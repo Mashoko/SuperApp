@@ -6,6 +6,7 @@ import '../../payments_client.dart';
 import '../services/otp_auth_service.dart';
 import '../services/backend_session_service.dart';
 import '../services/authed_http_client.dart';
+import '../../features/kyc/presentation/kyc_status_controller.dart';
 
 import '../../features/registration/data/datasources/registration_local_data_source.dart';
 import '../../features/registration/data/repositories/registration_repository_impl.dart';
@@ -122,6 +123,10 @@ Future<void> configureDependencies() async {
       () => AuthedHttpClient(getIt<BackendSessionService>()));
   getIt.registerLazySingleton<KycService>(
       () => KycService(client: getIt<AuthedHttpClient>()));
+  getIt.registerLazySingleton<KycStatusController>(
+      () => KycStatusController(getIt<KycService>()));
+  getIt<AuthedHttpClient>().onKycRestricted =
+      () => getIt<KycStatusController>().markRestricted();
   getIt.registerLazySingleton<ShoppingService>(
       () => ShoppingService(client: getIt<AuthedHttpClient>()));
   getIt.registerLazySingleton<PostsService>(

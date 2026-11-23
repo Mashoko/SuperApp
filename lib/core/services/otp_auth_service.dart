@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../di/inject.dart';
 import '../utils/constants.dart';
 import 'backend_session_service.dart';
+import '../../features/kyc/presentation/kyc_status_controller.dart';
 import '../utils/crypto_utils.dart';
 
 import '../../users_client.dart';
@@ -124,6 +125,9 @@ class OtpAuthService {
         await session.clear();
         unawaited(session.refresh());
       }
+      if (getIt.isRegistered<KycStatusController>()) {
+        unawaited(getIt<KycStatusController>().refresh());
+      }
 
       return {
         'username': finalUsername,
@@ -155,6 +159,9 @@ class OtpAuthService {
     await prefs.remove(AppConstants.keyPassword);
     if (getIt.isRegistered<BackendSessionService>()) {
       await getIt<BackendSessionService>().clear();
+    }
+    if (getIt.isRegistered<KycStatusController>()) {
+      getIt<KycStatusController>().clear();
     }
   }
 

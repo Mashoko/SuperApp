@@ -24,6 +24,7 @@ import 'features/account_summary/presentation/viewmodels/account_summary_viewmod
 import 'features/dash/presentation/viewmodels/dash_viewmodel.dart';
 import 'features/faq/presentation/viewmodels/faq_viewmodel.dart';
 import 'features/profile/presentation/viewmodels/profile_summary_viewmodel.dart';
+import 'features/kyc/presentation/kyc_status_controller.dart';
 import 'shared/theme/theme_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -87,6 +88,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => getIt<DashViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<ProfileSummaryViewModel>()),
         ChangeNotifierProvider(create: (_) => getIt<CallViewModel>()),
+        ChangeNotifierProvider<KycStatusController>.value(
+            value: getIt<KycStatusController>()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, theme, child) {
