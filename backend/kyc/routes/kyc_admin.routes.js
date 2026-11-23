@@ -24,6 +24,7 @@ const NOT_PENDING = { message: 'This KYC is not waiting for review.' };
 const NOT_APPROVED = { message: 'Only an approved KYC can be expired.' };
 const NO_REMINDER = { message: 'This user does not need a reminder.' };
 const RECENT_REMINDER = { message: 'A reminder was sent in the last hour.' };
+const ALREADY_LAUNCHED = { message: 'KYC has already been launched.' };
 
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
 const MAX_QUERY = 64;
@@ -616,6 +617,29 @@ router.put(
       { new: true, runValidators: true }
     );
     await record(req, null, 'SETTINGS_CHANGED', { before, after });
+    return res.json(settingsDto(updated));
+  })
+);
+
+// Starts the KYC clock for everyone. Set once: rolloutAt is only written while it is null.
+// Refused without the encryption key, since users could not complete KYC.
+router.post(
+  '/settings/launch',
+  requireAdmin(['super_admin']),
+  requireKycKey,
+  handle(async (req, res) => {
+    const current = await KycSettings.getSettings();
+    const rolloutAt = new Date();
+    const updated = await KycSettings.findOneAndUpdate(
+      { _id: current._id, rolloutAt: null },
+      { $set: { rolloutAt } },
+      { new: true }
+    );
+    if (!updated) return res.status(409).json(ALREADY_LAUNCHED);
+    await record(req, null, 'SETTINGS_CHANGED', {
+      before: { rolloutAt: null },
+      after: { rolloutAt },
+    });
     return res.json(settingsDto(updated));
   })
 );

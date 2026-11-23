@@ -24,19 +24,22 @@ const kycSettingsSchema = new mongoose.Schema(
     enforcementDays: { type: Number, min: 1, default: DEFAULTS.enforcementDays },
     resubmitGraceDays: { type: Number, min: 1, default: DEFAULTS.resubmitGraceDays },
     remindersEnabled: { type: Boolean, default: DEFAULTS.remindersEnabled },
-    rolloutAt: { type: Date, required: true, immutable: true },
+    // Null until a super_admin launches KYC (POST /api/admin/kyc/settings/launch). Until
+    // then nobody has a deadline, reminders or restriction. Set once, never changed.
+    rolloutAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
 
-// Returns the settings singleton, creating it with defaults (and rolloutAt = now)
-// on first call. The upsert is atomic, so concurrent first calls create one document.
+// Returns the settings singleton, creating it with defaults on first call. Never sets
+// rolloutAt: launching is an explicit admin step. The upsert is atomic, so concurrent
+// first calls create one document.
 kycSettingsSchema.statics.getSettings = async function getSettings() {
   const query = { key: SINGLETON_KEY };
   try {
     return await this.findOneAndUpdate(
       query,
-      { $setOnInsert: { ...DEFAULTS, rolloutAt: new Date() } },
+      { $setOnInsert: { ...DEFAULTS, rolloutAt: null } },
       { upsert: true, new: true, setDefaultsOnInsert: false }
     );
   } catch (err) {

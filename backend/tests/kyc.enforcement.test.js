@@ -211,6 +211,42 @@ describe('requireKycAccess', () => {
     expect(res.body.deadline).toBe(new Date(createdAt.getTime() + 20 * DAY).toISOString());
   });
 
+  test('before launch a user 61 days old is not restricted', async () => {
+    await KycSettings.updateOne({}, { $set: { rolloutAt: null } });
+    try {
+      const { appUser, token } = await newUser({ createdAt: daysAgo(61) });
+      expect((await request(app).get('/api/cart').set(auth(token))).status).toBe(200);
+      const me = await request(app).get('/api/kyc/me').set(auth(token));
+      expect(me.body).toMatchObject({ status: 'NOT_STARTED', launched: false, deadline: null });
+      const stored = await AppUser.findById(appUser._id);
+      expect(stored.kyc.restrictedAt).toBeUndefined();
+      expect(await KycEvent.countDocuments({ type: 'RESTRICTED' })).toBe(0);
+    } finally {
+      await KycSettings.updateOne({}, { $set: { rolloutAt: ROLLOUT } });
+    }
+  });
+
+  test('a missing encryption key after launch lifts restriction on protected routes', async () => {
+    const { token } = await pastDeadlineUser();
+    expect((await request(app).get('/api/cart').set(auth(token))).status).toBe(403);
+    const saved = process.env.KYC_ENCRYPTION_KEY;
+    delete process.env.KYC_ENCRYPTION_KEY;
+    try {
+      for (const [method, url, body] of PROTECTED.slice(0, 3)) {
+        const res = await send(method, url, token, body && body());
+        expect(res.status).not.toBe(403);
+      }
+      expect((await request(app).get('/api/cart').set(auth(token))).status).toBe(200);
+      // A token whose AppUser is gone is still 401, key or not.
+      const gone = await newUser();
+      await AppUser.deleteOne({ _id: gone.appUser._id });
+      expect((await request(app).get('/api/cart').set(auth(gone.token))).status).toBe(401);
+    } finally {
+      process.env.KYC_ENCRYPTION_KEY = saved;
+    }
+    expect((await request(app).get('/api/cart').set(auth(token))).status).toBe(403);
+  });
+
   test('legacy request (no token) is not enforced', async () => {
     process.env.LEGACY_USERID_ROUTES = 'true';
     const { appUser } = await pastDeadlineUser();

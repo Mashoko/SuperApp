@@ -8,7 +8,7 @@ const KycSubmission = require('../models/kyc_submission.model');
 const KycEvent = require('../models/kyc_event.model');
 const { resolveUser } = require('../../middleware/resolve_user.middleware');
 const { kycUploadLimiter } = require('../../middleware/rate_limits');
-const { computeKycState } = require('../schedule');
+const { computeKycState, isLaunched } = require('../schedule');
 const { kycKeyAvailable, encryptField, decryptField, maskId } = require('../crypto');
 const { sniffType, stripMetadata } = require('../files');
 const { notify } = require('../notifications');
@@ -186,6 +186,7 @@ router.get(
     return res.json({
       status: state.status,
       underlyingStatus: state.underlyingStatus,
+      launched: isLaunched(settings),
       deadline: state.deadline,
       exemptUntil: state.exemptUntil,
       progress,

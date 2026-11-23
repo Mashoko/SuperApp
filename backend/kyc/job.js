@@ -4,7 +4,7 @@ const AppUser = require('../models/app_user.model');
 const KycSettings = require('./models/kyc_settings.model');
 const KycEvent = require('./models/kyc_event.model');
 const JobLock = require('./models/job_lock.model');
-const { computeKycState, RESTRICTABLE_STATUSES } = require('./schedule');
+const { computeKycState, isLaunched, RESTRICTABLE_STATUSES } = require('./schedule');
 const { notify } = require('./notifications');
 const { markRestricted } = require('./require_kyc_access.middleware');
 
@@ -102,6 +102,8 @@ const remindUser = async (appUser, state, now) => {
 const runKycJob = async ({ now = new Date(), batchSize = 500 } = {}) => {
   const counts = { reminded: 0, skipped: 0, restricted: 0, failed: 0 };
   const settings = await KycSettings.getSettings();
+  // Before launch nobody has a deadline, so there is nothing to remind or restrict.
+  if (!isLaunched(settings)) return counts;
   let lastId = null;
 
   for (;;) {

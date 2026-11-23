@@ -510,6 +510,69 @@ describe('settings', () => {
   });
 });
 
+describe('launch', () => {
+  // These tests start from a not-yet-launched settings document and put the shared
+  // ROLLOUT back afterwards, so the other tests keep their launched clock.
+  const unlaunch = () => KycSettings.updateOne({}, { $set: { rolloutAt: null } });
+  afterEach(() => KycSettings.updateOne({}, { $set: { rolloutAt: ROLLOUT } }));
+  const launch = (headers) => post('/settings/launch', headers);
+
+  test('only super_admin can launch; it sets rolloutAt once, is audited, and a second launch is 409', async () => {
+    await unlaunch();
+    expect((await get('/settings', reviewer())).body.rolloutAt).toBeNull();
+
+    const denied = await launch(reviewer());
+    expect(denied.status).toBe(403);
+    expect((await KycSettings.findOne()).rolloutAt).toBeNull();
+
+    const before = Date.now();
+    const res = await launch(superAdmin());
+    expect(res.status).toBe(200);
+    const rolloutAt = new Date(res.body.rolloutAt).getTime();
+    expect(rolloutAt).toBeGreaterThanOrEqual(before);
+    expect(rolloutAt).toBeLessThanOrEqual(Date.now());
+    expect(res.body.enforcementDays).toBe(60);
+    expect((await KycSettings.findOne()).rolloutAt.getTime()).toBe(rolloutAt);
+
+    const events = await KycEvent.find({ type: 'SETTINGS_CHANGED' });
+    expect(events).toHaveLength(1);
+    expect(events[0].actor).toBe('chipo.admin');
+    expect(events[0].data.before).toEqual({ rolloutAt: null });
+    expect(new Date(events[0].data.after.rolloutAt).getTime()).toBe(rolloutAt);
+
+    const again = await launch(superAdmin());
+    expect(again.status).toBe(409);
+    expect(again.body).toEqual({ message: 'KYC has already been launched.' });
+    expect((await KycSettings.findOne()).rolloutAt.getTime()).toBe(rolloutAt);
+    expect(await KycEvent.countDocuments({ type: 'SETTINGS_CHANGED' })).toBe(1);
+  });
+
+  test('launch without the encryption key is 503 and leaves KYC unlaunched', async () => {
+    await unlaunch();
+    const saved = process.env.KYC_ENCRYPTION_KEY;
+    delete process.env.KYC_ENCRYPTION_KEY;
+    try {
+      const res = await launch(superAdmin());
+      expect(res.status).toBe(503);
+      expect(res.body).toEqual({ message: 'KYC is temporarily unavailable.' });
+    } finally {
+      process.env.KYC_ENCRYPTION_KEY = saved;
+    }
+    expect((await KycSettings.findOne()).rolloutAt).toBeNull();
+    expect(await KycEvent.countDocuments({ type: 'SETTINGS_CHANGED' })).toBe(0);
+  });
+
+  test('before launch a user past 60 days is not restricted and cannot be reminded', async () => {
+    await unlaunch();
+    const { appUser, token } = await pastDeadlineUser();
+    expect((await request(app).get('/api/cart').set(auth(token))).status).toBe(200);
+    const detail = await get(`/users/${appUser._id}`, reviewer());
+    expect(detail.body.user).toMatchObject({ status: 'NOT_STARTED', deadline: null });
+    expect((await get('/stats', reviewer())).body.restricted).toBe(0);
+    expect((await post(`/users/${appUser._id}/remind`, reviewer())).status).toBe(409);
+  });
+});
+
 describe('manual reminders', () => {
   test('manual remind once per hour', async () => {
     const { appUser } = await newUser({ createdAt: daysAgo(20) });

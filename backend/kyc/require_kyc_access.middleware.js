@@ -2,6 +2,7 @@ const AppUser = require('../models/app_user.model');
 const KycSettings = require('./models/kyc_settings.model');
 const KycEvent = require('./models/kyc_event.model');
 const { computeKycState } = require('./schedule');
+const { kycKeyAvailable } = require('./crypto');
 const { discardUpload } = require('../middleware/resolve_user.middleware');
 
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
@@ -70,6 +71,8 @@ const bookkeep = async (fn) => {
 // Blocks token-authenticated users past their KYC deadline. Mount after resolveUser.
 // Legacy (unverified userId) requests are let through: enforcement needs
 // LEGACY_USERID_ROUTES=false. Settings are read per request so admin changes apply at once.
+// Never restricts while the encryption key is missing: users could not complete KYC then.
+// Before launch (rolloutAt unset) computeKycState never restricts either.
 const requireKycAccess = async (req, res, next) => {
   if (req.auth?.via !== 'token') return next();
 
@@ -83,6 +86,7 @@ const requireKycAccess = async (req, res, next) => {
       discardUpload(req);
       return res.status(401).json(SIGN_IN);
     }
+    if (!kycKeyAvailable()) return next();
     const settings = await KycSettings.getSettings();
     state = computeKycState(appUser, settings, now);
   } catch (err) {

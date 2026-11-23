@@ -146,6 +146,7 @@ describe('GET /api/kyc/me', () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('NOT_STARTED');
     expect(res.body.underlyingStatus).toBe('NOT_STARTED');
+    expect(res.body.launched).toBe(true);
     expect(res.body.progress).toBe(0);
     expect(new Date(res.body.deadline).getTime()).toBe(createdAt.getTime() + 60 * DAY);
     expect(res.body.draft).toBeNull();

@@ -8,7 +8,7 @@ KYC never blocks calls on the server. The app-side call lock is Stage 2b, and em
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `KYC_ENCRYPTION_KEY` | none | Base64 of exactly 32 bytes. Encrypts documents and ID numbers. If missing or the wrong length, `/api/kyc/*` and the admin document routes return 503, the reminder job does not start, and the rest of the app works normally. |
+| `KYC_ENCRYPTION_KEY` | none | Base64 of exactly 32 bytes. Encrypts documents and ID numbers. If missing or the wrong length, `/api/kyc/*`, the admin document routes and the launch endpoint return 503, the reminder job does not start, nobody is restricted, and the rest of the app works normally. |
 | `KYC_STORAGE_DIR` | `<backend>/kyc_storage` | Where encrypted files are stored. Created with mode 0700, files 0600. Never served over HTTP. |
 | `KYC_MAX_UPLOAD_MB` | `8` | Largest accepted upload, in megabytes. |
 | `KYC_REQUIRE_PROOF_OF_RESIDENCE` | not required | Set to exactly `true` to require a `proof_of_residence` document on submission. |
@@ -31,7 +31,7 @@ Files are encrypted and written to `KYC_STORAGE_DIR` on the server's filesystem.
 
 `[OWNER TO DECIDE: Render persistent disk or object storage]`
 
-Until that is decided, do not enable KYC for real users. If you use a disk, point `KYC_STORAGE_DIR` at its mount path. Back up the directory and the key separately.
+Until that is decided, do not launch KYC (see below). If you use a disk, point `KYC_STORAGE_DIR` at its mount path. Back up the directory and the key separately.
 
 ## Settings
 
@@ -46,7 +46,7 @@ Stored in the database and read on every request, so changes apply at once witho
 | `enforcementDays` | 60 | Days from the start of the first cycle until restriction. |
 | `resubmitGraceDays` | 14 | Days a user gets to resubmit after a rejection, correction request or expiry. |
 | `remindersEnabled` | true | Set to false to stop reminders being sent. Restriction still applies. |
-| `rolloutAt` | set on first use | Read only. The first cycle starts at the later of the user's creation time and `rolloutAt`, so existing users get the full period from rollout, not from when they signed up. |
+| `rolloutAt` | null | Read only, set once by the launch endpoint (see "Launching KYC"). While it is null nobody has a deadline, gets reminders or is restricted. The first cycle starts at the later of the user's creation time and `rolloutAt`, so existing users get the full period from launch, not from when they signed up. A resubmission period that started before launch also counts from `rolloutAt`. |
 
 The day fields are whole numbers from 1 to 365.
 
@@ -60,9 +60,28 @@ curl -s -X PUT https://<HOST>/api/admin/kyc/settings \
 
 An admin page for these settings arrives in Stage 3.
 
+## Launching KYC
+
+Deploying this code does not start anyone's clock. KYC stays dormant (no deadlines, no reminders, no restriction; `GET /api/kyc/me` returns `"launched": false` and `"deadline": null`) until a super_admin launches it. Users can still save drafts and submit while it is dormant.
+
+Launch is a deliberate rollout step. Do it only after all of these are true:
+
+1. The storage decision above is made and `KYC_STORAGE_DIR` points at durable storage.
+2. `KYC_ENCRYPTION_KEY` is set on every instance (the endpoint returns 503 without it).
+3. The Stage 2b app, with the KYC screens, has shipped to users.
+4. `LEGACY_USERID_ROUTES=false`, if restriction should apply (see Enforcement).
+
+```
+curl -s -X POST https://<HOST>/api/admin/kyc/settings/launch \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+
+This sets `rolloutAt` to now, records a `SETTINGS_CHANGED` audit event and returns the settings. It can only happen once: a second call returns 409 `KYC has already been launched.` There is no un-launch endpoint. From launch, each user has `enforcementDays` (60 by default) before restriction.
+
 ## The reminder job
 
 - Started inside the server process (`node index.js`), 10 seconds after boot and then every `KYC_JOB_INTERVAL_MS`. It does not run under tests or when the module is imported.
+- Before launch each run does nothing.
 - Each run scans users who are not yet submitted or approved, sends the reminder stage that is due, and records restriction for users past their deadline.
 - With several instances, only one runs the job at a time. The holder takes a lease in the database that lasts twice the interval, so a crashed holder is replaced within two intervals.
 - Idempotent: each reminder stage is recorded once per user per cycle under a unique key, and so is the restriction event. Re-running or running twice sends nothing twice. If a stage is skipped (for example the job was off) it is recorded as skipped and only the latest due stage is sent.
@@ -76,7 +95,7 @@ Cart routes and other protected routes use `requireKycAccess`. It checks the use
 403 {"code":"KYC_RESTRICTED","message":"Complete your KYC verification to keep using this feature.", ...}
 ```
 
-Users who are approved, pending review, or hold an active exemption are not restricted.
+Users who are approved, pending review, or hold an active exemption are not restricted. Nobody is restricted before launch, or while `KYC_ENCRYPTION_KEY` is missing (users could not complete KYC then).
 
 **Prerequisite:** enforcement only applies to requests authenticated with an app session token. Legacy requests that send a bare `userId` (accepted while `LEGACY_USERID_ROUTES=true`) are not enforced. Set `LEGACY_USERID_ROUTES=false` before relying on KYC restrictions.
 
@@ -84,7 +103,7 @@ Users who are approved, pending review, or hold an active exemption are not rest
 
 | Role | Can do |
 |---|---|
-| `super_admin` | Everything below, plus changing settings. |
+| `super_admin` | Everything below, plus changing settings and launching KYC. |
 | `kyc_reviewer` | View the KYC list, details, documents and audit trail. Approve, reject, request correction, expire, grant exemptions, send manual reminders. Cannot change settings. |
 
 Create a reviewer as a staff `User` with `role: 'kyc_reviewer'`, either by a super_admin, or with a script in the style of `scripts/create-super-admin.js`. Staff sign in at `POST /api/auth/login` and use the returned token as `<ADMIN_TOKEN>`.
@@ -95,7 +114,7 @@ Create a reviewer as a staff `User` with `role: 'kyc_reviewer'`, either by a sup
 
 | Method and path | Purpose |
 |---|---|
-| `GET /api/kyc/me` | Status, deadline, progress, missing fields, masked draft, documents, history. |
+| `GET /api/kyc/me` | Status, whether KYC is launched, deadline, progress, missing fields, masked draft, documents, history. |
 | `PUT /api/kyc/draft` | Save draft details as `{"data": {...}}`. Partial saves merge. |
 | `POST /api/kyc/documents` | Upload a file (multipart: `kind`, `file`). Kinds: `id_front`, `id_back`, `passport_bio`, `proof_of_residence`. Type is checked from the file bytes. |
 | `GET /api/kyc/documents/:id` | Download the user's own draft document. |
@@ -125,6 +144,7 @@ Create a reviewer as a staff `User` with `role: 'kyc_reviewer'`, either by a sup
 | `POST /api/admin/kyc/users/:id/remind` | Send a reminder now (once per hour per user). |
 | `GET /api/admin/kyc/settings` | Read settings. |
 | `PUT /api/admin/kyc/settings` | Change settings (`super_admin` only). |
+| `POST /api/admin/kyc/settings/launch` | Launch KYC once (`super_admin` only). |
 | `GET /api/admin/kyc/audit` | Audit trail. Query: `appUserId`, `type`, `page`. |
 
 ## Lifecycle walkthrough
@@ -159,7 +179,7 @@ Placeholders only. `<USER_TOKEN>` is an app session token, `<ADMIN_TOKEN>` a sta
    ```
 6. The user receives an `APPROVED` notification, and `GET /api/kyc/me` shows `APPROVED`. The draft and its working copies are removed.
 
-To test enforcement without waiting 60 days, use a throwaway database: insert an AppUser whose `createdAt` is older than `enforcementDays` (and after `rolloutAt` has passed that long ago), sign a token for it, and call `GET /api/cart`. Expect 403 `KYC_RESTRICTED`. Run steps 2 to 5 for that user and the same call returns 200. This needs `LEGACY_USERID_ROUTES=false`.
+To test enforcement without waiting 60 days, use a throwaway database: launch KYC, set `rolloutAt` in the settings document to more than `enforcementDays` ago, insert an AppUser whose `createdAt` is also older than that, sign a token for it, and call `GET /api/cart`. Expect 403 `KYC_RESTRICTED`. Run steps 2 to 5 for that user and the same call returns 200. This needs `LEGACY_USERID_ROUTES=false`.
 
 ## Retention
 

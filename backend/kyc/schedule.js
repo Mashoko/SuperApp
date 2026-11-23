@@ -51,15 +51,22 @@ const initialClockStart = (appUser, settings) => {
   return created || rollout;
 };
 
+// KYC is launched once rolloutAt is set. Before that nobody has a deadline.
+const isLaunched = (settings) => !!toDate(settings && settings.rolloutAt);
+
 // Returns { clockStart, deadline } for the user's current cycle.
-// A cycle >= 1 without cycleStartedAt falls back to the cycle-0 clock.
+// A cycle >= 1 without cycleStartedAt falls back to the cycle-0 clock. A cycle started
+// before launch counts from rolloutAt, so a pre-launch decision cannot restrict at launch.
 const cycleWindow = (appUser, settings) => {
+  if (!isLaunched(settings)) return { cycle: 0, clockStart: null, deadline: null };
   const { cycle, cycleStartedAt } = readKyc(appUser);
   if (cycle >= 1 && cycleStartedAt) {
+    const rollout = toDate(settings.rolloutAt);
+    const clockStart = cycleStartedAt > rollout ? cycleStartedAt : rollout;
     return {
       cycle,
-      clockStart: cycleStartedAt,
-      deadline: addDays(cycleStartedAt, settings.resubmitGraceDays),
+      clockStart,
+      deadline: addDays(clockStart, settings.resubmitGraceDays),
     };
   }
   const clockStart = initialClockStart(appUser, settings);
@@ -114,7 +121,7 @@ const computeKycState = (appUser, settings, now) => {
   const underlyingStatus = kyc.status;
   const exemptUntil = kyc.exemptionUntil && kyc.exemptionUntil > now ? kyc.exemptionUntil : null;
 
-  if (SETTLED_STATUSES.has(underlyingStatus)) {
+  if (SETTLED_STATUSES.has(underlyingStatus) || !isLaunched(settings)) {
     return {
       status: underlyingStatus,
       underlyingStatus,
@@ -167,5 +174,6 @@ module.exports = {
   KYC_STATUSES,
   RESTRICTABLE_STATUSES,
   computeKycState,
+  isLaunched,
   reminderSchedule,
 };

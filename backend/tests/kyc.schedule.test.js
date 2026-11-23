@@ -193,6 +193,35 @@ describe('computeKycState', () => {
   });
 });
 
+describe('before launch (rolloutAt null)', () => {
+  test('no deadline, schedule, due stage or restriction, but status is still reported', () => {
+    const s = settings({ rolloutAt: null });
+    for (const status of ['NOT_STARTED', 'IN_PROGRESS', 'REJECTED', 'EXPIRED']) {
+      const u = user({ status, cycle: status === 'REJECTED' ? 1 : 0, cycleStartedAt: day(10) });
+      expect(reminderSchedule(u, s)).toEqual([]);
+      expect(computeKycState(u, s, day(200))).toEqual({
+        status,
+        underlyingStatus: status,
+        restricted: false,
+        deadline: null,
+        exemptUntil: null,
+        dueStage: null,
+        skippedStages: [],
+      });
+    }
+  });
+
+  test('a cycle started before launch counts its grace period from rolloutAt', () => {
+    const rolloutAt = day(100);
+    const s = settings({ rolloutAt });
+    const u = user({ status: 'REJECTED', cycle: 1, cycleStartedAt: day(50) });
+    const state = computeKycState(u, s, day(101));
+    expect(state.restricted).toBe(false);
+    expect(state.deadline).toEqual(day(114));
+    expect(computeKycState(u, s, day(114)).restricted).toBe(true);
+  });
+});
+
 describe('AppUser.kyc defaults', () => {
   test('a new AppUser starts NOT_STARTED in cycle 0 and computes cleanly', () => {
     const AppUser = require('../models/app_user.model');
@@ -233,7 +262,8 @@ describe('KycSettings.getSettings', () => {
     expect(c.enforcementDays).toBe(60);
     expect(c.resubmitGraceDays).toBe(14);
     expect(c.remindersEnabled).toBe(true);
-    expect(c.rolloutAt).toBeInstanceOf(Date);
-    expect(c.rolloutAt.getTime()).toBe(a.rolloutAt.getTime());
+    // Launching is an explicit admin step, so getSettings never starts the clock.
+    expect(c.rolloutAt).toBeNull();
+    expect(a.rolloutAt).toBeNull();
   });
 });

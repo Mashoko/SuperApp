@@ -194,6 +194,28 @@ describe('runKycJob reminders', () => {
     expect(stored.kyc.lastReminderStage).toBe('NUDGE_1');
   });
 
+  test('before launch the job sends nothing and restricts nobody', async () => {
+    await KycSettings.updateOne({}, { $set: { rolloutAt: null } });
+    try {
+      const user = await newUser();
+      for (const day of [1, 7, 14, 56, 61]) {
+        expect(await job.runKycJob({ now: at(day) })).toEqual({
+          reminded: 0,
+          skipped: 0,
+          restricted: 0,
+          failed: 0,
+        });
+      }
+      expect(await kindsFor(user._id)).toEqual([]);
+      expect(await KycEvent.countDocuments({})).toBe(0);
+      const stored = await AppUser.findById(user._id);
+      expect(stored.kyc.lastReminderStage).toBeNull();
+      expect(stored.kyc.restrictedAt).toBeUndefined();
+    } finally {
+      await KycSettings.updateOne({}, { $set: { rolloutAt: ROLLOUT } });
+    }
+  });
+
   test('approved and pending users get no reminders', async () => {
     const approved = await newUser({ kyc: { status: 'APPROVED' } });
     const pending = await newUser({ kyc: { status: 'PENDING_REVIEW' } });
