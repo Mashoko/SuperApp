@@ -46,5 +46,6 @@ app.*.map.json
 node_modules/
 backend/.env
 backend/uploads/
+backend/kyc_storage/
 
 .superpowers/
