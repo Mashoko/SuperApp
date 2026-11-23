@@ -7,7 +7,7 @@ const KycDocument = require('../models/kyc_document.model');
 const KycSubmission = require('../models/kyc_submission.model');
 const KycEvent = require('../models/kyc_event.model');
 const { resolveUser } = require('../../middleware/resolve_user.middleware');
-const { kycUploadLimiter } = require('../../middleware/rate_limits');
+const { kycUploadLimiter, kycWriteLimiter } = require('../../middleware/rate_limits');
 const { computeKycState, isLaunched } = require('../schedule');
 const { kycKeyAvailable, encryptField, decryptField, maskId } = require('../crypto');
 const { sniffType, stripMetadata } = require('../files');
@@ -227,6 +227,7 @@ const upsertDraft = async (appUserId, data) => {
 
 router.put(
   '/draft',
+  kycWriteLimiter,
   handle(async (req, res) => {
     const appUser = req.kycUser;
     if (isSubmitted(appUser)) return res.status(409).json(ALREADY_SUBMITTED);
@@ -382,6 +383,7 @@ router.delete(
 
 router.post(
   '/submit',
+  kycWriteLimiter,
   handle(async (req, res) => {
     const appUser = req.kycUser;
     if (isSubmitted(appUser)) return res.status(409).json(ALREADY_SUBMITTED);

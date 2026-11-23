@@ -253,6 +253,23 @@ describe('PUT /api/kyc/draft', () => {
     }
   });
 
+  test('draft saves and submits share a limit of 60 per hour per user', async () => {
+    const { token } = await newUser();
+    for (let i = 0; i < 59; i += 1) {
+      expect((await saveDraft(token, { personal: { firstName: `Tendai${i % 10}` } })).status).toBe(200);
+    }
+    // The 60th write is a submit (400: incomplete), which counts against the same bucket.
+    expect((await request(app).post('/api/kyc/submit').set(auth(token))).status).toBe(400);
+    const limited = await saveDraft(token, { personal: { firstName: 'Rudo' } });
+    expect(limited.status).toBe(429);
+    expect(limited.body).toEqual({ message: 'Too many requests, please try again later.' });
+    expect((await request(app).post('/api/kyc/submit').set(auth(token))).status).toBe(429);
+    // Reads are not limited, and other users have their own bucket.
+    expect((await request(app).get('/api/kyc/me').set(auth(token))).status).toBe(200);
+    const other = await newUser();
+    expect((await saveDraft(other.token, { personal: { firstName: 'Rudo' } })).status).toBe(200);
+  });
+
   test('draft is 409 once submitted', async () => {
     const { token } = await newUser({ kyc: { status: 'PENDING_REVIEW' } });
     const res = await saveDraft(token, completeData());

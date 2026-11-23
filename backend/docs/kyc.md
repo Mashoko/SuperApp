@@ -121,6 +121,8 @@ Create a reviewer as a staff `User` with `role: 'kyc_reviewer'`, either by a sup
 | `DELETE /api/kyc/documents/:id` | Remove a draft document. |
 | `POST /api/kyc/submit` | Validate everything and submit for review. 400 lists the missing fields. |
 
+Uploads are limited to 30 per hour per user. Draft saves and submits share a limit of 60 per hour per user. Over the limit the response is 429.
+
 ### Notifications (app session token required)
 
 | Method and path | Purpose |
