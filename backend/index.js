@@ -136,6 +136,7 @@ const bcrypt = require('bcryptjs');
 
 // Auth Routes
 app.use('/api/app-auth', require('./routes/app_auth.routes'));
+app.use('/api/kyc', require('./kyc/routes/kyc_user.routes'));
 app.post('/api/auth/register', authLimiter, requireAdmin(['super_admin']), async (req, res) => {
     try {
         const { username, password } = req.body;

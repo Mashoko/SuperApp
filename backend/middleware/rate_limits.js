@@ -33,4 +33,15 @@ const appSessionAccountLimiter = rateLimit({
     req.sessionUsername ? `user:${req.sessionUsername}` : `ip:${ipKeyGenerator(req.ip)}`,
 });
 
-module.exports = { authLimiter, appSessionIpLimiter, appSessionAccountLimiter };
+// KYC document uploads, per signed-in user. Must run after resolveUser has set req.userId;
+// requests without one fall back to the client IP.
+const kycUploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 30,
+  message,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req.userId ? `user:${req.userId}` : `ip:${ipKeyGenerator(req.ip)}`),
+});
+
+module.exports = { authLimiter, appSessionIpLimiter, appSessionAccountLimiter, kycUploadLimiter };
