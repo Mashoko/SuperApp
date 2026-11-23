@@ -33,19 +33,31 @@ const insertOnce = async (event) => {
   }
 };
 
+const cycleFilter = (cycle) => (cycle === 0 ? { $in: [0, null] } : cycle);
+
 // Moves lastReminderStage forward only if nobody changed it (or the cycle) since we read it.
+// Also matches when it already equals stage: a concurrent run that hit this stage's
+// duplicate key may have advanced it first, and the sender still records lastReminderAt.
 const advanceStage = (appUser, cycle, stage, now, sent) => {
   const $set = { 'kyc.lastReminderStage': stage };
   if (sent) $set['kyc.lastReminderAt'] = now;
   return AppUser.updateOne(
     {
       _id: appUser._id,
-      'kyc.cycle': cycle === 0 ? { $in: [0, null] } : cycle,
-      'kyc.lastReminderStage': appUser.kyc?.lastReminderStage || null,
+      'kyc.cycle': cycleFilter(cycle),
+      'kyc.lastReminderStage': { $in: [appUser.kyc?.lastReminderStage || null, stage] },
     },
     { $set }
   );
 };
+
+// Undoes a duplicate-path advance to stage after the sender's notification failed, so the
+// next run retries the stage.
+const revertStage = (appUser, cycle, stage) =>
+  AppUser.updateOne(
+    { _id: appUser._id, 'kyc.cycle': cycleFilter(cycle), 'kyc.lastReminderStage': stage },
+    { $set: { 'kyc.lastReminderStage': appUser.kyc?.lastReminderStage || null } }
+  );
 
 // Sends the due reminder and records skipped stages for one user. Returns
 // { reminded, skipped, failed } counts for this user.
@@ -79,7 +91,12 @@ const remindUser = async (appUser, state, now) => {
     data: { cycle, stage },
     idempotencyKey: key,
   });
-  if (!claimed) return result;
+  if (!claimed) {
+    // The stage is already recorded (sent, skipped, or being sent by a concurrent run).
+    // Still move lastReminderStage on, or every run would retry this insert forever.
+    await advanceStage(appUser, cycle, stage, now, false);
+    return result;
+  }
 
   try {
     await notify(appUser._id, templateFor(stage), { deadline: state.deadline });
@@ -87,6 +104,7 @@ const remindUser = async (appUser, state, now) => {
     logError('notification failed', err);
     // Release the claim so the next run retries this stage.
     await KycEvent.deleteOne({ idempotencyKey: key }).catch((e) => logError('cleanup failed', e));
+    await revertStage(appUser, cycle, stage).catch((e) => logError('cleanup failed', e));
     result.failed = 1;
     return result;
   }

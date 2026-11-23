@@ -152,6 +152,38 @@ describe('runKycJob reminders', () => {
     const result = await job.runKycJob({ now: at(1) });
     expect(result.reminded).toBe(0);
     expect(await kindsFor(user._id)).toEqual([]);
+    expect((await AppUser.findById(user._id)).kyc.lastReminderStage).toBe('NUDGE_1');
+  });
+
+  test('a due stage whose key already exists still advances lastReminderStage, so later runs stop retrying', async () => {
+    // Sent under the 14-day interval up to REMINDER_3 (day 42).
+    const user = await newUser({ kyc: { lastReminderStage: 'REMINDER_3' } });
+    for (const stage of ['NUDGE_1', 'NUDGE_2', 'REMINDER_1', 'REMINDER_2', 'REMINDER_3']) {
+      await KycEvent.create({
+        appUserId: user._id,
+        actor: 'system',
+        type: 'REMINDER_SENT',
+        data: { cycle: 0, stage },
+        idempotencyKey: `${user._id}:0:${stage}`,
+      });
+    }
+    // A 21-day interval has no REMINDER_3, so the stored stage drops out of the schedule
+    // and REMINDER_2 (day 42), whose key already exists, becomes due again.
+    await KycSettings.updateOne({}, { $set: { reminderIntervalDays: 21 } });
+    try {
+      const first = await job.runKycJob({ now: at(45) });
+      expect(first).toEqual({ reminded: 0, skipped: 0, restricted: 0, failed: 0 });
+      expect(await kindsFor(user._id)).toEqual([]);
+      expect((await AppUser.findById(user._id)).kyc.lastReminderStage).toBe('REMINDER_2');
+
+      const create = jest.spyOn(KycEvent, 'create');
+      const second = await job.runKycJob({ now: at(45) });
+      expect(second).toEqual({ reminded: 0, skipped: 0, restricted: 0, failed: 0 });
+      expect(create).not.toHaveBeenCalled();
+      expect(await kindsFor(user._id)).toEqual([]);
+    } finally {
+      await KycSettings.updateOne({}, { $set: { reminderIntervalDays: 14 } });
+    }
   });
 
   test('job on day 5 sends nothing', async () => {
@@ -340,6 +372,23 @@ describe('runKycJob reminders', () => {
     const result = await job.runKycJob({ now: at(1), batchSize: 2 });
     expect(result.reminded).toBe(5);
     for (const u of users) expect(await kindsFor(u._id)).toEqual(['NUDGE_1']);
+  });
+
+  test('a failed send reverts a stage that a concurrent run advanced on the duplicate key', async () => {
+    const user = await newUser();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    // Simulate the concurrent run: as the notification is being written, it hits the
+    // duplicate key and advances lastReminderStage; then the send fails.
+    jest.spyOn(Notification.prototype, 'save').mockImplementationOnce(async () => {
+      await AppUser.updateOne({ _id: user._id }, { $set: { 'kyc.lastReminderStage': 'NUDGE_1' } });
+      throw new Error('db down');
+    });
+    const failedRun = await job.runKycJob({ now: at(1) });
+    expect(failedRun.failed).toBe(1);
+    expect((await AppUser.findById(user._id)).kyc.lastReminderStage).toBeNull();
+    const retry = await job.runKycJob({ now: at(1) });
+    expect(retry.reminded).toBe(1);
+    expect(await kindsFor(user._id)).toEqual(['NUDGE_1']);
   });
 
   test('a failed notification removes the event so the next run retries', async () => {
