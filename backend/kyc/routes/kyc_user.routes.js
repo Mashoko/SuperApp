@@ -240,9 +240,10 @@ router.put(
     const { draft, inserted } = await upsertDraft(appUser._id, data);
 
     const now = new Date();
+    // null also matches AppUsers stored before the kyc subdocument existed (NOT_STARTED).
     await AppUser.updateOne(
-      { _id: appUser._id, 'kyc.status': 'NOT_STARTED' },
-      { $set: { 'kyc.status': 'IN_PROGRESS', 'kyc.startedAt': now } }
+      { _id: appUser._id, 'kyc.status': { $in: ['NOT_STARTED', null] } },
+      { $set: { 'kyc.status': 'IN_PROGRESS', 'kyc.startedAt': now, 'kyc.lastUpdatedAt': now } }
     );
     const updated = await AppUser.findOneAndUpdate(
       { _id: appUser._id },

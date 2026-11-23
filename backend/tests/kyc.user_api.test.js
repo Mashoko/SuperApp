@@ -189,6 +189,21 @@ describe('PUT /api/kyc/draft', () => {
     expect(await KycEvent.countDocuments({ type: 'DRAFT_SAVED' })).toBe(1);
   });
 
+  test('a user stored without a kyc field moves to IN_PROGRESS on the first draft save', async () => {
+    const { token, appUser } = await newUser({ withoutKyc: true });
+    expect((await AppUser.collection.findOne({ _id: appUser._id })).kyc).toBeUndefined();
+    const put = await saveDraft(token, { personal: { firstName: 'Tendai' } });
+    expect(put.status).toBe(200);
+    expect(put.body.status).toBe('IN_PROGRESS');
+    const raw = await AppUser.collection.findOne({ _id: appUser._id });
+    expect(raw.kyc.status).toBe('IN_PROGRESS');
+    expect(raw.kyc.startedAt).toBeInstanceOf(Date);
+    expect(raw.kyc.lastUpdatedAt).toBeInstanceOf(Date);
+    const me = await request(app).get('/api/kyc/me').set(auth(token));
+    expect(me.body.status).toBe('IN_PROGRESS');
+    expect(me.body.underlyingStatus).toBe('IN_PROGRESS');
+  });
+
   test('ID number is stored encrypted and kept when a later save omits it', async () => {
     const { token, appUser } = await newUser();
     await saveDraft(token, completeData());
