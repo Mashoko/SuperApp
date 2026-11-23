@@ -238,13 +238,37 @@ describe('requireKycAccess', () => {
     expect((await AppUser.findById(appUser._id)).kyc.restrictedAt).toBeInstanceOf(Date);
   });
 
-  test('a bookkeeping failure still returns 403, not 500', async () => {
-    const { token } = await pastDeadlineUser();
-    jest.spyOn(KycEvent, 'create').mockRejectedValue(Object.assign(new Error('x'), { name: 'MongoError' }));
+  test('a failed RESTRICTED event insert still returns 403, leaves restrictedAt unset, and is retried', async () => {
+    const { appUser, token } = await pastDeadlineUser();
+    const createSpy = jest
+      .spyOn(KycEvent, 'create')
+      .mockRejectedValueOnce(Object.assign(new Error('x'), { name: 'MongoError' }));
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await request(app).get('/api/cart').set(auth(token));
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('KYC_RESTRICTED');
+    expect((await AppUser.findById(appUser._id)).kyc.restrictedAt).toBeUndefined();
+    expect(await KycEvent.countDocuments({ appUserId: appUser._id, type: 'RESTRICTED' })).toBe(0);
+
+    createSpy.mockRestore();
+    expect((await request(app).get('/api/cart').set(auth(token))).status).toBe(403);
+    const events = await KycEvent.find({ appUserId: appUser._id, type: 'RESTRICTED' });
+    expect(events).toHaveLength(1);
+    expect(events[0].idempotencyKey).toBe(`${appUser._id}:restricted:0`);
+    expect((await AppUser.findById(appUser._id)).kyc.restrictedAt).toBeInstanceOf(Date);
+  });
+
+  test('a restrictedAt cache failure still returns 403, not 500', async () => {
+    const { appUser, token } = await pastDeadlineUser();
+    jest
+      .spyOn(AppUser, 'findOneAndUpdate')
+      .mockRejectedValueOnce(Object.assign(new Error('x'), { name: 'MongoError' }));
     jest.spyOn(console, 'error').mockImplementation(() => {});
     const res = await request(app).get('/api/cart').set(auth(token));
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('KYC_RESTRICTED');
+    expect(await KycEvent.countDocuments({ appUserId: appUser._id, type: 'RESTRICTED' })).toBe(1);
   });
 
   test('post upload rejected with 403 leaves no file in uploads/', async () => {

@@ -23,16 +23,12 @@ const recordOnce = async (event) => {
   }
 };
 
-// Caches restrictedAt and writes the RESTRICTED event. Only the request that flips
-// restrictedAt from unset writes the event, so repeated blocked requests record it once.
+// Writes the RESTRICTED event, then caches restrictedAt. The event goes first so a failed
+// insert leaves restrictedAt unset and the next blocked request (or the reminder job)
+// retries it; the idempotency key keeps it to one event per cycle.
 // Never sends a notification: those come from the reminder job's RESTRICTED stage.
 const markRestricted = async (appUser, now) => {
   const cycle = Number(appUser.kyc?.cycle) || 0;
-  const flipped = await AppUser.findOneAndUpdate(
-    { _id: appUser._id, 'kyc.restrictedAt': null },
-    { $set: { 'kyc.restrictedAt': now } }
-  );
-  if (!flipped) return;
   await recordOnce({
     appUserId: appUser._id,
     actor: 'system',
@@ -40,6 +36,10 @@ const markRestricted = async (appUser, now) => {
     data: { cycle },
     idempotencyKey: `${appUser._id}:restricted:${cycle}`,
   });
+  await AppUser.findOneAndUpdate(
+    { _id: appUser._id, 'kyc.restrictedAt': null },
+    { $set: { 'kyc.restrictedAt': now } }
+  );
 };
 
 const clearRestricted = async (appUser) => {
