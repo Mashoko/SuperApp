@@ -1069,7 +1069,15 @@ app.use((err, req, res, next) => {
   if (err.message && (err.message.includes('Only JPEG') || err.message.includes('Unsupported media type'))) {
     return res.status(415).json({ message: err.message });
   }
-  console.error(err);
+  // Body-parser errors carry the raw request body (err.body), which can hold ID numbers
+  // or passwords. Never log the error object, its body or its message.
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ message: 'Invalid request body.' });
+  }
+  if (err.type && err.status >= 400 && err.status < 500) {
+    return res.status(err.status).json({ message: 'Invalid request body.' });
+  }
+  console.error('Unhandled error:', err.name, err.code, err.type);
   res.status(500).json({ message: 'Internal server error' });
 });
 

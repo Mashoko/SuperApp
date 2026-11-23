@@ -12,7 +12,13 @@ const { computeKycState } = require('../schedule');
 const { kycKeyAvailable, encryptField, decryptField, maskId } = require('../crypto');
 const { sniffType, stripMetadata } = require('../files');
 const { saveEncrypted, readDecrypted, deleteStored } = require('../storage');
-const { DRAFT_FIELDS, ID_TYPES, validateDraft, validateSubmission } = require('../validation');
+const {
+  DRAFT_FIELDS,
+  ID_TYPES,
+  validateDraft,
+  validateSubmission,
+  requiredDocumentKinds,
+} = require('../validation');
 
 const { KYC_DOCUMENT_KINDS } = KycDocument;
 
@@ -25,6 +31,7 @@ const NOT_FOUND = { message: 'Document not found.' };
 const BAD_TYPE = { message: 'Upload a JPEG, PNG or PDF file.' };
 const TOO_LARGE = { message: 'File is too large.' };
 const GENERIC = { message: 'Something went wrong.' };
+const DOCS_CHANGED = { message: 'Your documents changed while submitting. Please try again.' };
 
 const SUBMITTED_STATUSES = ['PENDING_REVIEW', 'APPROVED'];
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'application/pdf']);
@@ -390,7 +397,13 @@ router.post(
       .select('version');
     const version = (last?.version || 0) + 1;
     const now = new Date();
-    const documentIds = docs.map((d) => d._id);
+    // Link only the newest document of each required kind; other draft documents are
+    // removed after a successful submit.
+    const latestByKind = new Map();
+    for (const d of docs) latestByKind.set(d.kind, d);
+    const linked = requiredDocumentKinds(plain.identification.idType).map((k) => latestByKind.get(k));
+    const documentIds = linked.map((d) => d._id);
+    const leftovers = docs.filter((d) => !documentIds.some((id) => id.equals(d._id)));
 
     let submission;
     try {
@@ -415,6 +428,25 @@ router.post(
       throw err;
     }
 
+    const rollback = async () => {
+      await KycDocument.updateMany(
+        { submissionId: submission._id },
+        { $set: { submissionId: null } }
+      );
+      await KycSubmission.deleteOne({ _id: submission._id });
+    };
+
+    // Claim the documents before changing status. A concurrent upload replacement or
+    // delete only touches rows with submissionId null, so a short count means one vanished.
+    const link = await KycDocument.updateMany(
+      { _id: { $in: documentIds }, appUserId: appUser._id, submissionId: null },
+      { $set: { submissionId: submission._id } }
+    );
+    if (link.modifiedCount !== documentIds.length) {
+      await rollback();
+      return res.status(409).json(DOCS_CHANGED);
+    }
+
     const before = await AppUser.findOneAndUpdate(
       { _id: appUser._id, 'kyc.status': { $nin: SUBMITTED_STATUSES } },
       {
@@ -428,14 +460,18 @@ router.post(
       { returnDocument: 'before' }
     );
     if (!before) {
-      await KycSubmission.deleteOne({ _id: submission._id });
+      await rollback();
       return res.status(409).json(ALREADY_SUBMITTED);
     }
 
-    await KycDocument.updateMany(
-      { _id: { $in: documentIds } },
-      { $set: { submissionId: submission._id } }
-    );
+    if (leftovers.length) {
+      await KycDocument.deleteMany({
+        _id: { $in: leftovers.map((d) => d._id) },
+        submissionId: null,
+      });
+      await Promise.all(leftovers.map((d) => deleteStored(d.storageKey).catch(() => {})));
+    }
+
     await KycEvent.record({
       appUserId: appUser._id,
       type: 'SUBMITTED',

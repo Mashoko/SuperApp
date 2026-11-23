@@ -209,6 +209,31 @@ describe('PUT /api/kyc/draft', () => {
     expect(bad.status).toBe(400);
   });
 
+  test('malformed JSON is 400 and the body never reaches the logs', async () => {
+    const { token } = await newUser();
+    const spies = ['error', 'log', 'warn'].map((m) => jest.spyOn(console, m).mockImplementation(() => {}));
+    try {
+      const res = await request(app)
+        .put('/api/kyc/draft')
+        .set(auth(token))
+        .set('Content-Type', 'application/json')
+        .send('{"data":{"identification":{"idNumber":"63-1234567-A-89"');
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({ message: 'Invalid request body.' });
+      expect(JSON.stringify(res.body)).not.toContain('63-1234567-A-89');
+      for (const spy of spies) {
+        for (const call of spy.mock.calls) {
+          const text = call
+            .map((a) => (typeof a === 'string' ? a : `${a?.body ?? ''} ${a?.message ?? ''} ${JSON.stringify(a)}`))
+            .join(' ');
+          expect(text).not.toContain('63-1234567-A-89');
+        }
+      }
+    } finally {
+      spies.forEach((s) => s.mockRestore());
+    }
+  });
+
   test('draft is 409 once submitted', async () => {
     const { token } = await newUser({ kyc: { status: 'PENDING_REVIEW' } });
     const res = await saveDraft(token, completeData());
@@ -483,6 +508,46 @@ describe('POST /api/kyc/submit', () => {
     expect(res.status).toBe(400);
     expect(res.body.errors['identification.idNumber']).toBeDefined();
     expect(res.body.errors['personal.dateOfBirth']).toBeDefined();
+  });
+
+  test('a document deleted between the read and the link makes submit 409 with no submission', async () => {
+    const { token, appUser } = await newUser();
+    await prepare(token);
+    const realCreate = KycSubmission.create.bind(KycSubmission);
+    const spy = jest.spyOn(KycSubmission, 'create').mockImplementationOnce(async (...args) => {
+      // Simulates a concurrent DELETE /documents/:id landing mid-submit.
+      await KycDocument.deleteOne({ appUserId: appUser._id, kind: 'id_front' });
+      return realCreate(...args);
+    });
+    try {
+      const res = await request(app).post('/api/kyc/submit').set(auth(token));
+      expect(res.status).toBe(409);
+      expect(res.body).toEqual({ message: 'Your documents changed while submitting. Please try again.' });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(await KycSubmission.countDocuments()).toBe(0);
+    const user = await AppUser.findById(appUser._id);
+    expect(user.kyc.status).toBe('IN_PROGRESS');
+    const left = await KycDocument.find({ appUserId: appUser._id });
+    expect(left).toHaveLength(1);
+    expect(left[0].submissionId).toBeNull();
+    expect(await KycDraft.countDocuments({ appUserId: appUser._id })).toBe(1);
+  });
+
+  test('submit links only required documents and removes leftover draft documents', async () => {
+    const { token, appUser } = await newUser();
+    await prepare(token, completeData(), ['passport_bio', 'id_front', 'id_back']);
+    const stale = await KycDocument.findOne({ appUserId: appUser._id, kind: 'passport_bio' });
+    const res = await request(app).post('/api/kyc/submit').set(auth(token));
+    expect(res.status).toBe(201);
+    const sub = await KycSubmission.findOne({ appUserId: appUser._id });
+    expect(sub.documentIds.map(String)).not.toContain(String(stale._id));
+    expect(sub.documentIds).toHaveLength(2);
+    expect(await KycDocument.findById(stale._id)).toBeNull();
+    expect(fs.existsSync(path.join(process.env.KYC_STORAGE_DIR, stale.storageKey))).toBe(false);
+    const kinds = (await KycDocument.find({ appUserId: appUser._id })).map((d) => d.kind).sort();
+    expect(kinds).toEqual(['id_back', 'id_front']);
   });
 
   test('GET /me never returns the raw ID number', async () => {
