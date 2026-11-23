@@ -138,6 +138,7 @@ const bcrypt = require('bcryptjs');
 // Auth Routes
 app.use('/api/app-auth', require('./routes/app_auth.routes'));
 app.use('/api/kyc', require('./kyc/routes/kyc_user.routes'));
+app.use('/api/notifications', require('./kyc/routes/notifications.routes'));
 app.post('/api/auth/register', authLimiter, requireAdmin(['super_admin']), async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -1086,6 +1087,11 @@ if (require.main === module) {
   app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
   });
+  // The KYC reminder job never starts under tests (require.main is not this file there).
+  const { kycKeyAvailable } = require('./kyc/crypto');
+  if (process.env.KYC_JOB_ENABLED !== 'false' && kycKeyAvailable()) {
+    require('./kyc/job').startKycJob();
+  }
 }
 
 module.exports = app;

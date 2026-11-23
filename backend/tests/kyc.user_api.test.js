@@ -19,6 +19,7 @@ let KycDraft;
 let KycDocument;
 let KycSubmission;
 let KycEvent;
+let Notification;
 let storage;
 
 beforeAll(async () => {
@@ -31,6 +32,7 @@ beforeAll(async () => {
   KycDocument = require('../kyc/models/kyc_document.model');
   KycSubmission = require('../kyc/models/kyc_submission.model');
   KycEvent = require('../kyc/models/kyc_event.model');
+  Notification = require('../kyc/models/notification.model');
   storage = require('../kyc/storage');
   await new Promise((resolve) => {
     if (mongoose.connection.readyState === 1) return resolve();
@@ -49,6 +51,7 @@ afterEach(async () => {
     KycDocument.deleteMany({}),
     KycSubmission.deleteMany({}),
     KycEvent.deleteMany({}),
+    Notification.deleteMany({}),
   ]);
 });
 
@@ -453,6 +456,37 @@ describe('POST /api/kyc/submit', () => {
     // Submitted documents stay readable by their owner.
     const get = await request(app).get(`/api/kyc/documents/${docs[0]._id}`).set(auth(token));
     expect(get.status).toBe(200);
+  });
+
+  test('submit sends a SUBMITTED notification', async () => {
+    const { token, appUser } = await newUser();
+    await prepare(token);
+    const res = await request(app).post('/api/kyc/submit').set(auth(token));
+    expect(res.status).toBe(201);
+    const notes = await Notification.find({ appUserId: appUser._id });
+    expect(notes.map((n) => [n.kind, n.title, n.body])).toEqual([
+      [
+        'SUBMITTED',
+        'KYC received',
+        'We are reviewing your details. You can keep using the app while we check them.',
+      ],
+    ]);
+  });
+
+  test('a failed SUBMITTED notification does not fail the submit', async () => {
+    const { token, appUser } = await newUser();
+    await prepare(token);
+    const save = jest.spyOn(Notification.prototype, 'save').mockRejectedValue(new Error('down'));
+    const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const res = await request(app).post('/api/kyc/submit').set(auth(token));
+      expect(res.status).toBe(201);
+      expect((await AppUser.findById(appUser._id)).kyc.status).toBe('PENDING_REVIEW');
+    } finally {
+      save.mockRestore();
+      errorLog.mockRestore();
+    }
+    expect(await Notification.countDocuments({ appUserId: appUser._id })).toBe(0);
   });
 
   test('submit twice returns 409', async () => {

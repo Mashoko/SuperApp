@@ -27,6 +27,7 @@ const recordOnce = async (event) => {
 // insert leaves restrictedAt unset and the next blocked request (or the reminder job)
 // retries it; the idempotency key keeps it to one event per cycle.
 // Never sends a notification: those come from the reminder job's RESTRICTED stage.
+// Resolves true when this call set restrictedAt, false when it was already set.
 const markRestricted = async (appUser, now) => {
   const cycle = Number(appUser.kyc?.cycle) || 0;
   await recordOnce({
@@ -36,10 +37,11 @@ const markRestricted = async (appUser, now) => {
     data: { cycle },
     idempotencyKey: `${appUser._id}:restricted:${cycle}`,
   });
-  await AppUser.findOneAndUpdate(
+  const before = await AppUser.findOneAndUpdate(
     { _id: appUser._id, 'kyc.restrictedAt': null },
     { $set: { 'kyc.restrictedAt': now } }
   );
+  return !!before;
 };
 
 const clearRestricted = async (appUser) => {
@@ -105,4 +107,4 @@ const requireKycAccess = async (req, res, next) => {
   return next();
 };
 
-module.exports = { requireKycAccess };
+module.exports = { requireKycAccess, markRestricted };

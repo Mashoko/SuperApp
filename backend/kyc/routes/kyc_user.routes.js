@@ -11,6 +11,7 @@ const { kycUploadLimiter } = require('../../middleware/rate_limits');
 const { computeKycState } = require('../schedule');
 const { kycKeyAvailable, encryptField, decryptField, maskId } = require('../crypto');
 const { sniffType, stripMetadata } = require('../files');
+const { notify } = require('../notifications');
 const { saveEncrypted, readDecrypted, deleteStored } = require('../storage');
 const {
   DRAFT_FIELDS,
@@ -485,6 +486,13 @@ router.post(
       });
     }
     await KycDraft.deleteOne({ appUserId: appUser._id });
+
+    // Best effort: the submission is already stored, so a notification failure is only logged.
+    try {
+      await notify(appUser._id, 'SUBMITTED');
+    } catch (err) {
+      console.error('KYC submitted notification failed:', err?.name, err?.code);
+    }
 
     return res.status(201).json({ status: 'PENDING_REVIEW', submittedAt: now });
   })
