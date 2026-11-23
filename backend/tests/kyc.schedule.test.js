@@ -39,6 +39,34 @@ describe('reminderSchedule', () => {
     ]);
   });
 
+  test('colliding stages keep the schedule strictly increasing with RESTRICTED last', () => {
+    const offsets = (sched) => sched.map((s) => (s.at.getTime() - CREATED.getTime()) / DAY);
+    const check = (sched) => {
+      for (let i = 1; i < sched.length; i += 1) expect(sched[i].at > sched[i - 1].at).toBe(true);
+      expect(new Set(sched.map((s) => s.stage)).size).toBe(sched.length);
+      expect(sched[sched.length - 1]).toEqual({ stage: 'RESTRICTED', at: day(60) });
+    };
+
+    const interval7 = reminderSchedule(user(undefined), settings({ reminderIntervalDays: 7 }));
+    check(interval7);
+    expect(interval7.map((s) => s.stage).slice(0, 3)).toEqual(['NUDGE_1', 'NUDGE_2', 'REMINDER_2']);
+
+    const noWarning = reminderSchedule(user(undefined), settings({ warningBeforeDays: 0 }));
+    check(noWarning);
+    expect(noWarning.map((s) => s.stage)).not.toContain('WARNING');
+    expect(offsets(noWarning)).toEqual([1, 7, 14, 28, 42, 56, 60]);
+
+    const negative = reminderSchedule(user(undefined), settings({ warningBeforeDays: -5 }));
+    check(negative);
+    expect(negative.map((s) => s.stage)).not.toContain('WARNING');
+
+    const nudgeAtDeadline = reminderSchedule(
+      user(undefined),
+      settings({ enforcementDays: 7, firstNudgeDays: 7, warningBeforeDays: 0 })
+    );
+    expect(nudgeAtDeadline).toEqual([{ stage: 'RESTRICTED', at: day(7) }]);
+  });
+
   test('correction cycle uses resubmitGraceDays from cycleStartedAt', () => {
     const u = user({ status: 'REQUIRES_CORRECTION', cycle: 1, cycleStartedAt: day(80) });
     const sched = reminderSchedule(u, settings());
@@ -111,6 +139,27 @@ describe('computeKycState', () => {
     const d71 = computeKycState(u, settings(), day(71));
     expect(d71.restricted).toBe(true);
     expect(d71.exemptUntil).toBeNull();
+  });
+
+  test('exempt until day 70: no RESTRICTED due on day 65; RESTRICTED due on day 71', () => {
+    const kyc = {
+      status: 'NOT_STARTED',
+      cycle: 0,
+      lastReminderStage: 'WARNING',
+      exemption: { until: day(70), reason: 'travel', grantedBy: 'admin1' },
+    };
+    const d65 = computeKycState(user(kyc), settings(), day(65));
+    expect(d65.restricted).toBe(false);
+    expect(d65.dueStage).toBeNull();
+    expect(d65.skippedStages).toEqual([]);
+    const d71 = computeKycState(user(kyc), settings(), day(71));
+    expect(d71.restricted).toBe(true);
+    expect(d71.dueStage).toBe('RESTRICTED');
+
+    const earlier = user({ ...kyc, lastReminderStage: 'REMINDER_3' });
+    const e65 = computeKycState(earlier, settings(), day(65));
+    expect(e65.dueStage).toBe('WARNING');
+    expect(e65.skippedStages).toEqual([]);
   });
 
   test('changing enforcementDays moves the deadline', () => {

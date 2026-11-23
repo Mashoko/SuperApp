@@ -74,12 +74,17 @@ const reminderSchedule = (appUser, settings) => {
   const { cycle, clockStart, deadline } = cycleWindow(appUser, settings);
   if (!clockStart || !deadline) return [];
 
+  // The schedule is strictly increasing in time. Pre-warning stages must land
+  // before both the warning and the deadline; a stage at or before the previous
+  // kept stage is dropped.
   const warningAt = addDays(deadline, -settings.warningBeforeDays);
+  const hasWarning = warningAt < deadline;
+  const preWarningLimit = hasWarning ? warningAt : deadline;
   const stages = [];
   const push = (stage, at) => {
     const prev = stages[stages.length - 1];
-    if (at >= warningAt) return false;
-    if (prev && at < prev.at) return true;
+    if (at >= preWarningLimit) return false;
+    if (prev && at <= prev.at) return true;
     stages.push({ stage, at });
     return true;
   };
@@ -96,8 +101,11 @@ const reminderSchedule = (appUser, settings) => {
     }
   }
 
-  stages.push({ stage: 'WARNING', at: warningAt });
-  if (deadline >= warningAt) stages.push({ stage: 'RESTRICTED', at: deadline });
+  // Every kept stage is before warningAt, so WARNING keeps the order strict.
+  if (hasWarning) stages.push({ stage: 'WARNING', at: warningAt });
+  // RESTRICTED is always the final entry; anything at or after it gives way.
+  while (stages.length && stages[stages.length - 1].at >= deadline) stages.pop();
+  stages.push({ stage: 'RESTRICTED', at: deadline });
   return stages;
 };
 
@@ -129,8 +137,11 @@ const computeKycState = (appUser, settings, now) => {
     const sentIdx = kyc.lastReminderStage
       ? schedule.findIndex((s) => s.stage === kyc.lastReminderStage)
       : -1;
+    // While an exemption is active the RESTRICTED notice is held back (not
+    // skipped), so it fires once the exemption lapses and restriction begins.
+    const end = exemptUntil ? schedule.length - 1 : schedule.length;
     let dueIdx = -1;
-    for (let i = sentIdx + 1; i < schedule.length; i += 1) {
+    for (let i = sentIdx + 1; i < end; i += 1) {
       if (schedule[i].at <= now) dueIdx = i;
       else break;
     }
