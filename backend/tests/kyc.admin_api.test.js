@@ -282,6 +282,12 @@ describe('decisions', () => {
     await uploadDocs(token);
     const resubmit = await request(app).post('/api/kyc/submit').set(auth(token));
     expect(resubmit.status).toBe(201);
+    // The old reason no longer applies once the user resubmits.
+    const after = await request(app).get('/api/kyc/me').set(auth(token));
+    expect(after.body.status).toBe('PENDING_REVIEW');
+    expect(after.body.rejectionReason).toBeNull();
+    expect(after.body.correctionNotes).toBeNull();
+    expect((await AppUser.findById(appUser._id)).kyc.rejectionReason).toBeUndefined();
     const v2 = await KycSubmission.findOne({ appUserId: appUser._id, version: 2 });
     expect(v2.address.city).toBe('Bulawayo');
     expect(v2.identification.idNumberEnc).toBeTruthy();
@@ -340,10 +346,16 @@ describe('decisions', () => {
   });
 
   test('a new cycle with no exemption records exemptionCleared false', async () => {
-    const { appUser } = await submittedUser();
+    const { appUser, token } = await submittedUser();
     await post(`/users/${appUser._id}/request-correction`, reviewer(), { reason: 'Surname does not match' });
     const event = await KycEvent.findOne({ appUserId: appUser._id, type: 'CORRECTION_REQUESTED' });
     expect(event.data.exemptionCleared).toBe(false);
+
+    // Resubmitting after a correction request clears the correction notes too.
+    await uploadDocs(token);
+    expect((await request(app).post('/api/kyc/submit').set(auth(token))).status).toBe(201);
+    const me = await request(app).get('/api/kyc/me').set(auth(token));
+    expect(me.body.correctionNotes).toBeNull();
   });
 
   test('expire requires APPROVED and starts a new cycle', async () => {

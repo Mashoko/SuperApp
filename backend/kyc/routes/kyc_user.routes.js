@@ -459,7 +459,7 @@ router.post(
           'kyc.submittedAt': now,
           'kyc.lastUpdatedAt': now,
         },
-        $unset: { 'kyc.restrictedAt': 1 },
+        $unset: { 'kyc.restrictedAt': 1, 'kyc.rejectionReason': 1, 'kyc.correctionNotes': 1 },
       },
       { returnDocument: 'before' }
     );
