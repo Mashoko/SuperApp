@@ -356,6 +356,7 @@ router.get(
       'Content-Type': doc.mime,
       'Cache-Control': 'no-store',
       'Content-Disposition': 'inline',
+      'Content-Security-Policy': 'sandbox',
     });
     return res.send(bytes);
   })
