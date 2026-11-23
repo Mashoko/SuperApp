@@ -17,6 +17,22 @@ const _autosaveDelay = Duration(milliseconds: 800);
 const _fallbackMessage = 'Something went wrong. Please try again.';
 const _tooLargeMessage = 'This file is too large. Use a file under 8 MB.';
 const _notSavedMessage = 'Not saved. Check your connection.';
+const _staleMessage =
+    'Could not load your latest details. Showing what was saved earlier.';
+const _proofKey = 'documents.proof_of_residence';
+
+/// Server limits for draft text fields (backend/kyc/validation.js
+/// DRAFT_FIELDS).
+const kycMaxLengths = <String, int>{
+  'personal.firstName': 60,
+  'personal.lastName': 60,
+  'personal.nationality': 56,
+  'address.line1': 120,
+  'address.line2': 120,
+  'address.city': 60,
+  'address.country': 56,
+  'identification.idNumber': 20,
+};
 
 class KycPickedFile {
   const KycPickedFile({required this.bytes, required this.filename});
@@ -54,6 +70,14 @@ class KycFormViewModel extends ChangeNotifier {
   bool loading = true;
   String? loadError;
 
+  /// Set when the refresh failed and the form shows the cached status.
+  String? staleNotice;
+
+  /// `PENDING_REVIEW` or `APPROVED` when the record cannot be edited; the
+  /// view shows a read-only state and nothing is saved.
+  String? lockedStatus;
+  bool get readOnly => lockedStatus != null;
+
   // Form state
   int step = 0;
   String phone = '';
@@ -81,13 +105,27 @@ class KycFormViewModel extends ChangeNotifier {
   final Map<String, String> documentErrors = {};
   final Map<String, KycPickedFile> _pendingFiles = {};
   final Map<String, Future<Uint8List?>> _previewCache = {};
-  bool _requireProof = false;
+  /// Once proof of residence is shown it stays for the session.
+  bool _proofSticky = false;
+
+  // The ID number held on the server belongs to the ID type it was saved
+  // with; switching type hides it until the user switches back.
+  String? _loadedIdType;
+  String? _loadedMasked;
+
+  /// True once anything was written to the server, so leaving refreshes the
+  /// app-wide status.
+  bool _changed = false;
 
   // Autosave
   KycSaveState saveState = KycSaveState.idle;
   Timer? _timer;
   bool _dirty = false;
   Future<void>? _saving;
+
+  /// The reason for [KycSaveState.error] when it is not a connection
+  /// problem; null means "Not saved. Check your connection.".
+  String? saveError;
 
   // Submit
   bool submitting = false;
@@ -96,14 +134,16 @@ class KycFormViewModel extends ChangeNotifier {
 
   bool _disposed = false;
 
-  /// Uses the controller's status when it has one, otherwise refreshes it.
+  /// Always refreshes so the form never starts from a stale draft (a stale
+  /// draft would be autosaved back over newer server data). Falls back to the
+  /// cached status, with [staleNotice], only when the refresh fails.
   Future<void> load() async {
     loading = true;
     loadError = null;
+    staleNotice = null;
     _notify();
-    if (_controller.status == null) {
-      await _controller.refresh();
-    }
+    await _controller.refresh();
+    if (_disposed) return;
     final status = _controller.status;
     if (status == null) {
       loadError = _controller.error ?? _fallbackMessage;
@@ -111,7 +151,13 @@ class KycFormViewModel extends ChangeNotifier {
       _notify();
       return;
     }
-    _apply(status);
+    if (_controller.error != null) staleNotice = _staleMessage;
+    if (!status.canEdit) {
+      lockedStatus = status.isVerified ? 'APPROVED' : 'PENDING_REVIEW';
+    } else {
+      lockedStatus = null;
+      _apply(status);
+    }
     loading = false;
     _notify();
   }
@@ -133,8 +179,10 @@ class KycFormViewModel extends ChangeNotifier {
     newIdNumber = null;
     idExpiry = d.identification.idExpiry;
     documents = List.of(status.documents);
-    _requireProof =
-        status.outstanding.contains('documents.proof_of_residence');
+    _loadedIdType = idType;
+    _loadedMasked = idNumberMasked;
+    _proofSticky = status.outstanding.contains(_proofKey) ||
+        documents.any((d) => d.kind == 'proof_of_residence');
   }
 
   // --- Fields ---------------------------------------------------------------
@@ -158,11 +206,14 @@ class KycFormViewModel extends ChangeNotifier {
   void setIdType(String v) {
     if (v == idType) return;
     errors.remove('identification.idNumber');
-    errors.removeWhere((k, _) => k.startsWith('documents.'));
+    errors.removeWhere((k, _) => k.startsWith('documents.') && k != _proofKey);
+    // A number saved for another ID type cannot be reused: require a new one.
+    idNumberMasked = v == _loadedIdType ? _loadedMasked : null;
     _edit('identification.idType', () => idType = v);
   }
 
   void _edit(String key, void Function() apply) {
+    if (readOnly) return;
     apply();
     errors.remove(key);
     _dirty = true;
@@ -220,21 +271,40 @@ class KycFormViewModel extends ChangeNotifier {
   Future<void> _send(KycDraft d) async {
     try {
       await _service.saveDraft(d);
+      _changed = true;
       saveState = KycSaveState.saved;
+      saveError = null;
+    } on KycValidationException catch (e) {
+      _dirty = true;
+      errors.addAll(e.errors);
+      saveState = KycSaveState.error;
+      saveError = e.message;
+    } on KycApiException catch (e) {
+      _dirty = true;
+      saveState = KycSaveState.error;
+      // Status 0 is "no connection" from KycService.
+      saveError = e.statusCode == 0 ? null : e.message;
     } catch (_) {
       _dirty = true;
       saveState = KycSaveState.error;
+      saveError = _fallbackMessage;
     }
     _notify();
   }
 
   // --- Steps ----------------------------------------------------------------
 
-  Map<String, String> _validate() => validateKyc(
-        draft,
-        documents: documents,
-        requireProofOfResidence: _requireProof,
-      );
+  Map<String, String> _validate() {
+    final e = validateKyc(
+      draft,
+      documents: documents,
+      requireProofOfResidence: _proofSticky,
+    );
+    if (idType == 'passport' && e['identification.idNumber'] == 'Enter your ID number.') {
+      e['identification.idNumber'] = 'Enter your passport number.';
+    }
+    return e;
+  }
 
   /// Validates the current step. Returns false and shows errors if it fails.
   bool next() {
@@ -265,8 +335,7 @@ class KycFormViewModel extends ChangeNotifier {
 
   // --- Documents ------------------------------------------------------------
 
-  bool get showProofOfResidence =>
-      _requireProof || documents.any((d) => d.kind == 'proof_of_residence');
+  bool get showProofOfResidence => _proofSticky;
 
   List<String> get documentKinds => [
         ...requiredDocumentKinds(idType),
@@ -303,6 +372,7 @@ class KycFormViewModel extends ChangeNotifier {
           _notify();
         },
       );
+      _changed = true;
       documents = [
         ...documents.where((d) => d.kind != kind),
         doc,
@@ -338,6 +408,7 @@ class KycFormViewModel extends ChangeNotifier {
     _notify();
     try {
       await _service.deleteDocument(documentId);
+      _changed = true;
       documents = documents.where((d) => d.id != documentId).toList();
       localPreviews.remove(doc.kind);
       localPdfs.remove(doc.kind);
@@ -379,7 +450,7 @@ class KycFormViewModel extends ChangeNotifier {
     try {
       await _save();
       if (saveState == KycSaveState.error) {
-        submitError = _notSavedMessage;
+        submitError = saveError ?? _notSavedMessage;
         return;
       }
       await _service.submit();
@@ -399,6 +470,7 @@ class KycFormViewModel extends ChangeNotifier {
 
   void _showErrors(Map<String, String> all, {String? message}) {
     errors = Map.of(all);
+    if (all.containsKey(_proofKey)) _proofSticky = true;
     final first = all.keys.map(kycStepForKey).fold(kycReviewStep,
         (int a, int b) => a < b ? a : b);
     if (first == kycReviewStep) submitError = message ?? _fallbackMessage;
@@ -413,10 +485,22 @@ class KycFormViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
-    final pending = _timer?.isActive == true;
     _timer?.cancel();
-    // Keep the last edit when the user leaves before the debounce fires.
-    if (pending && _dirty) unawaited(_service.saveDraft(draft).catchError((_) {}));
+    // Keep the last edit. The server's draft PUT is an unlocked
+    // read-merge-write, so this save must start only after any save in flight
+    // or that older save could land last. Then refresh the app-wide status so
+    // the next open (and the gate) sees what was saved.
+    final prior = _saving ?? Future<void>.value();
+    if (_dirty && !readOnly) {
+      final snapshot = draft;
+      _dirty = false;
+      unawaited(prior
+          .then((_) => _service.saveDraft(snapshot))
+          .then((_) {}, onError: (Object _) {})
+          .then((_) => _controller.refresh()));
+    } else if (_changed || _saving != null) {
+      unawaited(prior.then((_) => _controller.refresh()));
+    }
     super.dispose();
   }
 }

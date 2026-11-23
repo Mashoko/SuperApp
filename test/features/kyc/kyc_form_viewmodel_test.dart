@@ -276,9 +276,10 @@ void main() {
 
     test('success refreshes the controller and exposes submitted', () async {
       await ready();
+      final before = controller.refreshCalls;
       await vm.submit();
       expect(service.submits, 1);
-      expect(controller.refreshCalls, 1);
+      expect(controller.refreshCalls, before + 1);
       expect(vm.submitted, isTrue);
       expect(vm.submitError, isNull);
     });
@@ -303,6 +304,7 @@ void main() {
 
     test('server field errors map and jump to the step', () async {
       await ready();
+      final before = controller.refreshCalls;
       service.submitError = KycValidationException(
           {'address.city': 'Enter your city or town.', 'documents.id_back': 'Upload this document.'},
           'Some details need fixing.');
@@ -311,7 +313,7 @@ void main() {
       expect(vm.step, 1);
       expect(vm.errors['address.city'], 'Enter your city or town.');
       expect(vm.errors['documents.id_back'], 'Upload this document.');
-      expect(controller.refreshCalls, 0);
+      expect(controller.refreshCalls, before);
     });
 
     test('other errors stay on review with a message', () async {
@@ -323,6 +325,198 @@ void main() {
       expect(vm.submitting, isFalse);
       expect(vm.submitError,
           'Verification is temporarily unavailable. Please try again later.');
+    });
+  });
+
+  group('fresh load (C1)', () {
+    test('always refreshes and uses the fresh draft over the cached one', () {
+      fakeAsync((async) {
+        build(kycStatus(draft: completeDraft));
+        final fresh = Map<String, dynamic>.from(completeDraft);
+        fresh['address'] = {
+          'line1': '12 Samora Machel Ave',
+          'city': 'Bulawayo',
+          'country': 'Zimbabwe',
+        };
+        controller.next = kycStatus(draft: fresh);
+        vm.load();
+        async.flushMicrotasks();
+        expect(controller.refreshCalls, 1);
+        expect(vm.city, 'Bulawayo');
+        expect(vm.staleNotice, isNull);
+        vm.setFirstName('Rudo');
+        async.elapse(const Duration(milliseconds: 800));
+        expect(service.saved.single.address.city, 'Bulawayo');
+      });
+    });
+
+    test('falls back to the cached status with a notice when refresh fails',
+        () async {
+      build(kycStatus(draft: completeDraft));
+      controller.failWith = 'No connection. Check your internet and try again.';
+      await vm.load();
+      expect(vm.loadError, isNull);
+      expect(vm.city, 'Harare');
+      expect(vm.staleNotice,
+          'Could not load your latest details. Showing what was saved earlier.');
+    });
+  });
+
+  group('dispose (I1)', () {
+    test('final save waits for the save in flight, then refreshes', () {
+      fakeAsync((async) {
+        build(kycStatus(draft: completeDraft));
+        vm.load();
+        async.flushMicrotasks();
+        final refreshesAfterLoad = controller.refreshCalls;
+        service.saveGate = Completer<void>();
+        vm.setCity('Old');
+        async.elapse(const Duration(milliseconds: 800));
+        expect(service.saved, hasLength(1));
+        vm.setCity('New');
+        vm.dispose();
+        async.flushMicrotasks();
+        expect(service.saved, hasLength(1),
+            reason: 'must not start before the older save finishes');
+        service.saveGate!.complete();
+        async.flushMicrotasks();
+        expect(service.saved.map((d) => d.address.city), ['Old', 'New']);
+        expect(controller.refreshCalls, refreshesAfterLoad + 1);
+        // tearDown disposes again; make that a no-op.
+        vm = KycFormViewModel(service, controller);
+      });
+    });
+
+    test('saves on dispose whenever dirty, even after a failed save', () {
+      fakeAsync((async) {
+        build(kycStatus(draft: completeDraft));
+        vm.load();
+        async.flushMicrotasks();
+        service.saveError = KycApiException(0, 'offline');
+        vm.setCity('Kwekwe');
+        async.elapse(const Duration(milliseconds: 800));
+        expect(vm.saveState, KycSaveState.error);
+        service.saveError = null;
+        vm.dispose();
+        async.flushMicrotasks();
+        expect(service.saved, hasLength(2));
+        expect(service.saved.last.address.city, 'Kwekwe');
+        vm = KycFormViewModel(service, controller);
+      });
+    });
+  });
+
+  group('proof of residence (I2)', () {
+    test('stays visible and required after the proof document is removed',
+        () async {
+      build(kycStatus(
+          draft: completeDraft,
+          documents: [
+            docJson('id_front'),
+            docJson('id_back'),
+            docJson('proof_of_residence'),
+          ]));
+      await vm.load();
+      await vm.remove('doc-proof_of_residence');
+      expect(vm.documentKinds, contains('proof_of_residence'));
+      vm.goToStep(3);
+      expect(vm.next(), isFalse);
+      expect(vm.errors['documents.proof_of_residence'], 'Upload this document.');
+    });
+
+    test('a server error for proof shows the tile', () async {
+      build(kycStatus(
+          draft: completeDraft,
+          documents: [docJson('id_front'), docJson('id_back')]));
+      await vm.load();
+      expect(vm.documentKinds, isNot(contains('proof_of_residence')));
+      vm.goToStep(4);
+      service.submitError = KycValidationException(
+          {'documents.proof_of_residence': 'Upload this document.'},
+          'Some details need fixing.');
+      await vm.submit();
+      expect(vm.step, 3);
+      expect(vm.documentKinds, contains('proof_of_residence'));
+    });
+  });
+
+  group('read-only (I3)', () {
+    for (final s in ['PENDING_REVIEW', 'APPROVED']) {
+      test('$s is read-only and never saves', () async {
+        build(kycStatus(draft: completeDraft, status: s));
+        await vm.load();
+        expect(vm.readOnly, isTrue);
+        expect(vm.lockedStatus, s);
+        vm.setCity('Harare 2');
+        vm.dispose();
+        await Future<void>.delayed(const Duration(seconds: 1));
+        expect(service.saved, isEmpty);
+        vm = KycFormViewModel(service, controller);
+      });
+    }
+  });
+
+  group('save errors (I4)', () {
+    test('a 400 on save maps field errors and is not a connection error', () {
+      fakeAsync((async) {
+        build(kycStatus(draft: completeDraft));
+        vm.load();
+        async.flushMicrotasks();
+        service.saveError = KycValidationException(
+            {'personal.firstName': 'Use 60 characters or fewer.'},
+            'Some details are invalid.');
+        vm.setFirstName('x');
+        async.elapse(const Duration(milliseconds: 800));
+        expect(vm.saveState, KycSaveState.error);
+        expect(vm.errors['personal.firstName'], 'Use 60 characters or fewer.');
+        expect(vm.saveError, 'Some details are invalid.');
+      });
+    });
+
+    test('other server errors show their own message; offline shows none', () {
+      fakeAsync((async) {
+        build(kycStatus(draft: completeDraft));
+        vm.load();
+        async.flushMicrotasks();
+        service.saveError = KycApiException(429, 'Too many attempts. Please wait a few minutes.');
+        vm.setFirstName('x');
+        async.elapse(const Duration(milliseconds: 800));
+        expect(vm.saveError, 'Too many attempts. Please wait a few minutes.');
+        service.saveError = KycApiException(0, 'No connection.');
+        vm.setFirstName('y');
+        async.elapse(const Duration(milliseconds: 800));
+        expect(vm.saveState, KycSaveState.error);
+        expect(vm.saveError, isNull);
+      });
+    });
+  });
+
+  group('ID type change', () {
+    test('clears the masked number and requires a new one', () async {
+      build(kycStatus(draft: completeDraft));
+      await vm.load();
+      vm.goToStep(2);
+      vm.setIdType('passport');
+      vm.setIdExpiry(DateTime(2035, 1, 1));
+      expect(vm.idNumberMasked, isNull);
+      expect(vm.next(), isFalse);
+      expect(vm.errors['identification.idNumber'], 'Enter your passport number.');
+      vm.setIdType('national_id');
+      expect(vm.idNumberMasked, '*********A42',
+          reason: 'switching back restores the saved number');
+      expect(vm.next(), isTrue);
+    });
+
+    test('national ID asks for the ID number', () async {
+      build(kycStatus(draft: {
+        ...completeDraft,
+        'identification': {'idType': 'passport', 'idNumberMasked': '*****456'},
+      }));
+      await vm.load();
+      vm.goToStep(2);
+      vm.setIdType('national_id');
+      expect(vm.next(), isFalse);
+      expect(vm.errors['identification.idNumber'], 'Enter your ID number.');
     });
   });
 }

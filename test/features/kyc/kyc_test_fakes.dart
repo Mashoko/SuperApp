@@ -124,9 +124,11 @@ class FakeKycController extends KycStatusController {
   int refreshCalls = 0;
   KycStatus? next;
   String? failWith;
+  bool _gone = false;
 
   @override
   Future<void> refresh() async {
+    if (_gone) return;
     refreshCalls++;
     if (failWith != null) {
       error = failWith;
@@ -136,5 +138,11 @@ class FakeKycController extends KycStatusController {
     if (next != null) status = next;
     error = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _gone = true;
+    super.dispose();
   }
 }

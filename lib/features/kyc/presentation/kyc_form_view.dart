@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
@@ -56,8 +57,8 @@ class _KycFormViewState extends State<KycFormView> {
     super.dispose();
   }
 
-  TextEditingController _controller(String key, String? initial) =>
-      _controllers.putIfAbsent(key, () => TextEditingController(text: initial ?? ''));
+  TextEditingController _controller(String key, String? initial) => _controllers
+      .putIfAbsent(key, () => TextEditingController(text: initial ?? ''));
 
   @override
   Widget build(BuildContext context) {
@@ -68,22 +69,31 @@ class _KycFormViewState extends State<KycFormView> {
         listenable: _vm,
         builder: (context, _) {
           final scheme = theme.colorScheme;
-          return Scaffold(
-            backgroundColor: scheme.surface,
-            appBar: AppBar(
-              title: const Text('Verify your number'),
+          final inSteps = !_vm.loading &&
+              _vm.loadError == null &&
+              !_vm.readOnly &&
+              !_vm.submitted;
+          // System back walks back through the steps; on the first step (and
+          // in every non-form state) it leaves the screen as usual.
+          return PopScope(
+            canPop: !inSteps || _vm.step == 0,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop && inSteps) _vm.back();
+            },
+            child: Scaffold(
               backgroundColor: scheme.surface,
-              foregroundColor: scheme.onSurface,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              surfaceTintColor: Colors.transparent,
-              shape: Border(bottom: BorderSide(color: scheme.outlineVariant)),
+              appBar: AppBar(
+                title: const Text('Verify your number'),
+                backgroundColor: scheme.surface,
+                foregroundColor: scheme.onSurface,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                surfaceTintColor: Colors.transparent,
+                shape: Border(bottom: BorderSide(color: scheme.outlineVariant)),
+              ),
+              body: _body(context),
+              bottomNavigationBar: inSteps ? _bottomBar(context) : null,
             ),
-            body: _body(context),
-            bottomNavigationBar:
-                _vm.loading || _vm.loadError != null || _vm.submitted
-                    ? null
-                    : _bottomBar(context),
           );
         },
       ),
@@ -101,6 +111,20 @@ class _KycFormViewState extends State<KycFormView> {
         action: FilledButton(
           onPressed: () => unawaited(_vm.load()),
           child: const Text('Try again'),
+        ),
+      );
+    }
+    if (_vm.readOnly) {
+      return _Message(
+        icon: Icons.check_circle_outline,
+        title: 'Your details are with us',
+        text: _vm.lockedStatus == 'APPROVED'
+            ? 'You are verified. Thank you.'
+            : 'We are reviewing your details. '
+                'You can keep using the app while we check.',
+        action: FilledButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          child: const Text('Done'),
         ),
       );
     }
@@ -123,6 +147,10 @@ class _KycFormViewState extends State<KycFormView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (_vm.staleNotice != null) ...[
+                _Notice(text: _vm.staleNotice!),
+                const SizedBox(height: 12),
+              ],
               KycStepIndicator(step: _vm.step),
               _SaveStatus(vm: _vm),
             ],
@@ -366,7 +394,8 @@ class _KycFormViewState extends State<KycFormView> {
   Widget _reviewStep(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    String or(String? v) => (v == null || v.trim().isEmpty) ? 'Not given' : v.trim();
+    String or(String? v) =>
+        (v == null || v.trim().isEmpty) ? 'Not given' : v.trim();
     final typed = (_vm.newIdNumber ?? '').trim();
     final idShown = typed.isNotEmpty
         ? '${'*' * (typed.length > 3 ? typed.length - 3 : 0)}'
@@ -410,7 +439,8 @@ class _KycFormViewState extends State<KycFormView> {
           onEdit: () => _vm.goToStep(1),
           rows: [
             ('Address', or(_vm.line1)),
-            if ((_vm.line2 ?? '').trim().isNotEmpty) ('Address line 2', _vm.line2!.trim()),
+            if ((_vm.line2 ?? '').trim().isNotEmpty)
+              ('Address line 2', _vm.line2!.trim()),
             ('City or town', or(_vm.city)),
             ('Country', or(_vm.country)),
           ],
@@ -527,6 +557,7 @@ class _KycFormViewState extends State<KycFormView> {
     bool sensitive = false,
     TextInputAction action = TextInputAction.next,
   }) {
+    final max = kycMaxLengths[key];
     return TextField(
       key: ValueKey('kyc-field-$key'),
       controller: _controller(key, value),
@@ -535,6 +566,9 @@ class _KycFormViewState extends State<KycFormView> {
       textCapitalization: capitalization,
       textInputAction: action,
       autofillHints: autofill,
+      inputFormatters: [
+        if (max != null) LengthLimitingTextInputFormatter(max),
+      ],
       autocorrect: !sensitive,
       enableSuggestions: !sensitive,
       style: const TextStyle(fontSize: 16),
@@ -650,7 +684,8 @@ class _KycFormViewState extends State<KycFormView> {
       return KycPickedFile(bytes: bytes, filename: f.name);
     }
     final x = await ImagePicker().pickImage(
-      source: source == _Source.camera ? ImageSource.camera : ImageSource.gallery,
+      source:
+          source == _Source.camera ? ImageSource.camera : ImageSource.gallery,
       maxWidth: 2400,
       maxHeight: 2400,
       imageQuality: 85,
@@ -764,14 +799,16 @@ class _SaveStatus extends StatelessWidget {
       case KycSaveState.idle:
         content = const SizedBox.shrink();
       case KycSaveState.saving:
-        content = Text('Saving…', style: style?.copyWith(color: scheme.onSurfaceVariant));
+        content = Text('Saving…',
+            style: style?.copyWith(color: scheme.onSurfaceVariant));
       case KycSaveState.saved:
-        content = Text('Saved', style: style?.copyWith(color: scheme.onSurfaceVariant));
+        content = Text('Saved',
+            style: style?.copyWith(color: scheme.onSurfaceVariant));
       case KycSaveState.error:
         content = Row(
           children: [
             Flexible(
-              child: Text('Not saved. Check your connection.',
+              child: Text(vm.saveError ?? 'Not saved. Check your connection.',
                   style: style?.copyWith(color: scheme.error)),
             ),
             TextButton(
@@ -792,7 +829,8 @@ class _SaveStatus extends StatelessWidget {
 }
 
 class _ReadOnlyValue extends StatelessWidget {
-  const _ReadOnlyValue({required this.label, required this.value, required this.note});
+  const _ReadOnlyValue(
+      {required this.label, required this.value, required this.note});
 
   final String label;
   final String value;
@@ -834,7 +872,8 @@ class _DateField extends StatelessWidget {
     final shown = _formatDate(value);
     return Semantics(
       button: true,
-      label: [label, if (shown.isNotEmpty) shown, if (error != null) error!].join(', '),
+      label: [label, if (shown.isNotEmpty) shown, if (error != null) error!]
+          .join(', '),
       excludeSemantics: true,
       child: InkWell(
         onTap: onPick,
@@ -932,7 +971,8 @@ class _ReviewSection extends StatelessWidget {
         children: [
           Row(children: [
             Expanded(
-              child: Text(title, style: body?.copyWith(fontWeight: FontWeight.w600)),
+              child: Text(title,
+                  style: body?.copyWith(fontWeight: FontWeight.w600)),
             ),
             TextButton(
               onPressed: onEdit,
@@ -961,10 +1001,49 @@ class _ReviewSection extends StatelessWidget {
   }
 }
 
+class _Notice extends StatelessWidget {
+  const _Notice({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: scheme.outlineVariant),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.info_outline, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(text,
+                  style: theme.textTheme.bodyLarge?.copyWith(fontSize: 16)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _Message extends StatelessWidget {
-  const _Message({required this.icon, required this.text, required this.action});
+  const _Message({
+    required this.icon,
+    required this.text,
+    required this.action,
+    this.title,
+  });
 
   final IconData icon;
+  final String? title;
   final String text;
   final Widget action;
 
@@ -981,6 +1060,13 @@ class _Message extends StatelessWidget {
             children: [
               Icon(icon, size: 40, color: theme.colorScheme.primary),
               const SizedBox(height: 16),
+              if (title != null) ...[
+                Text(title!,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleLarge
+                        ?.copyWith(fontSize: 22, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+              ],
               Text(text,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyLarge?.copyWith(fontSize: 18)),
@@ -995,7 +1081,8 @@ class _Message extends StatelessWidget {
 }
 
 class _SheetOption extends StatelessWidget {
-  const _SheetOption({required this.icon, required this.label, required this.onTap});
+  const _SheetOption(
+      {required this.icon, required this.label, required this.onTap});
 
   final IconData icon;
   final String label;

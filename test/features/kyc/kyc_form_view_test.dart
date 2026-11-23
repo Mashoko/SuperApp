@@ -152,13 +152,14 @@ void main() {
     await pumpForm(tester);
     vm.goToStep(4);
     await tester.pumpAndSettle();
+    final before = controller.refreshCalls;
     await tester.tap(find.widgetWithText(FilledButton, 'Submit for review'));
     await tester.pumpAndSettle();
     expect(
         find.text(
             'Thanks. We are reviewing your details. You can keep using the app while we check.'),
         findsOneWidget);
-    expect(controller.refreshCalls, 1);
+    expect(controller.refreshCalls, before + 1);
     await finish(tester);
   });
 
@@ -225,4 +226,94 @@ void main() {
       });
     }
   }
+
+  for (final (status, body) in const [
+    ('PENDING_REVIEW',
+        'We are reviewing your details. You can keep using the app while we check.'),
+    ('APPROVED', 'You are verified. Thank you.'),
+  ]) {
+    testWidgets('$status shows a read-only state', (tester) async {
+      controller.status = kycStatus(draft: completeDraft, status: status);
+      await pumpForm(tester);
+      expect(find.text('Your details are with us'), findsOneWidget);
+      expect(find.text(body), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.byType(FilledButton), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Done'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    });
+  }
+
+  testWidgets('stale notice when the refresh fails', (tester) async {
+    controller.failWith = 'No connection. Check your internet and try again.';
+    await pumpForm(tester);
+    expect(
+        find.text(
+            'Could not load your latest details. Showing what was saved earlier.'),
+        findsOneWidget);
+    expect(find.widgetWithText(TextField, 'First name'), findsOneWidget);
+    await finish(tester);
+  });
+
+  testWidgets('a 400 on save shows the field error, not the connection copy',
+      (tester) async {
+    await pumpForm(tester);
+    service.saveError = KycValidationException(
+        {'personal.firstName': 'Use 60 characters or fewer.'},
+        'Some details are invalid.');
+    await tester.enterText(find.widgetWithText(TextField, 'First name'), 'Rudo');
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump();
+    expect(find.text('Use 60 characters or fewer.'), findsOneWidget);
+    expect(find.text('Some details are invalid.'), findsOneWidget);
+    expect(find.text('Not saved. Check your connection.'), findsNothing);
+    await finish(tester);
+  });
+
+  testWidgets('text fields are capped at the server limits', (tester) async {
+    await pumpForm(tester);
+    await tester.enterText(
+        find.widgetWithText(TextField, 'First name'), 'a' * 70);
+    await tester.pump();
+    expect(vm.firstName, 'a' * 60);
+    vm.goToStep(2);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'ID number'), '1' * 30);
+    await tester.pump();
+    expect(vm.newIdNumber, '1' * 20);
+    await finish(tester);
+  });
+
+  testWidgets('system back goes to the previous step, then leaves',
+      (tester) async {
+    tester.view.physicalSize = const Size(375, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: TextButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => KycFormView(viewModel: vm))),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    vm.goToStep(2);
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(vm.step, 1);
+    expect(find.byType(KycFormView), findsOneWidget);
+    vm.goToStep(0);
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(KycFormView), findsNothing);
+    await finish(tester);
+  });
 }
