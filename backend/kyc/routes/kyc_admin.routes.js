@@ -425,17 +425,20 @@ const newCycleAction = ({ from, to, decision, eventType, notifyKind, reasonField
       'kyc.lastUpdatedAt': now,
       'kyc.reviewedBy': actor,
     };
-    const $unset = { 'kyc.rejectionReason': 1, 'kyc.correctionNotes': 1 };
+    // A new cycle is a fresh grace period, so any exemption from the last one ends.
+    const $unset = { 'kyc.rejectionReason': 1, 'kyc.correctionNotes': 1, 'kyc.exemption': 1 };
     if (reasonField) {
       $set[`kyc.${reasonField}`] = reason;
       delete $unset[`kyc.${reasonField}`];
     }
-    const updated = await AppUser.findOneAndUpdate(
+    const before = await AppUser.findOneAndUpdate(
       { _id: id, 'kyc.status': from },
       { $set, $unset, $inc: { 'kyc.cycle': 1 } },
-      { new: true }
+      { returnDocument: 'before' }
     );
-    if (!updated) return conflictOrMissing(res, id, conflict);
+    if (!before) return conflictOrMissing(res, id, conflict);
+    const exemptionCleared = !!before.kyc?.exemption?.until;
+    const updated = await AppUser.findById(before._id);
 
     const submission = await decideLatestSubmission(updated._id, decision, actor, now, reason);
     await seedDraftFrom(updated._id, submission);
@@ -443,6 +446,7 @@ const newCycleAction = ({ from, to, decision, eventType, notifyKind, reasonField
       reason,
       cycle: updated.kyc.cycle,
       submissionId: submission?._id || null,
+      exemptionCleared,
     });
 
     const settings = await KycSettings.getSettings();

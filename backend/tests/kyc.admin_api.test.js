@@ -314,6 +314,38 @@ describe('decisions', () => {
     ).toBe(1);
   });
 
+  test('a new cycle ends an exemption granted while pending, so the new deadline restricts', async () => {
+    const { appUser, token } = await submittedUser({ createdAt: daysAgo(100) });
+    const until = new Date(Date.now() + 60 * DAY).toISOString();
+    expect(
+      (await post(`/users/${appUser._id}/exemption`, reviewer(), { until, reason: 'Travelling abroad' }))
+        .status
+    ).toBe(200);
+    expect((await post(`/users/${appUser._id}/reject`, reviewer(), { reason: 'The ID photo is blurred' })).status).toBe(200);
+
+    const updated = await AppUser.findById(appUser._id);
+    expect(updated.kyc.exemption?.until).toBeUndefined();
+    const event = await KycEvent.findOne({ appUserId: appUser._id, type: 'REJECTED' });
+    expect(event.data.exemptionCleared).toBe(true);
+    expect((await request(app).get('/api/cart').set(auth(token))).status).toBe(200);
+
+    // Move to the new deadline (cycle start + 14 days).
+    await AppUser.updateOne(
+      { _id: appUser._id },
+      { $set: { 'kyc.cycleStartedAt': new Date(Date.now() - 15 * DAY) } }
+    );
+    const blocked = await request(app).get('/api/cart').set(auth(token));
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.underlyingStatus).toBe('REJECTED');
+  });
+
+  test('a new cycle with no exemption records exemptionCleared false', async () => {
+    const { appUser } = await submittedUser();
+    await post(`/users/${appUser._id}/request-correction`, reviewer(), { reason: 'Surname does not match' });
+    const event = await KycEvent.findOne({ appUserId: appUser._id, type: 'CORRECTION_REQUESTED' });
+    expect(event.data.exemptionCleared).toBe(false);
+  });
+
   test('expire requires APPROVED and starts a new cycle', async () => {
     const { appUser } = await submittedUser();
     expect(
