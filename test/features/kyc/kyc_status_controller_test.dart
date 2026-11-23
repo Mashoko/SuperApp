@@ -42,7 +42,12 @@ void main() {
     service = _FakeService();
     controller = KycStatusController(service);
   });
-  tearDown(() => controller.dispose());
+  tearDown(() {
+    // dispose is idempotent for our purposes: guard against double dispose
+    try {
+      controller.dispose();
+    } catch (_) {}
+  });
 
   test('refresh populates status', () async {
     await controller.refresh();
@@ -106,6 +111,7 @@ void main() {
   test('timer refreshes every 30 minutes while resumed, stops when paused', () {
     fakeAsync((async) {
       final c = KycStatusController(service);
+      addTearDown(c.dispose);
       c.didChangeAppLifecycleState(AppLifecycleState.resumed);
       async.flushMicrotasks();
       expect(service.calls, 1);
@@ -114,7 +120,62 @@ void main() {
       c.didChangeAppLifecycleState(AppLifecycleState.paused);
       async.elapse(const Duration(minutes: 90));
       expect(service.calls, 2);
-      c.dispose();
     });
+  });
+
+  test('controller built while binding is resumed polls without a resume event',
+      () {
+    // Avoid the setUp controller reacting to the lifecycle change.
+    controller.dispose();
+    TestWidgetsFlutterBinding.instance
+        .handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    fakeAsync((async) {
+      final c = KycStatusController(service);
+      addTearDown(c.dispose);
+      expect(service.calls, 0);
+      async.elapse(const Duration(minutes: 30));
+      expect(service.calls, 1);
+    });
+  });
+
+  test('clear during a pending refresh discards its result', () async {
+    service.gate = Completer<KycStatus>();
+    final pending = controller.refresh();
+    controller.clear();
+    service.gate!.complete(_status('APPROVED'));
+    await pending;
+    expect(controller.status, isNull);
+  });
+
+  test('refresh after clear issues a new call while the old one is pending',
+      () async {
+    service.gate = Completer<KycStatus>();
+    final old = controller.refresh();
+    controller.clear();
+    final fresh = controller.refresh();
+    expect(service.calls, 2);
+    service.gate!.complete(_status('APPROVED'));
+    await Future.wait([old, fresh]);
+    expect(controller.status?.status, 'APPROVED');
+  });
+
+  test('markRestricted is not undone by an earlier stale refresh', () async {
+    service.gate = Completer<KycStatus>();
+    final stale = controller.refresh();
+    controller.markRestricted();
+    expect(service.calls, 2);
+    service.gate!.complete(_status('IN_PROGRESS'));
+    await stale;
+    expect(controller.isRestricted, isTrue);
+  });
+
+  test('background refresh does not toggle loading once status is known',
+      () async {
+    await controller.refresh();
+    service.gate = Completer<KycStatus>();
+    final f = controller.refresh();
+    expect(controller.loading, isFalse);
+    service.gate!.complete(_status('IN_PROGRESS'));
+    await f;
   });
 }

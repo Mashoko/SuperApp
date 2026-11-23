@@ -126,7 +126,9 @@ class OtpAuthService {
         unawaited(session.refresh());
       }
       if (getIt.isRegistered<KycStatusController>()) {
-        unawaited(getIt<KycStatusController>().refresh());
+        final kyc = getIt<KycStatusController>();
+        kyc.clear();
+        unawaited(kyc.refresh());
       }
 
       return {

@@ -101,7 +101,9 @@ class LoginViewModel extends ChangeNotifier {
       unawaited(session.refresh());
     }
     if (getIt.isRegistered<KycStatusController>()) {
-      unawaited(getIt<KycStatusController>().refresh());
+      final kyc = getIt<KycStatusController>();
+      kyc.clear();
+      unawaited(kyc.refresh());
     }
 
     // Fetch account summary (alias, balance, etc.) after registration.

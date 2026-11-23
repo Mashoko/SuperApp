@@ -11,7 +11,12 @@ const _pollInterval = Duration(minutes: 30);
 /// and every 30 minutes while the app is in the foreground.
 class KycStatusController extends ChangeNotifier with WidgetsBindingObserver {
   KycStatusController(this._service) {
-    WidgetsBinding.instance.addObserver(this);
+    final binding = WidgetsBinding.instance;
+    binding.addObserver(this);
+    // The binding drops a repeated identical lifecycle state, so a controller
+    // built after launch never sees the initial `resumed`. Start polling now.
+    final state = binding.lifecycleState;
+    if (state == null || state == AppLifecycleState.resumed) _startTimer();
   }
 
   final KycService _service;
@@ -24,24 +29,42 @@ class KycStatusController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void>? _inFlight;
   Timer? _timer;
   bool _disposed = false;
+  int _generation = 0;
 
   bool get launched => status?.launched ?? false;
   bool get isRestricted => _restrictedFlag || (status?.isRestricted ?? false);
 
   /// Single-flight: concurrent callers share one request.
-  Future<void> refresh() => _inFlight ??= _doRefresh().whenComplete(() {
-        _inFlight = null;
-      });
+  Future<void> refresh() {
+    final existing = _inFlight;
+    if (existing != null) return existing;
+    late final Future<void> run;
+    run = _doRefresh().whenComplete(() {
+      if (identical(_inFlight, run)) _inFlight = null;
+    });
+    return _inFlight = run;
+  }
+
+  /// Drops any running refresh so its result can never be applied.
+  void _invalidate() {
+    _generation++;
+    _inFlight = null;
+  }
 
   Future<void> _doRefresh() async {
-    loading = true;
-    _notify();
+    final gen = _generation;
+    if (status == null) {
+      loading = true;
+      _notify();
+    }
     try {
       final fresh = await _service.getStatus();
+      if (gen != _generation) return;
       status = fresh;
       error = null;
       if (!fresh.isRestricted) _restrictedFlag = false;
     } on KycApiException catch (e) {
+      if (gen != _generation) return;
       if (e.statusCode == 401) {
         loading = false;
         clear();
@@ -49,6 +72,7 @@ class KycStatusController extends ChangeNotifier with WidgetsBindingObserver {
       }
       error = e.message;
     } catch (_) {
+      if (gen != _generation) return;
       error = 'Something went wrong. Please try again.';
     }
     loading = false;
@@ -58,6 +82,9 @@ class KycStatusController extends ChangeNotifier with WidgetsBindingObserver {
   /// Idempotent: shows the gate immediately and triggers one shared refresh.
   void markRestricted() {
     if (!_restrictedFlag) {
+      // A refresh started earlier must not clear this flag with a stale
+      // non-restricted snapshot.
+      _invalidate();
       _restrictedFlag = true;
       _notify();
     }
@@ -65,6 +92,7 @@ class KycStatusController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void clear() {
+    _invalidate();
     status = null;
     error = null;
     loading = false;
@@ -77,8 +105,7 @@ class KycStatusController extends ChangeNotifier with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.resumed:
         unawaited(refresh());
-        _timer?.cancel();
-        _timer = Timer.periodic(_pollInterval, (_) => unawaited(refresh()));
+        _startTimer();
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
@@ -86,6 +113,11 @@ class KycStatusController extends ChangeNotifier with WidgetsBindingObserver {
         _timer?.cancel();
         _timer = null;
     }
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(_pollInterval, (_) => unawaited(refresh()));
   }
 
   void _notify() {
