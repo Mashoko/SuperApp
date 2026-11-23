@@ -615,6 +615,49 @@ describe('launch', () => {
     expect((await get('/stats', reviewer())).body.restricted).toBe(0);
     expect((await post(`/users/${appUser._id}/remind`, reviewer())).status).toBe(409);
   });
+
+  test('reject before launch delivers a REJECTED notification without a date', async () => {
+    await unlaunch();
+    const { appUser } = await submittedUser();
+    const res = await post(`/users/${appUser._id}/reject`, reviewer(), { reason: 'The ID photo is blurred.' });
+    expect(res.status).toBe(200);
+    const note = await Notification.findOne({ appUserId: appUser._id, kind: 'REJECTED' });
+    expect(note.title).toBe('KYC not approved');
+    expect(note.body).toBe('Reason: The ID photo is blurred. Please correct your details and submit again.');
+  });
+
+  test('request-correction before launch delivers a CORRECTION_REQUESTED notification without a date', async () => {
+    await unlaunch();
+    const { appUser } = await submittedUser();
+    const res = await post(`/users/${appUser._id}/request-correction`, reviewer(), {
+      reason: 'Your surname does not match the ID.',
+    });
+    expect(res.status).toBe(200);
+    const note = await Notification.findOne({ appUserId: appUser._id, kind: 'CORRECTION_REQUESTED' });
+    expect(note.title).toBe('KYC needs a correction');
+    expect(note.body).toBe('Your surname does not match the ID. Please update your details and submit again.');
+  });
+
+  test('expire before launch delivers an EXPIRED notification without a date', async () => {
+    await unlaunch();
+    const { appUser } = await submittedUser();
+    expect((await post(`/users/${appUser._id}/approve`, reviewer())).status).toBe(200);
+    const res = await post(`/users/${appUser._id}/expire`, reviewer(), { reason: 'ID has expired' });
+    expect(res.status).toBe(200);
+    const note = await Notification.findOne({ appUserId: appUser._id, kind: 'EXPIRED' });
+    expect(note.title).toBe('Please renew your KYC');
+    expect(note.body).toBe('Your verified details have expired. Please submit updated details.');
+  });
+
+  test('reject after launch still includes the deadline date', async () => {
+    const { appUser } = await submittedUser();
+    const res = await post(`/users/${appUser._id}/reject`, reviewer(), { reason: 'The ID photo is blurred.' });
+    expect(res.status).toBe(200);
+    const note = await Notification.findOne({ appUserId: appUser._id, kind: 'REJECTED' });
+    expect(note.body).toMatch(
+      /^Reason: The ID photo is blurred\. Please correct your details and submit again before \d{1,2} [A-Z][a-z]+ \d{4}\.$/
+    );
+  });
 });
 
 describe('manual reminders', () => {

@@ -32,14 +32,17 @@ const TEMPLATES = Object.freeze({
   REJECTED: {
     title: 'KYC not approved',
     body: 'Reason: {reason}. Please correct your details and submit again before {deadline}.',
+    bodyNoDeadline: 'Reason: {reason}. Please correct your details and submit again.',
   },
   CORRECTION_REQUESTED: {
     title: 'KYC needs a correction',
     body: '{reason}. Please update your details and submit again before {deadline}.',
+    bodyNoDeadline: '{reason}. Please update your details and submit again.',
   },
   EXPIRED: {
     title: 'Please renew your KYC',
     body: 'Your verified details have expired. Submit updated details before {deadline}.',
+    bodyNoDeadline: 'Your verified details have expired. Please submit updated details.',
   },
 });
 
@@ -75,7 +78,9 @@ const fill = (text, vars) =>
 const render = (kind, vars = {}) => {
   const template = Object.prototype.hasOwnProperty.call(TEMPLATES, kind) ? TEMPLATES[kind] : null;
   if (!template) throw new Error('Unknown notification kind.');
-  return { title: fill(template.title, vars), body: fill(template.body, vars) };
+  // Before launch there is no deadline; only templates with a bodyNoDeadline accept that.
+  const body = template.bodyNoDeadline && vars.deadline == null ? template.bodyNoDeadline : template.body;
+  return { title: fill(template.title, vars), body: fill(body, vars) };
 };
 
 // The stored document is the in-app inbox, so in-app delivery needs no extra work.
