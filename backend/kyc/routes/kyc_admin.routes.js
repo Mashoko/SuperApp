@@ -194,7 +194,8 @@ const restrictableFilter = { 'kyc.status': { $in: [null, ...RESTRICTABLE] } };
 const findRestricted = async (filter, settings, now) => {
   const users = await AppUser.find({ $and: [filter, restrictableFilter] })
     .sort({ createdAt: -1, _id: -1 })
-    .select('sipUsername displayName createdAt kyc');
+    .select('sipUsername displayName createdAt kyc')
+    .lean();
   return users.filter((u) => computeKycState(u, settings, now).restricted);
 };
 

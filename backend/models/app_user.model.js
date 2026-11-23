@@ -35,4 +35,7 @@ const appUserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// KYC admin stats, lists and the reminder job filter on status.
+appUserSchema.index({ 'kyc.status': 1 });
+
 module.exports = mongoose.model('AppUser', appUserSchema);
