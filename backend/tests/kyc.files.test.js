@@ -100,11 +100,93 @@ describe('kyc files', () => {
     expect(out.subarray(-2).equals(Buffer.from([0xff, 0xd9]))).toBe(true);
   });
 
-  test('stripMetadata keeps JPEG scan data after SOS verbatim', () => {
+  test('stripMetadata keeps JPEG scan data (stuffed bytes, RST markers) verbatim', () => {
     const sos = jpegSegment(0xda, Buffer.from([1, 1, 0, 0, 0x3f, 0]));
-    const scan = Buffer.from([0x12, 0xff, 0x00, 0xff, 0xe1, 0x34]); // looks like APP1 but is entropy data
+    const scan = Buffer.from([0x12, 0xff, 0x00, 0x34, 0xff, 0xd0, 0x56, 0xff, 0xd7, 0x78]);
     const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8]), sos, scan, Buffer.from([0xff, 0xd9])]);
     expect(stripMetadata(jpeg, 'image/jpeg').equals(jpeg)).toBe(true);
+  });
+
+  describe('JPEG data after the first scan', () => {
+    const SOI = Buffer.from([0xff, 0xd8]);
+    const EOI = Buffer.from([0xff, 0xd9]);
+    const exif = jpegSegment(0xe1, Buffer.from('Exif\0\0GPS-SECRET', 'binary'));
+    const sos = jpegSegment(0xda, Buffer.from([1, 1, 0, 0, 0x3f, 0]));
+
+    test('drops an MPF secondary image appended after EOI', () => {
+      const primary = Buffer.concat([
+        SOI, jpegSegment(0xe2, Buffer.from('MPF\0', 'binary')), exif, sos, Buffer.from([1, 2]), EOI,
+      ]);
+      const secondary = Buffer.concat([SOI, exif, sos, Buffer.from([1, 2]), EOI]);
+      const out = stripMetadata(Buffer.concat([primary, secondary]), 'image/jpeg');
+      expect(out.includes(Buffer.from('GPS-SECRET'))).toBe(false);
+      expect(out.includes(Buffer.from('MPF'))).toBe(false);
+      expect(out.equals(Buffer.concat([SOI, sos, Buffer.from([1, 2]), EOI]))).toBe(true);
+    });
+
+    test('drops APP1 between progressive scans and keeps both scans', () => {
+      const prog = Buffer.concat([SOI, sos, Buffer.from([1, 2]), exif, sos, Buffer.from([3]), EOI]);
+      const out = stripMetadata(prog, 'image/jpeg');
+      expect(out.includes(Buffer.from('GPS-SECRET'))).toBe(false);
+      expect(out.equals(Buffer.concat([SOI, sos, Buffer.from([1, 2]), sos, Buffer.from([3]), EOI]))).toBe(true);
+    });
+
+    test('drops data after an early EOI', () => {
+      const early = Buffer.concat([SOI, EOI, exif]);
+      const out = stripMetadata(early, 'image/jpeg');
+      expect(out.equals(Buffer.concat([SOI, EOI]))).toBe(true);
+    });
+
+    test('skips FF fill bytes before EOI in scan data', () => {
+      const jpeg = Buffer.concat([SOI, sos, Buffer.from([9, 0xff, 0xff]), EOI, Buffer.from('trailer')]);
+      const out = stripMetadata(jpeg, 'image/jpeg');
+      expect(out.includes(Buffer.from('trailer'))).toBe(false);
+      expect(out.subarray(-2).equals(EOI)).toBe(true);
+    });
+
+    test('throws when scan data has no EOI', () => {
+      const noEoi = Buffer.concat([SOI, sos, Buffer.from([1, 2, 3])]);
+      expect(() => stripMetadata(noEoi, 'image/jpeg')).toThrow('Unreadable image file.');
+    });
+  });
+
+  test('stripMetadata JPEG allowlist: keeps JFIF, ICC APP2, Adobe APP14; drops other APPn and COM', () => {
+    const app0 = jpegSegment(0xe0, Buffer.from('JFIF\0\x01\x01\0\0\x01\0\x01\0\0', 'binary'));
+    const icc = jpegSegment(0xe2, Buffer.from('ICC_PROFILE\0\x01\x01profile', 'binary'));
+    const mpf = jpegSegment(0xe2, Buffer.from('MPF\0MM\0*', 'binary'));
+    const iptc = jpegSegment(0xed, Buffer.from('Photoshop 3.0\0IPTC-CITY', 'binary'));
+    const com = jpegSegment(0xfe, Buffer.from('COMMENT-SECRET'));
+    const adobe = jpegSegment(0xee, Buffer.from('Adobe\0\x64\0\0\0\0\x01', 'binary'));
+    const notAdobe = jpegSegment(0xee, Buffer.from('Other-APP14'));
+    const app15 = jpegSegment(0xef, Buffer.from('APP15-DATA'));
+    const dqt = jpegSegment(0xdb, Buffer.alloc(65, 1));
+    const sof = jpegSegment(0xc0, Buffer.from([8, 0, 1, 0, 1, 1, 1, 0x11, 0]));
+    const dht = jpegSegment(0xc4, Buffer.alloc(20, 2));
+    const dri = jpegSegment(0xdd, Buffer.from([0, 4]));
+    const sos = jpegSegment(0xda, Buffer.from([1, 1, 0, 0, 0x3f, 0]));
+    const jpeg = Buffer.concat([
+      Buffer.from([0xff, 0xd8]), app0, icc, mpf, iptc, com, adobe, notAdobe, app15,
+      dqt, sof, dht, dri, sos, Buffer.from([5, 6]), Buffer.from([0xff, 0xd9]),
+    ]);
+    const out = stripMetadata(jpeg, 'image/jpeg');
+    expect(out.equals(Buffer.concat([
+      Buffer.from([0xff, 0xd8]), app0, icc, adobe, dqt, sof, dht, dri, sos, Buffer.from([5, 6]), Buffer.from([0xff, 0xd9]),
+    ]))).toBe(true);
+    for (const s of ['MPF', 'IPTC', 'COMMENT', 'Other-APP14', 'APP15']) {
+      expect(out.includes(Buffer.from(s))).toBe(false);
+    }
+  });
+
+  test('stripMetadata removes PNG text and time chunks', () => {
+    const ihdrEnd = 8 + 25;
+    const extra = Buffer.concat([
+      pngChunk('tEXt', Buffer.from('Comment\0TEXT-SECRET', 'binary')),
+      pngChunk('iTXt', Buffer.from('XML:com.adobe.xmp\0\0\0\0\0ITXT-SECRET', 'binary')),
+      pngChunk('zTXt', Buffer.from('Raw\0\0ZTXT-SECRET', 'binary')),
+      pngChunk('tIME', Buffer.from([0x07, 0xea, 11, 23, 12, 0, 0])),
+    ]);
+    const png = Buffer.concat([TINY_PNG.subarray(0, ihdrEnd), extra, TINY_PNG.subarray(ihdrEnd)]);
+    expect(stripMetadata(png, 'image/png').equals(TINY_PNG)).toBe(true);
   });
 
   test('stripMetadata rejects malformed JPEG', () => {
@@ -155,6 +237,22 @@ describe('kyc storage', () => {
 
     await deleteStored(storageKey);
     expect(fs.existsSync(filePath)).toBe(false);
+  });
+
+  test('saveEncrypted tightens a pre-existing storage dir to 0700', async () => {
+    const original = process.env.KYC_STORAGE_DIR;
+    const dir = path.join(original, 'preexisting');
+    fs.mkdirSync(dir, { mode: 0o755 });
+    fs.chmodSync(dir, 0o755);
+    process.env.KYC_STORAGE_DIR = dir;
+    try {
+      const { storageKey } = await saveEncrypted(Buffer.from('abc'));
+      expect(fs.statSync(dir).mode & 0o777).toBe(0o700);
+      expect(fs.readdirSync(dir)).toEqual([storageKey]);
+      await deleteStored(storageKey);
+    } finally {
+      process.env.KYC_STORAGE_DIR = original;
+    }
   });
 
   test('readDecrypted rejects ../x and non-hex keys', async () => {

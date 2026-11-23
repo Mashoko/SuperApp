@@ -21,13 +21,22 @@ function pathFor(storageKey) {
 async function saveEncrypted(buf) {
   const sha256 = crypto.createHash('sha256').update(buf).digest('hex');
   const encrypted = encryptBuffer(buf);
-  await fs.mkdir(storageDir(), { recursive: true, mode: 0o700 });
+  const dir = storageDir();
+  await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+  // mkdir's mode is ignored for an existing dir and masked by umask; enforce it.
+  await fs.chmod(dir, 0o700);
 
   const storageKey = crypto.randomBytes(32).toString('hex');
   const finalPath = pathFor(storageKey);
   const tmpPath = `${finalPath}.tmp`;
   try {
-    await fs.writeFile(tmpPath, encrypted, { mode: 0o600, flag: 'wx' });
+    const fh = await fs.open(tmpPath, 'wx', 0o600);
+    try {
+      await fh.writeFile(encrypted);
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
     await fs.rename(tmpPath, finalPath);
   } catch (err) {
     await fs.rm(tmpPath, { force: true });
