@@ -14,4 +14,13 @@ async function createAppUserWithToken({ sipUsername, createdAt = new Date(), kyc
   return { appUser, token: signAppToken(appUser) };
 }
 
-module.exports = { createAppUserWithToken };
+// Returns a Bearer header for the AppUser with this sipUsername, creating it (inside the
+// KYC grace period) on first use. The same username always maps to the same AppUser.
+async function bearerFor(sipUsername) {
+  const existing = await AppUser.findOne({ sipUsername });
+  if (existing) return `Bearer ${signAppToken(existing)}`;
+  const { token } = await createAppUserWithToken({ sipUsername });
+  return `Bearer ${token}`;
+}
+
+module.exports = { createAppUserWithToken, bearerFor };

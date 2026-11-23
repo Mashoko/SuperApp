@@ -41,6 +41,7 @@ const multer = require('multer');
 const fs = require('fs');
 const { requireAdmin, signAdminToken } = require('./middleware/auth.middleware');
 const { resolveUser, getLegacyUsage } = require('./middleware/resolve_user.middleware');
+const { requireKycAccess } = require('./kyc/require_kyc_access.middleware');
 
 // Ensure uploads directory exists
 const uploadDir = 'uploads';
@@ -627,7 +628,7 @@ async function buildCartResponse(cart) {
 }
 
 // GET /api/cart  (identity from app session)
-app.get('/api/cart', resolveUser({ field: 'userId' }), async (req, res) => {
+app.get('/api/cart', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     const cart = await Cart.findOne({ userId });
@@ -638,7 +639,7 @@ app.get('/api/cart', resolveUser({ field: 'userId' }), async (req, res) => {
 });
 
 // POST /api/cart/add  { productId, quantity }
-app.post('/api/cart/add', resolveUser({ field: 'userId' }), async (req, res) => {
+app.post('/api/cart/add', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     const { productId, quantity = 1 } = req.body;
@@ -665,7 +666,7 @@ app.post('/api/cart/add', resolveUser({ field: 'userId' }), async (req, res) => 
 });
 
 // PUT /api/cart/update  { productId, quantity }
-app.put('/api/cart/update', resolveUser({ field: 'userId' }), async (req, res) => {
+app.put('/api/cart/update', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     const { productId, quantity } = req.body;
@@ -693,7 +694,7 @@ app.put('/api/cart/update', resolveUser({ field: 'userId' }), async (req, res) =
 });
 
 // DELETE /api/cart/remove  { productId }
-app.delete('/api/cart/remove', resolveUser({ field: 'userId' }), async (req, res) => {
+app.delete('/api/cart/remove', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     const { productId } = req.body ?? {};
@@ -711,7 +712,7 @@ app.delete('/api/cart/remove', resolveUser({ field: 'userId' }), async (req, res
 });
 
 // DELETE /api/cart/clear
-app.delete('/api/cart/clear', resolveUser({ field: 'userId' }), async (req, res) => {
+app.delete('/api/cart/clear', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     await Cart.findOneAndUpdate({ userId }, { items: [] });
@@ -725,7 +726,7 @@ app.delete('/api/cart/clear', resolveUser({ field: 'userId' }), async (req, res)
 const Order = require('./models/order.model');
 
 // POST /api/orders  { items, shippingAddress, transactionId, paymentStatus, total, discountCode, discountAmount }
-app.post('/api/orders', resolveUser({ field: 'userId' }), async (req, res) => {
+app.post('/api/orders', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     const {
@@ -769,7 +770,7 @@ app.post('/api/orders', resolveUser({ field: 'userId' }), async (req, res) => {
 });
 
 // GET /api/orders  (identity from app session)
-app.get('/api/orders', resolveUser({ field: 'userId' }), async (req, res) => {
+app.get('/api/orders', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     const orders = await Order.find({ user_id: userId }).sort({ createdAt: -1 });
@@ -799,7 +800,7 @@ app.patch('/api/orders/:id/status', requireAdmin(), async (req, res) => {
 const Wishlist = require('./models/wishlist.model');
 
 // GET /api/wishlist  (identity from app session)
-app.get('/api/wishlist', resolveUser({ field: 'userId' }), async (req, res) => {
+app.get('/api/wishlist', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     const wishlist = await Wishlist.findOne({ userId });
@@ -812,7 +813,7 @@ app.get('/api/wishlist', resolveUser({ field: 'userId' }), async (req, res) => {
 });
 
 // POST /api/wishlist/add  { productId }
-app.post('/api/wishlist/add', resolveUser({ field: 'userId' }), async (req, res) => {
+app.post('/api/wishlist/add', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     const { productId } = req.body;
@@ -829,7 +830,7 @@ app.post('/api/wishlist/add', resolveUser({ field: 'userId' }), async (req, res)
 });
 
 // DELETE /api/wishlist/remove/:productId  (identity from app session)
-app.delete('/api/wishlist/remove/:productId', resolveUser({ field: 'userId' }), async (req, res) => {
+app.delete('/api/wishlist/remove/:productId', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     const { productId } = req.params;
@@ -847,7 +848,7 @@ app.delete('/api/wishlist/remove/:productId', resolveUser({ field: 'userId' }), 
 const ShippingAddress = require('./models/shipping_address.model');
 
 // GET /api/shipping-addresses  (identity from app session)
-app.get('/api/shipping-addresses', resolveUser({ field: 'userId' }), async (req, res) => {
+app.get('/api/shipping-addresses', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     const addresses = await ShippingAddress.find({ userId }).sort({ isDefault: -1, createdAt: -1 });
@@ -858,7 +859,7 @@ app.get('/api/shipping-addresses', resolveUser({ field: 'userId' }), async (req,
 });
 
 // POST /api/shipping-addresses  { label, address, city, phone, isDefault }
-app.post('/api/shipping-addresses', resolveUser({ field: 'userId' }), async (req, res) => {
+app.post('/api/shipping-addresses', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     const { label, address, city, phone, isDefault } = req.body;
@@ -877,7 +878,7 @@ app.post('/api/shipping-addresses', resolveUser({ field: 'userId' }), async (req
 });
 
 // DELETE /api/shipping-addresses/:id  (identity from app session)
-app.delete('/api/shipping-addresses/:id', resolveUser({ field: 'userId' }), async (req, res) => {
+app.delete('/api/shipping-addresses/:id', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -892,7 +893,7 @@ app.delete('/api/shipping-addresses/:id', resolveUser({ field: 'userId' }), asyn
 
 // --- Payment Proxy ---
 // POST /api/payments/africom/superapp-pay
-app.post('/api/payments/africom/superapp-pay', resolveUser({ field: 'user_id' }), async (req, res) => {
+app.post('/api/payments/africom/superapp-pay', resolveUser({ field: 'user_id' }), requireKycAccess, async (req, res) => {
   try {
     const user_id = req.userId;
     const { amount, currency, reference, channel } = req.body;
@@ -931,7 +932,7 @@ app.post('/api/payments/africom/superapp-pay', resolveUser({ field: 'user_id' })
 // ── Posts ──────────────────────────────────────────────────────────────────
 const Post = require('./models/post.model');
 
-app.post('/api/posts', postUpload.single('media'), resolveUser({ field: 'authorUserId' }), async (req, res) => {
+app.post('/api/posts', postUpload.single('media'), resolveUser({ field: 'authorUserId' }), requireKycAccess, async (req, res) => {
   try {
     const authorUserId = req.userId;
     const { type, caption, authorName, audioTitle, durationSeconds } = req.body;
@@ -994,7 +995,7 @@ app.get('/api/posts', async (req, res) => {
   }
 });
 
-app.post('/api/posts/:id/like', resolveUser({ field: 'userId' }), async (req, res) => {
+app.post('/api/posts/:id/like', resolveUser({ field: 'userId' }), requireKycAccess, async (req, res) => {
   try {
     const { userId } = req;
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -1036,7 +1037,7 @@ app.post('/api/posts/:id/like', resolveUser({ field: 'userId' }), async (req, re
   }
 });
 
-app.delete('/api/posts/:id', resolveUser({ field: 'authorUserId' }), async (req, res) => {
+app.delete('/api/posts/:id', resolveUser({ field: 'authorUserId' }), requireKycAccess, async (req, res) => {
   try {
     const authorUserId = req.userId;
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {

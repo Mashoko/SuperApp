@@ -1,7 +1,7 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const { signAppToken } = require('../middleware/auth.middleware');
+const { bearerFor: bearer } = require('./helpers/app_user');
 
 let mongoServer;
 let app;
@@ -23,8 +23,6 @@ afterAll(async () => {
   await mongoServer.stop();
 });
 
-const bearer = (sipUsername) =>
-  `Bearer ${signAppToken({ _id: new mongoose.Types.ObjectId(), sipUsername })}`;
 
 afterEach(async () => {
   await Post.deleteMany({});
@@ -38,7 +36,7 @@ describe('DELETE /api/posts/:id', () => {
 
     const res = await request(app)
       .delete(`/api/posts/${post._id}`)
-      .set('Authorization', bearer('user1'));
+      .set('Authorization', await bearer('user1'));
     expect(res.status).toBe(200);
 
     const feed = await request(app).get('/api/posts');
@@ -55,7 +53,7 @@ describe('DELETE /api/posts/:id', () => {
 
     const res = await request(app)
       .delete(`/api/posts/${post._id}`)
-      .set('Authorization', bearer('user2'));
+      .set('Authorization', await bearer('user2'));
     expect(res.status).toBe(403);
   });
 
@@ -63,7 +61,7 @@ describe('DELETE /api/posts/:id', () => {
     const fakeId = new mongoose.Types.ObjectId();
     const res = await request(app)
       .delete(`/api/posts/${fakeId}`)
-      .set('Authorization', bearer('user1'));
+      .set('Authorization', await bearer('user1'));
     expect(res.status).toBe(404);
   });
 
@@ -80,7 +78,7 @@ describe('DELETE /api/posts/:id', () => {
   });
 
   test('returns 404 (not 500) for a malformed post id', async () => {
-    const res = await request(app).delete('/api/posts/not-a-real-id').set('Authorization', bearer('user1'));
+    const res = await request(app).delete('/api/posts/not-a-real-id').set('Authorization', await bearer('user1'));
     expect(res.status).toBe(404);
   });
 });

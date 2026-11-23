@@ -71,4 +71,4 @@ const resolveUser = ({ field, required = true }) => (req, res, next) => {
     next();
 };
 
-module.exports = { resolveUser, getLegacyUsage };
+module.exports = { resolveUser, getLegacyUsage, discardUpload };

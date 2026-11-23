@@ -1,6 +1,7 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const { bearerFor: bearer } = require('./helpers/app_user');
 
 let mongoServer;
 let app;
@@ -40,7 +41,6 @@ afterEach(async () => {
 
 const tokenFor = (sipUsername) =>
   mw.signAppToken({ _id: new mongoose.Types.ObjectId(), sipUsername });
-const bearer = (sipUsername) => `Bearer ${tokenFor(sipUsername)}`;
 
 const makeProduct = () => Product.create({ name: 'Widget', price: 5 });
 
@@ -50,11 +50,11 @@ describe('resolveUser on user-scoped routes', () => {
 
     const add = await request(app)
       .post('/api/cart/add')
-      .set('Authorization', bearer('A'))
+      .set('Authorization', await bearer('A'))
       .send({ productId: String(product._id), quantity: 2 });
     expect(add.status).toBe(200);
 
-    const res = await request(app).get('/api/cart').set('Authorization', bearer('A'));
+    const res = await request(app).get('/api/cart').set('Authorization', await bearer('A'));
     expect(res.status).toBe(200);
     expect(res.body.user_id).toBe('A');
     expect(res.body.items).toHaveLength(1);
@@ -66,14 +66,14 @@ describe('resolveUser on user-scoped routes', () => {
 
     const add = await request(app)
       .post('/api/cart/add')
-      .set('Authorization', bearer('A'))
+      .set('Authorization', await bearer('A'))
       .send({ userId: 'B', productId: String(product._id) });
     expect(add.status).toBe(200);
 
     expect(await Cart.findOne({ userId: 'A' })).not.toBeNull();
     expect(await Cart.findOne({ userId: 'B' })).toBeNull();
 
-    const bCart = await request(app).get('/api/cart').set('Authorization', bearer('B'));
+    const bCart = await request(app).get('/api/cart').set('Authorization', await bearer('B'));
     expect(bCart.body.items).toHaveLength(0);
   });
 
@@ -133,7 +133,7 @@ describe('resolveUser on user-scoped routes', () => {
   test("orders GET only returns caller's orders", async () => {
     const created = await request(app)
       .post('/api/orders')
-      .set('Authorization', bearer('A'))
+      .set('Authorization', await bearer('A'))
       .send({ userId: 'B', items: [{ product: { name: 'Widget' }, quantity: 1, total: 5 }], total: 5 });
     expect(created.status).toBe(201);
     expect(created.body.user_id).toBe('A');
@@ -145,7 +145,7 @@ describe('resolveUser on user-scoped routes', () => {
 
     const res = await request(app)
       .get('/api/orders?userId=B')
-      .set('Authorization', bearer('A'));
+      .set('Authorization', await bearer('A'));
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body.every((o) => o.user_id === 'A')).toBe(true);
@@ -158,7 +158,7 @@ describe('resolveUser on user-scoped routes', () => {
 
     const res = await request(app)
       .delete(`/api/posts/${post._id}`)
-      .set('Authorization', bearer('B'))
+      .set('Authorization', await bearer('B'))
       .send({ authorUserId: 'A' });
     expect(res.status).toBe(403);
 
@@ -169,7 +169,7 @@ describe('resolveUser on user-scoped routes', () => {
   test('post create takes author from token, not the form field', async () => {
     const res = await request(app)
       .post('/api/posts')
-      .set('Authorization', bearer('A'))
+      .set('Authorization', await bearer('A'))
       .field('type', 'text')
       .field('caption', 'hello')
       .field('authorUserId', 'B')
@@ -275,7 +275,7 @@ describe('GET /api/admin/legacy-usage', () => {
     expect(Object.keys(before.body).sort()).toEqual(['legacyRequests', 'since', 'tokenRequests']);
     expect(Number.isNaN(Date.parse(before.body.since))).toBe(false);
 
-    await request(app).get('/api/cart').set('Authorization', bearer('A'));
+    await request(app).get('/api/cart').set('Authorization', await bearer('A'));
     process.env.LEGACY_USERID_ROUTES = 'true';
     await request(app).get('/api/cart?userId=B');
     await request(app).get('/api/cart?userId=C');
