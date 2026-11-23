@@ -154,6 +154,45 @@ void main() {
     expect(service.listCalls, [1, 1]);
   });
 
+  testWidgets('a refresh that fails during load-more does not strand the footer',
+      (tester) async {
+    service.notificationPages[1] =
+        (items: [kycNote('a', title: 'First')], unread: 0, totalPages: 2);
+    service.notificationPages[2] =
+        (items: [kycNote('b', title: 'Second')], unread: 0, totalPages: 2);
+    final page2 = Completer<void>();
+    service.pageGates[2] = page2;
+    tester.view.physicalSize = const Size(375, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+        MaterialApp(home: KycNotificationsView(service: service)));
+    await tester.pump();
+    await tester.pump();
+    expect(service.listCalls, [1, 2], reason: 'page 2 is in flight');
+
+    // Pull to refresh while that first page 2 request hangs; the refresh
+    // fails. Later page 2 requests are not gated.
+    service.pageGates.remove(2);
+    service.listError = KycApiException(0, 'You are offline.');
+    unawaited(tester
+        .state<RefreshIndicatorState>(find.byType(RefreshIndicator))
+        .show());
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    expect(service.listCalls.where((p) => p == 1).length, 2);
+    // The footer restarted load-more, which failed and now offers a retry
+    // instead of spinning forever.
+    expect(find.widgetWithText(TextButton, 'Try again'), findsOneWidget);
+
+    service.listError = null;
+    page2.complete();
+    await tester.tap(find.widgetWithText(TextButton, 'Try again'));
+    await tester.pumpAndSettle();
+    expect(find.text('Second'), findsOneWidget);
+  });
+
   for (final size in const [Size(375, 700), Size(768, 1024), Size(1280, 800)]) {
     testWidgets('no overflow at ${size.width.toInt()} wide', (tester) async {
       service.notificationPages[1] = (

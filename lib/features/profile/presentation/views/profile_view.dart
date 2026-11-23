@@ -227,9 +227,8 @@ class _ProfileViewState extends State<ProfileView> {
                             builder: (context, kyc, _) => _buildTile(
                               icon: Icons.verified_user_outlined,
                               title: 'Verification',
-                              subtitle: kyc.launched
-                                  ? kycStatusLabel(kyc.status!.status)
-                                  : 'Not open yet',
+                              subtitle: kycVerificationSubtitle(kyc.status,
+                                  error: kyc.error),
                               isDark: isDark,
                               onTap: () =>
                                   _navigateTo(context, const KycStatusView()),

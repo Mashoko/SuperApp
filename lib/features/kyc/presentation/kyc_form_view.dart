@@ -45,7 +45,12 @@ class _KycFormViewState extends State<KycFormView> {
     _ownsVm = widget.viewModel == null;
     _vm = widget.viewModel ??
         KycFormViewModel(getIt<KycService>(), getIt<KycStatusController>());
-    if (_vm.loading) unawaited(_vm.load());
+    // After the first frame: with no status yet, the controller notifies
+    // synchronously when a refresh starts, and Provider listeners elsewhere
+    // must not be marked dirty mid-build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _vm.loading) unawaited(_vm.load());
+    });
   }
 
   @override

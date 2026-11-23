@@ -91,11 +91,28 @@ class FakeKycService implements KycService {
 
   Object? fetchError;
 
+  /// Returned by [getStatus]; when null, [getStatus] throws.
+  KycStatus? statusResult;
+  Completer<void>? statusGate;
+  int statusCalls = 0;
+
+  @override
+  Future<KycStatus> getStatus() async {
+    statusCalls++;
+    if (statusGate != null) await statusGate!.future;
+    final result = statusResult;
+    if (result == null) throw KycApiException(0, 'You are offline.');
+    return result;
+  }
+
   /// Notification pages keyed by page number. A missing page is empty.
   final notificationPages = <int, KycNotificationPage>{};
   final listCalls = <int>[];
   Object? listError;
   Completer<void>? listGate;
+
+  /// Per-page gates, checked after [listGate].
+  final pageGates = <int, Completer<void>>{};
   final markReadCalls = <String>[];
   Object? markReadError;
   Completer<void>? markReadGate;
@@ -104,6 +121,8 @@ class FakeKycService implements KycService {
   Future<KycNotificationPage> listNotifications({int page = 1}) async {
     listCalls.add(page);
     if (listGate != null) await listGate!.future;
+    final pageGate = pageGates[page];
+    if (pageGate != null) await pageGate.future;
     if (listError != null) throw listError!;
     return notificationPages[page] ??
         (items: <KycNotification>[], unread: 0, totalPages: 1);
@@ -180,10 +199,15 @@ class FakeKycController extends KycStatusController {
   Future<void> refresh() async {
     if (_gone) return;
     refreshCalls++;
-    // Like the real controller, results arrive after an await, never
-    // synchronously inside the caller's build or initState.
+    // Mirrors the real controller: with no status yet it sets `loading` and
+    // notifies synchronously, before its first await. Results arrive after.
+    if (status == null) {
+      loading = true;
+      notifyListeners();
+    }
     await Future<void>.value();
     if (_gone) return;
+    loading = false;
     if (failWith != null) {
       error = failWith;
       notifyListeners();

@@ -2,6 +2,8 @@
 
 import 'package:intl/intl.dart';
 
+import '../data/kyc_models.dart';
+
 final _localDate = DateFormat('d MMMM y');
 
 /// Formats a server timestamp (deadline, submission, decision, update) in the
@@ -77,3 +79,12 @@ const kycDecisionLabels = <String, String>{
 
 String kycDecisionLabel(String decision) =>
     kycDecisionLabels[decision] ?? 'Under review';
+
+/// Subtitle for the Profile "Verification" tile. "Not open yet" only once a
+/// status has loaded and verification is not launched.
+String kycVerificationSubtitle(KycStatus? status, {String? error}) {
+  if (status == null) {
+    return error == null ? 'Checking…' : 'Could not load. Tap to try again.';
+  }
+  return status.launched ? kycStatusLabel(status.status) : 'Not open yet';
+}

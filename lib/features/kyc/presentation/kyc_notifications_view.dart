@@ -79,6 +79,9 @@ class _KycNotificationsViewState extends State<KycNotificationsView> {
       final message = _messageFor(e);
       setState(() {
         _loading = false;
+        // A load-more dropped by this refresh must not leave the footer
+        // spinning; the footer starts it again.
+        _loadingMore = false;
         if (_items.isEmpty) _error = message;
       });
       if (_items.isNotEmpty) _showSnack(message);
