@@ -6,6 +6,10 @@
 	<string>This app needs access to the microphone to make calls.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>This app needs access to contacts to make calling easier.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo of your ID document for verification.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photo of your ID document for verification.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
