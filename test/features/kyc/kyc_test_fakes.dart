@@ -10,16 +10,41 @@ KycStatus kycStatus({
   List<Map<String, dynamic>> documents = const [],
   List<String> outstanding = const [],
   String status = 'IN_PROGRESS',
+  String? underlyingStatus,
+  bool launched = true,
+  String? deadline,
+  int progress = 0,
+  List<Map<String, dynamic>> history = const [],
+  String? rejectionReason,
+  String? correctionNotes,
 }) =>
     KycStatus.fromJson({
       'status': status,
-      'underlyingStatus': status,
-      'launched': true,
+      'underlyingStatus': underlyingStatus ?? status,
+      'launched': launched,
       'outstanding': outstanding,
       'draft': draft ?? const {},
       'documents': documents,
       'phone': '263771234567',
+      if (deadline != null) 'deadline': deadline,
+      'progress': progress,
+      'history': history,
+      if (rejectionReason != null) 'rejectionReason': rejectionReason,
+      if (correctionNotes != null) 'correctionNotes': correctionNotes,
     });
+
+KycNotification kycNote(String id,
+        {bool read = false,
+        String title = 'Update',
+        String body = 'Your details changed.'}) =>
+    KycNotification(
+      id: id,
+      kind: 'status',
+      title: title,
+      body: body,
+      createdAt: DateTime.utc(2026, 11, 20, 10),
+      readAt: read ? DateTime.utc(2026, 11, 21) : null,
+    );
 
 /// A draft that passes every step for a national ID holder.
 const completeDraft = {
@@ -65,6 +90,31 @@ class FakeKycService implements KycService {
   Object? submitError;
 
   Object? fetchError;
+
+  /// Notification pages keyed by page number. A missing page is empty.
+  final notificationPages = <int, KycNotificationPage>{};
+  final listCalls = <int>[];
+  Object? listError;
+  Completer<void>? listGate;
+  final markReadCalls = <String>[];
+  Object? markReadError;
+  Completer<void>? markReadGate;
+
+  @override
+  Future<KycNotificationPage> listNotifications({int page = 1}) async {
+    listCalls.add(page);
+    if (listGate != null) await listGate!.future;
+    if (listError != null) throw listError!;
+    return notificationPages[page] ??
+        (items: <KycNotification>[], unread: 0, totalPages: 1);
+  }
+
+  @override
+  Future<void> markRead(String id) async {
+    markReadCalls.add(id);
+    if (markReadGate != null) await markReadGate!.future;
+    if (markReadError != null) throw markReadError!;
+  }
 
   @override
   Future<void> saveDraft(KycDraft draft) async {
@@ -130,6 +180,10 @@ class FakeKycController extends KycStatusController {
   Future<void> refresh() async {
     if (_gone) return;
     refreshCalls++;
+    // Like the real controller, results arrive after an await, never
+    // synchronously inside the caller's build or initState.
+    await Future<void>.value();
+    if (_gone) return;
     if (failWith != null) {
       error = failWith;
       notifyListeners();

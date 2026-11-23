@@ -14,6 +14,9 @@ import '../../../shopping/presentation/views/wishlist_view.dart';
 import '../../../payment_methods/presentation/views/payment_methods_view.dart';
 import '../../../login/presentation/views/login_view.dart';
 import '../../../../shared/widgets/maintenance_screen.dart';
+import '../../../kyc/presentation/kyc_labels.dart';
+import '../../../kyc/presentation/kyc_status_controller.dart';
+import '../../../kyc/presentation/kyc_status_view.dart';
 import '../viewmodels/profile_summary_viewmodel.dart';
 import 'shipping_addresses_view.dart';
 
@@ -219,6 +222,18 @@ class _ProfileViewState extends State<ProfileView> {
                             isDark: isDark,
                             onTap: () => _navigateTo(
                                 context, const AccountSummaryView()),
+                          ),
+                          Consumer<KycStatusController>(
+                            builder: (context, kyc, _) => _buildTile(
+                              icon: Icons.verified_user_outlined,
+                              title: 'Verification',
+                              subtitle: kyc.launched
+                                  ? kycStatusLabel(kyc.status!.status)
+                                  : 'Not open yet',
+                              isDark: isDark,
+                              onTap: () =>
+                                  _navigateTo(context, const KycStatusView()),
+                            ),
                           ),
                           _buildTile(
                             icon: Icons.shopping_bag_outlined,

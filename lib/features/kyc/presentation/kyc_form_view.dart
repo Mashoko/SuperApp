@@ -12,10 +12,10 @@ import '../data/kyc_service.dart';
 import 'kyc_form_viewmodel.dart';
 import 'kyc_labels.dart';
 import 'kyc_status_controller.dart';
+import 'kyc_theme.dart';
 import 'widgets/kyc_document_tile.dart';
 import 'widgets/kyc_step_indicator.dart';
 
-const _maxContentWidth = 640.0;
 final _dateFormat = DateFormat('d MMMM y');
 
 /// Dates in the form are date-only (UTC midnight). Formatting reads the
@@ -62,7 +62,7 @@ class _KycFormViewState extends State<KycFormView> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = _formTheme(Theme.of(context));
+    final theme = kycTheme(Theme.of(context));
     return Theme(
       data: theme,
       child: ListenableBuilder(
@@ -82,15 +82,7 @@ class _KycFormViewState extends State<KycFormView> {
             },
             child: Scaffold(
               backgroundColor: scheme.surface,
-              appBar: AppBar(
-                title: const Text('Verify your number'),
-                backgroundColor: scheme.surface,
-                foregroundColor: scheme.onSurface,
-                elevation: 0,
-                scrolledUnderElevation: 0,
-                surfaceTintColor: Colors.transparent,
-                shape: Border(bottom: BorderSide(color: scheme.outlineVariant)),
-              ),
+              appBar: AppBar(title: const Text('Verify your number')),
               body: _body(context),
               bottomNavigationBar: inSteps ? _bottomBar(context) : null,
             ),
@@ -105,7 +97,7 @@ class _KycFormViewState extends State<KycFormView> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_vm.loadError != null) {
-      return _Message(
+      return KycMessage(
         icon: Icons.cloud_off_outlined,
         text: _vm.loadError!,
         action: FilledButton(
@@ -115,7 +107,7 @@ class _KycFormViewState extends State<KycFormView> {
       );
     }
     if (_vm.readOnly) {
-      return _Message(
+      return KycMessage(
         icon: Icons.check_circle_outline,
         title: 'Your details are with us',
         text: _vm.lockedStatus == 'APPROVED'
@@ -129,7 +121,7 @@ class _KycFormViewState extends State<KycFormView> {
       );
     }
     if (_vm.submitted) {
-      return _Message(
+      return KycMessage(
         icon: Icons.check_circle_outline,
         text: 'Thanks. We are reviewing your details. '
             'You can keep using the app while we check.',
@@ -142,13 +134,13 @@ class _KycFormViewState extends State<KycFormView> {
     final scheme = Theme.of(context).colorScheme;
     return Column(
       children: [
-        _Constrained(
+        KycConstrained(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (_vm.staleNotice != null) ...[
-                _Notice(text: _vm.staleNotice!),
+                KycNotice(text: _vm.staleNotice!),
                 const SizedBox(height: 12),
               ],
               KycStepIndicator(step: _vm.step),
@@ -160,7 +152,7 @@ class _KycFormViewState extends State<KycFormView> {
         Expanded(
           child: SingleChildScrollView(
             key: ValueKey('kyc-step-${_vm.step}'),
-            child: _Constrained(
+            child: KycConstrained(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
               child: _stepContent(context),
             ),
@@ -483,7 +475,7 @@ class _KycFormViewState extends State<KycFormView> {
       ),
       child: SafeArea(
         top: false,
-        child: _Constrained(
+        child: KycConstrained(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Row(
             children: [
@@ -700,73 +692,6 @@ enum _Source { camera, gallery, file }
 /// Local overrides so the form follows the KYC design rules whatever the app
 /// theme says: hairline borders, radius 8 for buttons, 6 for inputs, 48 px
 /// touch targets, 16 px text.
-ThemeData _formTheme(ThemeData base) {
-  final scheme = base.colorScheme;
-  final inputRadius = BorderRadius.circular(6);
-  OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
-      borderRadius: inputRadius, borderSide: BorderSide(color: c, width: w));
-  final buttonShape =
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(8));
-  const textStyle = TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
-  return base.copyWith(
-    inputDecorationTheme: InputDecorationTheme(
-      filled: false,
-      border: border(scheme.outlineVariant),
-      enabledBorder: border(scheme.outline),
-      disabledBorder: border(scheme.outlineVariant),
-      focusedBorder: border(scheme.primary, 2),
-      errorBorder: border(scheme.error),
-      focusedErrorBorder: border(scheme.error, 2),
-      labelStyle: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant),
-      floatingLabelStyle: TextStyle(color: scheme.onSurfaceVariant),
-      hintStyle: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant),
-      helperStyle: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
-      errorStyle: TextStyle(fontSize: 14, color: scheme.error),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-    ),
-    filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        minimumSize: const Size(96, 48),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        shape: buttonShape,
-        textStyle: textStyle,
-        elevation: 0,
-      ),
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        minimumSize: const Size(48, 48),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        shape: buttonShape,
-        textStyle: textStyle,
-      ),
-    ),
-    segmentedButtonTheme: SegmentedButtonThemeData(
-      style: ButtonStyle(
-        minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
-        shape: WidgetStatePropertyAll(buttonShape),
-        side: WidgetStatePropertyAll(BorderSide(color: scheme.outline)),
-        textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 16)),
-      ),
-    ),
-  );
-}
-
-class _Constrained extends StatelessWidget {
-  const _Constrained({required this.child, required this.padding});
-
-  final Widget child;
-  final EdgeInsets padding;
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: _maxContentWidth),
-          child: Padding(padding: padding, child: child),
-        ),
-      );
-}
-
 class _Fields extends StatelessWidget {
   const _Fields({required this.children});
 
@@ -996,85 +921,6 @@ class _ReviewSection extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _Notice extends StatelessWidget {
-  const _Notice({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Semantics(
-      liveRegion: true,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border.all(color: scheme.outlineVariant),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.info_outline, color: scheme.onSurfaceVariant),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(text,
-                  style: theme.textTheme.bodyLarge?.copyWith(fontSize: 16)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Message extends StatelessWidget {
-  const _Message({
-    required this.icon,
-    required this.text,
-    required this.action,
-    this.title,
-  });
-
-  final IconData icon;
-  final String? title;
-  final String text;
-  final Widget action;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 40, color: theme.colorScheme.primary),
-              const SizedBox(height: 16),
-              if (title != null) ...[
-                Text(title!,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleLarge
-                        ?.copyWith(fontSize: 22, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-              ],
-              Text(text,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyLarge?.copyWith(fontSize: 18)),
-              const SizedBox(height: 24),
-              action,
-            ],
-          ),
-        ),
       ),
     );
   }
