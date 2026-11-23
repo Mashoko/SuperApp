@@ -28,6 +28,7 @@ import '../../features/login/presentation/viewmodels/login_viewmodel.dart';
 import '../../features/account_summary/presentation/viewmodels/account_summary_viewmodel.dart';
 import '../../features/dash/presentation/viewmodels/dash_viewmodel.dart';
 import '../../features/faq/data/faq_service.dart';
+import '../../features/kyc/data/kyc_service.dart';
 import '../../features/faq/presentation/viewmodels/faq_viewmodel.dart';
 import '../../shared/theme/theme_provider.dart';
 
@@ -119,6 +120,8 @@ Future<void> configureDependencies() async {
       () => BackendSessionService(getIt<SharedPreferences>()));
   getIt.registerLazySingleton<AuthedHttpClient>(
       () => AuthedHttpClient(getIt<BackendSessionService>()));
+  getIt.registerLazySingleton<KycService>(
+      () => KycService(client: getIt<AuthedHttpClient>()));
   getIt.registerLazySingleton<ShoppingService>(
       () => ShoppingService(client: getIt<AuthedHttpClient>()));
   getIt.registerLazySingleton<PostsService>(

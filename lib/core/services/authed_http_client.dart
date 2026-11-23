@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 import 'backend_session_service.dart';
@@ -13,8 +15,46 @@ class AuthedHttpClient extends http.BaseClient {
   final BackendSessionService _session;
   final http.Client _inner;
 
+  /// Called when a protected route answers 403 with code KYC_RESTRICTED.
+  /// Set after construction. Never allowed to throw into the request.
+  void Function()? onKycRestricted;
+
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final res = await _sendWithRefresh(request);
+    if (res.statusCode != 403 || onKycRestricted == null) return res;
+    return _checkKycRestricted(res);
+  }
+
+  Future<http.StreamedResponse> _checkKycRestricted(
+      http.StreamedResponse res) async {
+    try {
+      final bytes = await res.stream.toBytes();
+      try {
+        final body = jsonDecode(utf8.decode(bytes, allowMalformed: true));
+        if (body is Map && body['code'] == 'KYC_RESTRICTED') {
+          onKycRestricted?.call();
+        }
+      } catch (_) {
+        // Non-JSON, empty or wrong shape, or a throwing callback: ignore.
+      }
+      return http.StreamedResponse(
+        http.ByteStream.fromBytes(bytes),
+        res.statusCode,
+        contentLength: bytes.length,
+        request: res.request,
+        headers: res.headers,
+        isRedirect: res.isRedirect,
+        persistentConnection: res.persistentConnection,
+        reasonPhrase: res.reasonPhrase,
+      );
+    } catch (_) {
+      return res;
+    }
+  }
+
+  Future<http.StreamedResponse> _sendWithRefresh(
+      http.BaseRequest request) async {
     final bytes = await request.finalize().toBytes();
     var usedToken = await _session.token();
     // Users upgrading while legacy mode is on never see a 401, so start the

@@ -152,4 +152,56 @@ void main() {
     expect(bodies.length, 2);
     expect(bodies[1], contains('caption'));
   });
+
+  group('onKycRestricted', () {
+    const restricted =
+        '{"code":"KYC_RESTRICTED","message":"Complete your KYC verification."}';
+
+    test('fires once for a 403 KYC_RESTRICTED body and keeps the body',
+        () async {
+      final h = await _build((req, _) async => http.Response(restricted, 403),
+          storedToken: 'tok');
+      var calls = 0;
+      h.client.onKycRestricted = () => calls++;
+      final res = await h.client.get(Uri.parse('https://x.test/api/cart'));
+      expect(res.statusCode, 403);
+      expect(res.body, restricted);
+      expect(calls, 1);
+    });
+
+    test('not fired for other 403s, non-JSON, empty or wrong shapes',
+        () async {
+      for (final body in [
+        '{"code":"OTHER"}',
+        'not json',
+        '',
+        '[1,2]',
+        '"KYC_RESTRICTED"',
+      ]) {
+        final h = await _build((req, _) async => http.Response(body, 403),
+            storedToken: 'tok');
+        var calls = 0;
+        h.client.onKycRestricted = () => calls++;
+        final res = await h.client.get(Uri.parse('https://x.test/api/cart'));
+        expect(res.statusCode, 403);
+        expect(calls, 0, reason: body);
+      }
+    });
+
+    test('not fired for non-403, and a throwing callback is swallowed',
+        () async {
+      final h = await _build((req, _) async => http.Response(restricted, 400),
+          storedToken: 'tok');
+      var calls = 0;
+      h.client.onKycRestricted = () => calls++;
+      await h.client.get(Uri.parse('https://x.test/api/cart'));
+      expect(calls, 0);
+
+      final h2 = await _build((req, _) async => http.Response(restricted, 403),
+          storedToken: 'tok');
+      h2.client.onKycRestricted = () => throw StateError('boom');
+      final res = await h2.client.get(Uri.parse('https://x.test/api/cart'));
+      expect(res.statusCode, 403);
+    });
+  });
 }
