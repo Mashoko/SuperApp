@@ -878,6 +878,26 @@ void main() {
       await finish(tester);
     });
 
+    testWidgets(
+        'submit succeeds but the refresh fails: PENDING_REVIEW, Done lifts '
+        'the gate', (tester) async {
+      await restrictAndOpenForm(tester);
+      service.statusResult = null; // getStatus now fails (offline).
+      await submit(tester);
+      expect(service.submits, 1);
+      expect(controller.error, isNotNull, reason: 'the refresh did fail');
+      expect(controller.status!.status, 'PENDING_REVIEW');
+      expect(controller.isRestricted, isFalse);
+      expect(find.text(thanks), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Done'));
+      await tester.pumpAndSettle();
+      expect(find.byType(MandatoryKycView), findsNothing);
+      expect(find.byType(KycFormView), findsNothing);
+      expect(find.text('App button 0'), findsOneWidget);
+      await finish(tester);
+    });
+
     testWidgets('back on the thanks state also lifts the gate', (tester) async {
       await restrictAndOpenForm(tester);
       service.statusResult = kycStatus(status: 'PENDING_REVIEW');

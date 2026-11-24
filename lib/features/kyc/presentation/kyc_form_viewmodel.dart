@@ -454,6 +454,8 @@ class KycFormViewModel extends ChangeNotifier {
         return;
       }
       await _service.submit();
+      // Reflect the submit even if the refresh below fails.
+      _controller.applySubmitted();
       await _controller.refresh();
       submitted = true;
     } on KycValidationException catch (e) {

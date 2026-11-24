@@ -191,6 +191,7 @@ class FakeKycController extends KycStatusController {
   }
 
   int refreshCalls = 0;
+  int applySubmittedCalls = 0;
   KycStatus? next;
   String? failWith;
   bool _gone = false;
@@ -216,6 +217,15 @@ class FakeKycController extends KycStatusController {
     if (next != null) status = next;
     error = null;
     notifyListeners();
+  }
+
+  /// Counts, then behaves like the real controller: PENDING_REVIEW locally
+  /// until a later successful refresh replaces it.
+  @override
+  void applySubmitted() {
+    if (_gone) return;
+    applySubmittedCalls++;
+    super.applySubmitted();
   }
 
   @override

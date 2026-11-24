@@ -178,4 +178,65 @@ void main() {
     service.gate!.complete(_status('IN_PROGRESS'));
     await f;
   });
+
+  group('applySubmitted', () {
+    test('marks the status PENDING_REVIEW and clears the restriction',
+        () async {
+      service.next = _status('RESTRICTED');
+      await controller.refresh();
+      controller.markRestricted();
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.isRestricted, isTrue);
+      var notified = 0;
+      controller.addListener(() => notified++);
+
+      controller.applySubmitted();
+      expect(controller.status!.status, 'PENDING_REVIEW');
+      expect(controller.status!.underlyingStatus, 'PENDING_REVIEW');
+      expect(controller.status!.isPendingReview, isTrue);
+      expect(controller.status!.launched, isTrue, reason: 'other fields kept');
+      expect(controller.isRestricted, isFalse);
+      expect(notified, 1);
+    });
+
+    test('a failed refresh afterwards keeps PENDING_REVIEW', () async {
+      service.next = _status('RESTRICTED');
+      await controller.refresh();
+      controller.applySubmitted();
+      service.failWith = KycApiException(0, 'You are offline.');
+      await controller.refresh();
+      expect(controller.status!.status, 'PENDING_REVIEW');
+      expect(controller.isRestricted, isFalse);
+      expect(controller.error, 'You are offline.');
+    });
+
+    test('a later successful refresh overwrites it', () async {
+      service.next = _status('RESTRICTED');
+      await controller.refresh();
+      controller.applySubmitted();
+      service.next = _status('REQUIRES_CORRECTION');
+      await controller.refresh();
+      expect(controller.status!.status, 'REQUIRES_CORRECTION');
+    });
+
+    test('a refresh started before it cannot bring back the old status',
+        () async {
+      service.next = _status('RESTRICTED');
+      await controller.refresh();
+      service.gate = Completer<KycStatus>();
+      final stale = controller.refresh();
+      controller.applySubmitted();
+      service.gate!.complete(_status('RESTRICTED'));
+      await stale;
+      expect(controller.status!.status, 'PENDING_REVIEW');
+    });
+
+    test('does nothing without a status', () {
+      var notified = 0;
+      controller.addListener(() => notified++);
+      controller.applySubmitted();
+      expect(controller.status, isNull);
+      expect(notified, 0);
+    });
+  });
 }

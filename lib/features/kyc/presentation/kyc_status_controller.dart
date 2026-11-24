@@ -91,6 +91,34 @@ class KycStatusController extends ChangeNotifier with WidgetsBindingObserver {
     unawaited(refresh());
   }
 
+  /// Called right after a successful submit: shows PENDING_REVIEW locally so
+  /// the gate lifts even if the follow-up refresh fails. A later successful
+  /// refresh replaces it as usual. Does nothing without a status.
+  void applySubmitted() {
+    final current = status;
+    if (current == null) return;
+    // A refresh started before the submit must not bring back the old status.
+    _invalidate();
+    status = KycStatus(
+      launched: current.launched,
+      status: 'PENDING_REVIEW',
+      underlyingStatus: 'PENDING_REVIEW',
+      deadline: current.deadline,
+      exemptUntil: current.exemptUntil,
+      progress: current.progress,
+      outstanding: current.outstanding,
+      draft: current.draft,
+      documents: current.documents,
+      history: current.history,
+      rejectionReason: current.rejectionReason,
+      correctionNotes: current.correctionNotes,
+      phone: current.phone,
+    );
+    _restrictedFlag = false;
+    loading = false;
+    _notify();
+  }
+
   void clear() {
     _invalidate();
     status = null;

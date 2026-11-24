@@ -284,6 +284,23 @@ void main() {
       expect(vm.submitError, isNull);
     });
 
+    test('success marks the controller PENDING_REVIEW even if refresh fails',
+        () async {
+      build(kycStatus(
+          status: 'RESTRICTED',
+          underlyingStatus: 'IN_PROGRESS',
+          draft: completeDraft,
+          documents: [docJson('id_front'), docJson('id_back')]));
+      await vm.load();
+      vm.goToStep(4);
+      controller.failWith = 'You are offline.';
+      await vm.submit();
+      expect(vm.submitted, isTrue);
+      expect(controller.applySubmittedCalls, 1);
+      expect(controller.status!.status, 'PENDING_REVIEW');
+      expect(controller.isRestricted, isFalse);
+    });
+
     test('flushes a pending edit before submitting', () async {
       await ready();
       vm.setCity('Masvingo');
