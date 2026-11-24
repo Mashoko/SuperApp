@@ -15,6 +15,23 @@ import '../../../../core/services/proximity_sensor_gateway.dart';
 import '../../../../core/utils/sip_utils.dart';
 import '../../../../shared/widgets/action_button.dart';
 
+/// Blocks system back while a call is live (calling, ringing, incoming or
+/// connected), so back cannot hide a live call behind the app or the KYC
+/// gate. Once the call is over, back closes the screen as usual.
+/// `Navigator.pop` (the end screen's auto-close) is not affected.
+class CallPopGuard extends StatelessWidget {
+  const CallPopGuard({super.key, required this.state, required this.child});
+
+  final PhoneCallState state;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+        canPop: state.isTerminal || state == PhoneCallState.idle,
+        child: child,
+      );
+}
+
 class CallView extends StatefulWidget {
   final Call call;
   const CallView({super.key, required this.call});
@@ -251,12 +268,12 @@ class _CallViewState extends State<CallView>
     return ChangeNotifierProvider.value(
       value: _viewModel,
       child: Consumer<CallViewModel>(
-        builder: (context, viewModel, _) {
-          if (!viewModel.isVoiceOnly) {
-            return _buildVideoCallScaffold(viewModel);
-          }
-          return _buildVoiceCallScaffold(viewModel);
-        },
+        builder: (context, viewModel, _) => CallPopGuard(
+          state: viewModel.phoneState,
+          child: viewModel.isVoiceOnly
+              ? _buildVoiceCallScaffold(viewModel)
+              : _buildVideoCallScaffold(viewModel),
+        ),
       ),
     );
   }

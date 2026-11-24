@@ -4,6 +4,10 @@ import 'package:flutter/foundation.dart';
 /// or outgoing) until every call has ended or failed and the call screen has
 /// closed, so the call screen's end state stays visible and usable.
 ///
+/// Live calls are tracked only from CALL_INITIATION, ENDED and FAILED:
+/// closing a call screen never clears a live call, so the KYC gate cannot
+/// cover a call that is still ringing or connected.
+///
 /// Read by the KYC gate, which steps aside while a call is active.
 class CallActivity extends ValueNotifier<bool> {
   CallActivity() : super(false);
@@ -26,11 +30,8 @@ class CallActivity extends ValueNotifier<bool> {
     _update();
   }
 
-  /// Defensive: once the last call screen closes, calls that never reported
-  /// an end are forgotten so the flag cannot stay stuck on.
   void viewClosed() {
     if (_openViews > 0) _openViews--;
-    if (_openViews == 0) _calls.clear();
     _update();
   }
 

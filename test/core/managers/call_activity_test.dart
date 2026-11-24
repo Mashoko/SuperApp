@@ -43,11 +43,14 @@ void main() {
       expect(a.value, isFalse);
     });
 
-    test('closing the call screen clears calls that never reported an end', () {
+    test('closing the call screen keeps a live call active until it ends',
+        () {
       final a = CallActivity()
         ..callStarted('c1')
         ..viewOpened();
       a.viewClosed();
+      expect(a.value, isTrue, reason: 'the call is still live');
+      a.callFinished('c1');
       expect(a.value, isFalse);
     });
 
@@ -95,5 +98,16 @@ void main() {
         expect(activity.value, isFalse);
       });
     }
+
+    test('viewClosed while the call is live keeps callActive; ENDED clears it',
+        () {
+      final call = _call('c1');
+      manager.callStateChanged(call, CallState(CallStateEnum.CALL_INITIATION));
+      activity.viewOpened();
+      activity.viewClosed();
+      expect(activity.value, isTrue);
+      manager.callStateChanged(call, CallState(CallStateEnum.ENDED));
+      expect(activity.value, isFalse);
+    });
   });
 }
