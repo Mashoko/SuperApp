@@ -53,10 +53,12 @@ void main() {
 
   late GlobalKey<NavigatorState> rootKey;
   late int signOuts;
+  late ValueNotifier<bool> callActive;
 
   setUp(() {
     rootKey = GlobalKey<NavigatorState>();
     signOuts = 0;
+    callActive = ValueNotifier<bool>(false);
   });
 
   Future<void> pumpGate(
@@ -79,6 +81,7 @@ void main() {
         home: const _AppHome(),
         builder: (context, child) => KycGate(
           navigatorKey: rootKey,
+          callActive: callActive,
           supportBuilder: (_) => Scaffold(
             appBar: AppBar(title: const Text('Support page')),
           ),
@@ -194,6 +197,64 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Detail page'), findsNothing);
       expect(find.text('App button 0'), findsOneWidget);
+    });
+
+    testWidgets('an active call lifts the gate; the gate returns after it',
+        (tester) async {
+      controller.status = _restricted();
+      await pumpGate(tester, controller);
+      expect(find.byType(MandatoryKycView), findsOneWidget);
+
+      // CALL_INITIATION: the call screen is pushed on the app navigator.
+      callActive.value = true;
+      rootKey.currentState!.push(MaterialPageRoute<void>(
+          builder: (_) => Scaffold(
+                body: Center(
+                  child: TextButton(
+                    onPressed: () => rootKey.currentState!.pop(),
+                    child: const Text('Hang up'),
+                  ),
+                ),
+              )));
+      await tester.pumpAndSettle();
+      expect(find.byType(MandatoryKycView), findsNothing);
+      // The call screen is visible and usable; back is not swallowed.
+      await tester.tap(find.text('Hang up'));
+      await tester.pumpAndSettle();
+      expect(find.text('Hang up'), findsNothing);
+      expect(find.byType(MandatoryKycView), findsNothing);
+
+      callActive.value = false;
+      await tester.pumpAndSettle();
+      expect(find.byType(MandatoryKycView), findsOneWidget);
+      // Back is blocked again.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(MandatoryKycView), findsOneWidget);
+    });
+
+    testWidgets('restriction arriving during a call does not cover it',
+        (tester) async {
+      controller.status = kycStatus(status: 'IN_PROGRESS');
+      await pumpGate(tester, controller);
+      callActive.value = true;
+      rootKey.currentState!.push(MaterialPageRoute<void>(
+          builder: (_) => const Scaffold(body: Text('Call screen'))));
+      await tester.pumpAndSettle();
+
+      controller.status = _restricted();
+      controller.notifyListeners();
+      await tester.pumpAndSettle();
+      expect(find.byType(MandatoryKycView), findsNothing);
+      expect(find.text('Call screen'), findsOneWidget);
+      // Back reaches the call screen's navigator as usual.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Call screen'), findsNothing);
+
+      callActive.value = false;
+      await tester.pumpAndSettle();
+      expect(find.byType(MandatoryKycView), findsOneWidget);
     });
 
     testWidgets('Contact support opens help inside the gate', (tester) async {

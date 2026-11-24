@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,7 +11,9 @@ import 'kyc_status_controller.dart';
 import 'mandatory_kyc_view.dart';
 
 /// Covers the whole app with [MandatoryKycView] while verification is
-/// launched and the account is restricted.
+/// launched and the account is restricted, except while a call is active:
+/// then the gate steps aside so the call screen can be seen and used, and it
+/// returns when the call ends.
 ///
 /// Placed in `MaterialApp.builder`, above the app's navigator. The app stays
 /// mounted underneath (its state is kept) but cannot be tapped, focused or
@@ -21,6 +24,7 @@ class KycGate extends StatefulWidget {
     super.key,
     required this.child,
     this.navigatorKey,
+    this.callActive,
     this.onSignOut,
     this.supportBuilder,
   });
@@ -31,6 +35,9 @@ class KycGate extends StatefulWidget {
   /// gate is shown (back is delivered to the root navigator first) and so
   /// sign out can land on the login screen.
   final GlobalKey<NavigatorState>? navigatorKey;
+
+  /// True while a call (incoming or outgoing) is in progress.
+  final ValueListenable<bool>? callActive;
 
   /// For tests. Defaults to the app's logout path.
   final Future<void> Function()? onSignOut;
@@ -48,9 +55,29 @@ class _KycGateState extends State<KycGate> {
   bool _active = false;
 
   @override
+  void initState() {
+    super.initState();
+    widget.callActive?.addListener(_onCallChanged);
+  }
+
+  @override
+  void didUpdateWidget(KycGate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.callActive, widget.callActive)) {
+      oldWidget.callActive?.removeListener(_onCallChanged);
+      widget.callActive?.addListener(_onCallChanged);
+    }
+  }
+
+  @override
   void dispose() {
+    widget.callActive?.removeListener(_onCallChanged);
     _removeBlocker();
     super.dispose();
+  }
+
+  void _onCallChanged() {
+    if (mounted) setState(() {});
   }
 
   void _syncBlocker() {
@@ -123,7 +150,8 @@ class _KycGateState extends State<KycGate> {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<KycStatusController>();
-    final active = controller.launched && controller.isRestricted;
+    final inCall = widget.callActive?.value ?? false;
+    final active = controller.launched && controller.isRestricted && !inCall;
     final blocker = _blocker;
     final blockerMissing = blocker == null || !blocker.isActive;
     if (active != _active || (active && blockerMissing)) {

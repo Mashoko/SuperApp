@@ -24,6 +24,7 @@ import 'features/account_summary/presentation/viewmodels/account_summary_viewmod
 import 'features/dash/presentation/viewmodels/dash_viewmodel.dart';
 import 'features/faq/presentation/viewmodels/faq_viewmodel.dart';
 import 'features/profile/presentation/viewmodels/profile_summary_viewmodel.dart';
+import 'core/managers/call_activity.dart';
 import 'features/kyc/presentation/kyc_gate.dart';
 import 'features/kyc/presentation/kyc_status_controller.dart';
 import 'shared/theme/theme_provider.dart';
@@ -63,6 +64,7 @@ void main() async {
     navigatorKey,
     getIt<DialpadViewModel>(),
     balanceRefreshCoordinator,
+    callActivity: getIt<CallActivity>(),
   );
 
   runApp(const MyApp());
@@ -106,6 +108,7 @@ class MyApp extends StatelessWidget {
             routes: Routes.routes,
             builder: (context, child) => KycGate(
               navigatorKey: navigatorKey,
+              callActive: getIt<CallActivity>(),
               child: child ?? const SizedBox.shrink(),
             ),
             onGenerateRoute: (settings) {

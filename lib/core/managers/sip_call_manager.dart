@@ -6,12 +6,16 @@ import '../../features/recents/data/models/call_log_status.dart';
 import '../../features/recents/data/models/recent_call.dart';
 import '../services/balance_refresh_coordinator.dart';
 import '../utils/call_log_status_resolution.dart';
+import 'call_activity.dart';
 
 class SipCallManager implements SipUaHelperListener {
   final SIPUAHelper _sipHelper;
   final GlobalKey<NavigatorState> navigatorKey;
   final DialpadViewModel _dialpadViewModel;
   final BalanceRefreshCoordinator _balanceRefreshCoordinator;
+
+  /// App-wide call flag (registered in get_it). Optional for tests.
+  final CallActivity? callActivity;
 
   /// Tracks when each call was answered so we can compute accurate duration.
   final Map<String, DateTime> _connectedAt = {};
@@ -20,8 +24,9 @@ class SipCallManager implements SipUaHelperListener {
     this._sipHelper,
     this.navigatorKey,
     this._dialpadViewModel,
-    this._balanceRefreshCoordinator,
-  ) {
+    this._balanceRefreshCoordinator, {
+    this.callActivity,
+  }) {
     _sipHelper.addSipUaHelperListener(this);
   }
 
@@ -36,6 +41,7 @@ class SipCallManager implements SipUaHelperListener {
     switch (callState.state) {
       // ── Navigate to CallView on call initiation ────────────────────────────
       case CallStateEnum.CALL_INITIATION:
+        callActivity?.callStarted(callId);
         navigatorKey.currentState?.push(
           MaterialPageRoute(builder: (_) => CallView(call: call)),
         );
@@ -47,11 +53,13 @@ class SipCallManager implements SipUaHelperListener {
 
       // ── Log the call, either direction, exactly once, on end ───────────────
       case CallStateEnum.ENDED:
+        callActivity?.callFinished(callId);
         _handleCallEnded(call, callState, callId);
         _balanceRefreshCoordinator.refreshAfterCall();
 
       // ── Log the call, either direction, exactly once, on failure ───────────
       case CallStateEnum.FAILED:
+        callActivity?.callFinished(callId);
         _connectedAt.remove(callId);
         if (_isSystemFailure(callState.cause)) {
           _logCall(call, status: CallLogStatus.failed, durationSeconds: null);

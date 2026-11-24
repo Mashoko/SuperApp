@@ -7,6 +7,7 @@ import '../services/otp_auth_service.dart';
 import '../services/backend_session_service.dart';
 import '../services/authed_http_client.dart';
 import '../../features/kyc/presentation/kyc_status_controller.dart';
+import '../managers/call_activity.dart';
 
 import '../../features/registration/data/datasources/registration_local_data_source.dart';
 import '../../features/registration/data/repositories/registration_repository_impl.dart';
@@ -108,6 +109,7 @@ Future<void> configureDependencies() async {
     ),
   );
   getIt.registerLazySingleton(() => AcceptCall(getIt()));
+  getIt.registerLazySingleton<CallActivity>(() => CallActivity());
   getIt.registerLazySingleton(() => HangupCall(getIt()));
   getIt.registerLazySingleton(() => SaveDestination(getIt()));
 

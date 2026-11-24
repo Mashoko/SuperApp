@@ -9,6 +9,7 @@ import 'package:sip_ua/sip_ua.dart';
 import '../viewmodels/call_viewmodel.dart';
 import '../../domain/entities/phone_call_state.dart';
 import '../../../../core/di/inject.dart';
+import '../../../../core/managers/call_activity.dart';
 import '../../../../core/services/proximity_screen_controller.dart';
 import '../../../../core/services/proximity_sensor_gateway.dart';
 import '../../../../core/utils/sip_utils.dart';
@@ -46,6 +47,7 @@ class _CallViewState extends State<CallView>
 
   // ── End-screen timer ───────────────────────────────────────────────────────
   Timer? _endScreenTimer;
+  CallActivity? _callActivity;
   String _finalDuration = '00:00';
 
   @override
@@ -58,6 +60,9 @@ class _CallViewState extends State<CallView>
     )..repeat();
 
     _viewModel = getIt<CallViewModel>();
+    if (getIt.isRegistered<CallActivity>()) {
+      _callActivity = getIt<CallActivity>()..viewOpened();
+    }
     _sipHelper = getIt<SIPUAHelper>();
     _proximityController =
         ProximityScreenController(getIt<ProximitySensorGateway>());
@@ -83,6 +88,7 @@ class _CallViewState extends State<CallView>
     _audioPlayer.dispose();
     _proximityController.dispose();
     _endScreenTimer?.cancel();
+    _callActivity?.viewClosed();
     _sipHelper.removeSipUaHelperListener(this);
     _disposeRenderers();
     _cleanUp();
