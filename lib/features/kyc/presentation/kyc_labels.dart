@@ -74,7 +74,8 @@ const kycDecisionLabels = <String, String>{
   'pending': 'Under review',
   'approved': 'Verified',
   'rejected': 'Not approved',
-  'requires_correction': 'Needs a correction',
+  'correction_requested': 'Needs a correction',
+  'expired': 'Expired',
 };
 
 String kycDecisionLabel(String decision) =>

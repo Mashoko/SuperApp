@@ -181,8 +181,8 @@ class KycHistoryEntry {
   final int version;
   final DateTime? submittedAt;
 
-  /// `pending`, `approved`, `rejected` or `requires_correction`, as sent by
-  /// the server.
+  /// `pending`, `approved`, `rejected`, `correction_requested` or `expired`,
+  /// as sent by the server.
   final String decision;
   final DateTime? decidedAt;
   final String? reason;

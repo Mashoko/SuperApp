@@ -256,7 +256,7 @@ void main() {
                 {
                   'version': 1,
                   'submittedAt': '2026-11-01T09:00:00Z',
-                  'decision': 'requires_correction',
+                  'decision': 'correction_requested',
                   'decidedAt': '2026-11-03T09:00:00Z',
                   'reason': 'Proof of residence is older than three months.',
                 },

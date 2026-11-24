@@ -27,4 +27,15 @@ void main() {
           'Action needed');
     });
   });
+
+  group('kycDecisionLabel (submission history)', () {
+    // Values from KYC_DECISIONS in backend/kyc/models/kyc_submission.model.js.
+    test('labels every decision the server sends', () {
+      expect(kycDecisionLabel('pending'), 'Under review');
+      expect(kycDecisionLabel('approved'), 'Verified');
+      expect(kycDecisionLabel('rejected'), 'Not approved');
+      expect(kycDecisionLabel('correction_requested'), 'Needs a correction');
+      expect(kycDecisionLabel('expired'), 'Expired');
+    });
+  });
 }
