@@ -711,6 +711,35 @@ void main() {
       expect(find.text('Sign out'), findsOneWidget);
     });
 
+    testWidgets(
+        'loading and error states keep Emergency call, Contact support and '
+        'Sign out', (tester) async {
+      controller.status = null;
+      await tester.pumpWidget(ChangeNotifierProvider<KycStatusController>.value(
+        value: controller,
+        child: MaterialApp(
+          home: MandatoryKycView(
+              onCompleteNow: () {}, onContactSupport: () {}, onSignOut: () {}),
+        ),
+      ));
+      // Loading: no status, no error yet.
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      for (final label in ['Emergency call', 'Contact support', 'Sign out']) {
+        expect(find.text(label), findsOneWidget, reason: 'loading: $label');
+      }
+      expect(find.text('Complete KYC now'), findsNothing);
+
+      // Error with no status.
+      controller.error = 'You are offline.';
+      controller.notifyListeners();
+      await tester.pump();
+      expect(find.text('You are offline.'), findsOneWidget);
+      for (final label in ['Emergency call', 'Contact support', 'Sign out']) {
+        expect(find.text(label), findsOneWidget, reason: 'error: $label');
+      }
+      expect(find.text('Complete KYC now'), findsNothing);
+    });
+
     for (final dark in [false, true]) {
       testWidgets('tap targets, labels and contrast${dark ? ' (dark)' : ''}',
           (tester) async {

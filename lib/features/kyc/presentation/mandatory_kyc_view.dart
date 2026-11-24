@@ -42,10 +42,10 @@ class MandatoryKycView extends StatelessWidget {
   }
 
   Widget _body(BuildContext context, KycStatusController controller) {
+    // Every state (loading, error, loaded) keeps the action row, so
+    // Emergency call and Sign out are always reachable.
     final status = controller.status;
-    if (status == null && controller.error == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    final loading = status == null && controller.error == null;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final body = theme.textTheme.bodyLarge?.copyWith(fontSize: 16);
@@ -84,7 +84,15 @@ class MandatoryKycView extends StatelessWidget {
                 const SizedBox(height: 16),
                 KycNotice(text: controller.error!),
               ],
-              if (status == null) ...[
+              if (loading) ...[
+                const SizedBox(height: 24),
+                Center(
+                  child: Semantics(
+                    label: 'Loading your verification status',
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              ] else if (status == null) ...[
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: () => unawaited(controller.refresh()),
