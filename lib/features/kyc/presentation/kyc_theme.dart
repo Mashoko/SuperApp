@@ -2,10 +2,23 @@ import 'package:flutter/material.dart';
 
 const kycMaxContentWidth = 640.0;
 
+/// Error text in the KYC screens is 14 px, so it needs 4.5:1 on the surface.
+/// The app's error red (0xFFD32F2F) is only 3.3:1 on the dark surface; fall
+/// back to Material 3's baseline error tone for that brightness.
+Color _readableError(ColorScheme s) {
+  final fg = s.error.computeLuminance(), bg = s.surface.computeLuminance();
+  final ratio = (fg > bg ? fg + 0.05 : bg + 0.05) / (fg > bg ? bg + 0.05 : fg + 0.05);
+  if (ratio >= 4.5) return s.error;
+  return s.brightness == Brightness.dark
+      ? const Color(0xFFFFB4AB)
+      : const Color(0xFFB3261E);
+}
+
 /// Local theme for the KYC screens: one flat accent, hairline borders,
 /// 8 px radius on buttons and 6 px on inputs, 16 px text and 48 px targets.
 ThemeData kycTheme(ThemeData base) {
-  final scheme = base.colorScheme;
+  final scheme =
+      base.colorScheme.copyWith(error: _readableError(base.colorScheme));
   final inputRadius = BorderRadius.circular(6);
   OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
       borderRadius: inputRadius, borderSide: BorderSide(color: c, width: w));
@@ -13,6 +26,7 @@ ThemeData kycTheme(ThemeData base) {
       RoundedRectangleBorder(borderRadius: BorderRadius.circular(8));
   const textStyle = TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
   return base.copyWith(
+    colorScheme: scheme,
     appBarTheme: AppBarTheme(
       backgroundColor: scheme.surface,
       foregroundColor: scheme.onSurface,
