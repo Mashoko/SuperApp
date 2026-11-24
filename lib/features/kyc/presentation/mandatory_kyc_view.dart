@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'kyc_labels.dart';
 import 'kyc_status_controller.dart';
 import 'kyc_theme.dart';
+import 'widgets/kyc_emergency_sheet.dart';
 
 /// Full-screen, non-dismissible KYC screen shown by `KycGate` while the
 /// account is restricted. "Complete KYC now" is the only primary action.
@@ -133,6 +134,11 @@ class MandatoryKycView extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 4,
                 children: [
+                  TextButton.icon(
+                    onPressed: () => unawaited(showKycEmergencySheet(context)),
+                    icon: const Icon(Icons.call_outlined),
+                    label: const Text('Emergency call'),
+                  ),
                   TextButton(
                     onPressed: onContactSupport,
                     child: const Text('Contact support'),

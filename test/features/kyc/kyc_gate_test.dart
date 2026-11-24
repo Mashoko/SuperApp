@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mvvm_sip_demo/core/di/inject.dart';
+import 'package:mvvm_sip_demo/features/call/presentation/viewmodels/call_viewmodel.dart';
+import 'package:mvvm_sip_demo/features/kyc/domain/emergency_numbers.dart';
 import 'package:mvvm_sip_demo/features/kyc/data/kyc_models.dart';
 import 'package:mvvm_sip_demo/features/kyc/data/kyc_service.dart';
 import 'package:mvvm_sip_demo/features/kyc/presentation/kyc_form_view.dart';
@@ -46,6 +48,21 @@ class _AppHomeState extends State<_AppHome> {
           ),
         ),
       );
+}
+
+class _FakeCallViewModel implements CallViewModel {
+  final calls = <(String, bool)>[];
+  String? error;
+
+  @override
+  Future<String?> makeCall(String destination,
+      {required bool voiceOnly}) async {
+    calls.add((destination, voiceOnly));
+    return error;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -257,6 +274,92 @@ void main() {
       expect(find.byType(MandatoryKycView), findsOneWidget);
     });
 
+    group('emergency call', () {
+      late _FakeCallViewModel calls;
+
+      setUp(() {
+        calls = _FakeCallViewModel();
+        getIt.registerFactory<CallViewModel>(() => calls);
+      });
+
+      tearDown(() => getIt.unregister<CallViewModel>());
+
+      testWidgets('lists every emergency number and nothing else',
+          (tester) async {
+        controller.status = _restricted();
+        await pumpGate(tester, controller);
+        expect(find.byType(FilledButton), findsOneWidget,
+            reason: 'Complete KYC now stays the only primary button');
+        await tester.ensureVisible(find.text('Emergency call'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Emergency call'));
+        await tester.pumpAndSettle();
+        expect(find.text('Call emergency services'), findsOneWidget);
+        for (final n in kEmergencyNumbers) {
+          expect(find.text(n), findsOneWidget, reason: n);
+        }
+        expect(
+            find.descendant(
+                of: find.byType(BottomSheet), matching: find.byType(InkWell)),
+            findsNWidgets(kEmergencyNumbers.length));
+      });
+
+      testWidgets('tapping a number places a voice call to it', (tester) async {
+        controller.status = _restricted();
+        await pumpGate(tester, controller);
+        await tester.ensureVisible(find.text('Emergency call'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Emergency call'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('112'));
+        await tester.pumpAndSettle();
+        expect(calls.calls, [('112', true)]);
+        expect(find.text('Call emergency services'), findsNothing);
+      });
+
+      testWidgets('a call error is shown', (tester) async {
+        calls.error = 'Not connected.';
+        controller.status = _restricted();
+        await pumpGate(tester, controller);
+        await tester.ensureVisible(find.text('Emergency call'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Emergency call'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('999'));
+        await tester.pumpAndSettle();
+        expect(find.text('Not connected.'), findsWidgets);
+      });
+
+      for (final size in const [
+        Size(375, 667),
+        Size(768, 1024),
+        Size(1280, 800)
+      ]) {
+        testWidgets('sheet fits at ${size.width.toInt()} wide', (tester) async {
+          final handle = tester.ensureSemantics();
+          controller.status = _restricted();
+          await pumpGate(tester, controller, size: size);
+          await tester.ensureVisible(find.text('Emergency call'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Emergency call'));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          // Rows are large targets. (The tap-target guideline is checked on
+          // the page itself; here it would flag the page's buttons clipped
+          // at the viewport edge behind the sheet.)
+          for (final n in kEmergencyNumbers) {
+            final row = tester.getSize(find.ancestor(
+                of: find.text(n), matching: find.byType(InkWell)));
+            expect(row.height, greaterThanOrEqualTo(48), reason: n);
+            expect(row.width, greaterThanOrEqualTo(200), reason: n);
+          }
+          await expectLater(tester, meetsGuideline(textContrastGuideline));
+          expect(find.bySemanticsLabel('Call 999'), findsOneWidget);
+          handle.dispose();
+        });
+      }
+    });
+
     testWidgets('Contact support opens help inside the gate', (tester) async {
       controller.status = _restricted();
       await pumpGate(tester, controller);
@@ -277,6 +380,8 @@ void main() {
         (tester) async {
       controller.status = _restricted();
       await pumpGate(tester, controller);
+      await tester.ensureVisible(find.text('Sign out'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Sign out'));
       await tester.pumpAndSettle();
       expect(signOuts, 1);
@@ -377,7 +482,8 @@ void main() {
           ]);
           await pumpGate(tester, controller, size: size, dark: dark);
           expect(tester.takeException(), isNull);
-          await tester.scrollUntilVisible(find.text('Sign out'), 200);
+          await tester.ensureVisible(find.text('Sign out'));
+          await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
           final button = tester
               .getSize(find.widgetWithText(FilledButton, 'Complete KYC now'));
