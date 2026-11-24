@@ -41,6 +41,7 @@ import 'package:mvvm_sip_demo/features/kyc/presentation/widgets/kyc_banner.dart'
 import 'package:mvvm_sip_demo/features/kyc/presentation/widgets/kyc_emergency_sheet.dart';
 import 'package:mvvm_sip_demo/features/kyc/presentation/widgets/kyc_reminder_sheet.dart';
 
+// Fake data for previews only.
 final _png = base64Decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAEUlEQVR4nGOYNnsBVsQwkBIAiz1XMZ8M27wAAAAASUVORK5CYII=');
 
@@ -90,7 +91,7 @@ KycStatus _status(String state, {bool emptyDraft = false}) {
               'size': 212000
             },
           ],
-    'phone': '263771234567',
+    'phone': '263770000000',
     'deadline': deadline.toIso8601String(),
     'progress': state == 'NOT_STARTED' ? 0 : 60,
     'history': state == 'REJECTED' || state == 'REQUIRES_CORRECTION'
