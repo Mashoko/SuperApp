@@ -84,10 +84,14 @@ class _FakeCallViewModel implements CallViewModel {
   final calls = <(String, bool)>[];
   String? error;
 
+  /// When set, makeCall waits for it before returning.
+  Completer<void>? gate;
+
   @override
   Future<String?> makeCall(String destination,
       {required bool voiceOnly}) async {
     calls.add((destination, voiceOnly));
+    if (gate != null) await gate!.future;
     return error;
   }
 
@@ -102,12 +106,16 @@ void main() {
   late int signOuts;
   late ValueNotifier<bool> callActive;
   late KycGateNavigatorObserver observer;
+  late List<Uri> launches;
+  late Future<bool> Function(Uri) launchResult;
 
   setUp(() {
     rootKey = GlobalKey<NavigatorState>();
     signOuts = 0;
     callActive = ValueNotifier<bool>(false);
     observer = KycGateNavigatorObserver();
+    launches = [];
+    launchResult = (_) async => true;
   });
 
   Future<void> pumpGate(
@@ -133,6 +141,10 @@ void main() {
           navigatorKey: rootKey,
           callActive: callActive,
           navigatorObserver: observer,
+          launchDialer: (uri) {
+            launches.add(uri);
+            return launchResult(uri);
+          },
           supportBuilder: (_) => Scaffold(
             appBar: AppBar(title: const Text('Support page')),
           ),
@@ -380,17 +392,122 @@ void main() {
         expect(find.text('Call emergency services'), findsNothing);
       });
 
-      testWidgets('a call error is shown', (tester) async {
-        calls.error = 'Not connected.';
-        controller.status = _restricted();
-        await pumpGate(tester, controller);
+      Future<void> openSheet(WidgetTester tester) async {
         await tester.ensureVisible(find.text('Emergency call'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Emergency call'));
         await tester.pumpAndSettle();
+      }
+
+      const failBody = 'We could not start the call. '
+          "Use your phone's dialer to call 999.";
+
+      testWidgets('a failed call shows a dialog with the number',
+          (tester) async {
+        calls.error = 'Not connected.';
+        controller.status = _restricted();
+        await pumpGate(tester, controller);
+        await openSheet(tester);
         await tester.tap(find.text('999'));
         await tester.pumpAndSettle();
-        expect(find.text('Not connected.'), findsWidgets);
+        expect(find.byType(SnackBar), findsNothing);
+        expect(find.byType(AlertDialog), findsOneWidget);
+        expect(find.text('Call not started'), findsOneWidget);
+        expect(find.text(failBody), findsOneWidget);
+        expect(find.widgetWithText(FilledButton, 'Open phone dialer'),
+            findsOneWidget);
+        expect(find.widgetWithText(TextButton, 'Close'), findsOneWidget);
+        // Shown inside the gate, not on the app's navigator.
+        final nav = Navigator.of(tester.element(find.text('Call not started')));
+        expect(identical(nav, rootKey.currentState), isFalse);
+        // Persistent: tapping outside does not close it.
+        await tester.tapAt(const Offset(5, 5));
+        await tester.pumpAndSettle();
+        expect(find.text('Call not started'), findsOneWidget);
+
+        await tester.tap(find.text('Close'));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(find.byType(MandatoryKycView), findsOneWidget);
+      });
+
+      testWidgets('Open phone dialer launches tel: with the number',
+          (tester) async {
+        calls.error = 'Not connected.';
+        controller.status = _restricted();
+        await pumpGate(tester, controller);
+        await openSheet(tester);
+        await tester.tap(find.text('999'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Open phone dialer'));
+        await tester.pumpAndSettle();
+        expect(launches, [Uri(scheme: 'tel', path: '999')]);
+        expect(launches.single.toString(), 'tel:999');
+        expect(find.byType(AlertDialog), findsNothing);
+      });
+
+      for (final throws in [false, true]) {
+        testWidgets(
+            'dialer ${throws ? 'throwing' : 'returning false'} keeps the '
+            'dialog with the number to dial', (tester) async {
+          launchResult = throws
+              ? (_) async => throw StateError('no activity')
+              : (_) async => false;
+          calls.error = 'Not connected.';
+          controller.status = _restricted();
+          await pumpGate(tester, controller);
+          await openSheet(tester);
+          await tester.tap(find.text('999'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Open phone dialer'));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(launches, hasLength(1));
+          expect(find.byType(AlertDialog), findsOneWidget);
+          expect(find.text('Dial 999 on your phone.'), findsOneWidget);
+          final selectable = find.descendant(
+              of: find.byType(AlertDialog),
+              matching: find.byType(SelectableText));
+          expect(selectable, findsOneWidget);
+          expect(tester.widget<SelectableText>(selectable).data, '999');
+          // Readable, and still usable: the dialer can be tried again.
+          final handle = tester.ensureSemantics();
+          await expectLater(tester, meetsGuideline(textContrastGuideline));
+          handle.dispose();
+          expect(find.text('Open phone dialer'), findsOneWidget);
+        });
+      }
+
+      testWidgets('double taps place one call', (tester) async {
+        calls.gate = Completer<void>();
+        calls.error = 'Not connected.';
+        controller.status = _restricted();
+        await pumpGate(tester, controller);
+        await openSheet(tester);
+        // Two quick taps on a row before the sheet has closed.
+        await tester.tap(find.text('112'));
+        await tester.tap(find.text('112'), warnIfMissed: false);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.byType(MandatoryKycView), findsOneWidget);
+        expect(calls.calls, [('112', true)]);
+
+        // While the call is being placed, Emergency call does nothing.
+        await tester.ensureVisible(find.text('Emergency call'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Emergency call'), warnIfMissed: false);
+        await tester.pumpAndSettle();
+        expect(find.text('Call emergency services'), findsNothing);
+        expect(calls.calls, hasLength(1));
+
+        calls.gate!.complete();
+        await tester.pumpAndSettle();
+        expect(find.text('Call not started'), findsOneWidget);
+        await tester.tap(find.text('Close'));
+        await tester.pumpAndSettle();
+        // Usable again once the attempt is over.
+        await openSheet(tester);
+        expect(find.text('Call emergency services'), findsOneWidget);
       });
 
       for (final size in const [

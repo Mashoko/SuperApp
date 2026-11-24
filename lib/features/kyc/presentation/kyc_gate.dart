@@ -11,6 +11,7 @@ import 'kyc_form_view.dart';
 import 'kyc_gate_scope.dart';
 import 'kyc_status_controller.dart';
 import 'mandatory_kyc_view.dart';
+import 'widgets/kyc_emergency_sheet.dart' show KycDialerLauncher;
 
 /// Covers the whole app with [MandatoryKycView] while verification is
 /// launched and the account is restricted, except while a call is active:
@@ -30,6 +31,7 @@ class KycGate extends StatefulWidget {
     this.navigatorObserver,
     this.onSignOut,
     this.supportBuilder,
+    this.launchDialer,
   });
 
   final Widget child;
@@ -52,6 +54,10 @@ class KycGate extends StatefulWidget {
 
   /// For tests. Defaults to [HelpSupportView].
   final WidgetBuilder? supportBuilder;
+
+  /// For tests. Opens the phone's dialer when an emergency call could not be
+  /// started. Defaults to url_launcher's `launchUrl`.
+  final KycDialerLauncher? launchDialer;
 
   @override
   State<KycGate> createState() => _KycGateState();
@@ -204,6 +210,7 @@ class _KycGateState extends State<KycGate> {
             onCompleteNow: _openForm,
             onContactSupport: _openSupport,
             onSignOut: _signOut,
+            launchDialer: widget.launchDialer,
           ),
         ),
       );

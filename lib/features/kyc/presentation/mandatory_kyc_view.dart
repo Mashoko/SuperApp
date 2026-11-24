@@ -16,11 +16,15 @@ class MandatoryKycView extends StatelessWidget {
     required this.onCompleteNow,
     required this.onContactSupport,
     required this.onSignOut,
+    this.launchDialer,
   });
 
   final VoidCallback onCompleteNow;
   final VoidCallback onContactSupport;
   final VoidCallback onSignOut;
+
+  /// For tests. See [showKycEmergencySheet].
+  final KycDialerLauncher? launchDialer;
 
   @override
   Widget build(BuildContext context) {
@@ -134,11 +138,7 @@ class MandatoryKycView extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 4,
                 children: [
-                  TextButton.icon(
-                    onPressed: () => unawaited(showKycEmergencySheet(context)),
-                    icon: const Icon(Icons.call_outlined),
-                    label: const Text('Emergency call'),
-                  ),
+                  _EmergencyCallButton(launchDialer: launchDialer),
                   TextButton(
                     onPressed: onContactSupport,
                     child: const Text('Contact support'),
@@ -155,6 +155,38 @@ class MandatoryKycView extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Opens the emergency sheet. Disabled from the tap until the call attempt
+/// is over, so repeat taps cannot open a second sheet or place a second call.
+class _EmergencyCallButton extends StatefulWidget {
+  const _EmergencyCallButton({this.launchDialer});
+
+  final KycDialerLauncher? launchDialer;
+
+  @override
+  State<_EmergencyCallButton> createState() => _EmergencyCallButtonState();
+}
+
+class _EmergencyCallButtonState extends State<_EmergencyCallButton> {
+  bool _busy = false;
+
+  Future<void> _start() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await showKycEmergencySheet(context, launchDialer: widget.launchDialer);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => TextButton.icon(
+        onPressed: _busy ? null : () => unawaited(_start()),
+        icon: const Icon(Icons.call_outlined),
+        label: const Text('Emergency call'),
+      );
 }
 
 class _Progress extends StatelessWidget {
