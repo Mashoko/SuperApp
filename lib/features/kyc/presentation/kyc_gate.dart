@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 
 import '../../help_support/presentation/views/help_support_view.dart';
 import '../../login/presentation/sign_out.dart';
 import 'kyc_form_view.dart';
+import 'kyc_gate_scope.dart';
 import 'kyc_status_controller.dart';
 import 'mandatory_kyc_view.dart';
 
@@ -60,6 +62,10 @@ class _KycGateState extends State<KycGate> {
   _BackBlockerRoute? _blocker;
   bool _active = false;
 
+  /// Set by a screen inside the gate (the form, on submit) so the gate stays
+  /// up on its result until the user taps Done. See [KycGateScope].
+  bool _held = false;
+
   @override
   void initState() {
     super.initState();
@@ -90,6 +96,25 @@ class _KycGateState extends State<KycGate> {
 
   void _onCallChanged() {
     if (mounted) setState(() {});
+  }
+
+  void _hold() => _held = true;
+
+  void _release() {
+    if (!_held) return;
+    _held = false;
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      setState(() {});
+      return;
+    }
+    // Called mid-frame (for example from a dispose): rebuild after it.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+    SchedulerBinding.instance.ensureVisualUpdate();
   }
 
   /// The app pushed, popped, removed or replaced a root route. While the
@@ -128,8 +153,15 @@ class _KycGateState extends State<KycGate> {
   void _removeBlocker() {
     final blocker = _blocker;
     _blocker = null;
-    if (blocker == null || !blocker.isActive) return;
-    blocker.navigator?.removeRoute(blocker);
+    if (blocker == null) return;
+    try {
+      final navigator = blocker.navigator;
+      if (navigator != null && navigator.mounted && blocker.isActive) {
+        navigator.removeRoute(blocker);
+      }
+    } catch (_) {
+      // Teardown: the root navigator is going away too.
+    }
   }
 
   void _handleBack() {
@@ -174,7 +206,8 @@ class _KycGateState extends State<KycGate> {
   Widget build(BuildContext context) {
     final controller = context.watch<KycStatusController>();
     final inCall = widget.callActive?.value ?? false;
-    final active = controller.launched && controller.isRestricted && !inCall;
+    final active =
+        !inCall && (_held || (controller.launched && controller.isRestricted));
     final blocker = _blocker;
     final blockerMissing = blocker == null || !blocker.isActive;
     if (active != _active || (active && blockerMissing)) {
@@ -196,12 +229,16 @@ class _KycGateState extends State<KycGate> {
           ),
         ),
         if (active)
-          HeroControllerScope.none(
-            child: Navigator(
-              key: _gateNavigatorKey,
-              onGenerateInitialRoutes: (navigator, initialRoute) =>
-                  [_initialRoute()],
-              onGenerateRoute: (_) => _initialRoute(),
+          KycGateScope(
+            onHold: _hold,
+            onRelease: _release,
+            child: HeroControllerScope.none(
+              child: Navigator(
+                key: _gateNavigatorKey,
+                onGenerateInitialRoutes: (navigator, initialRoute) =>
+                    [_initialRoute()],
+                onGenerateRoute: (_) => _initialRoute(),
+              ),
             ),
           ),
       ],

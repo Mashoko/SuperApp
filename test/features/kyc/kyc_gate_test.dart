@@ -422,6 +422,31 @@ void main() {
       });
     });
 
+    testWidgets('tearing down the app while gated does not throw',
+        (tester) async {
+      controller.status = _restricted();
+      await pumpGate(tester, controller);
+      await tester.pumpWidget(const SizedBox());
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('removing the gate while the app navigator lives on',
+        (tester) async {
+      controller.status = _restricted();
+      await pumpGate(tester, controller);
+      await tester.pumpWidget(ChangeNotifierProvider<KycStatusController>.value(
+        value: controller,
+        child: MaterialApp(
+          navigatorKey: rootKey,
+          home: const _AppHome(),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(rootKey.currentState!.canPop(), isFalse,
+          reason: 'the back blocker was removed with the gate');
+    });
+
     testWidgets('Contact support opens help inside the gate', (tester) async {
       controller.status = _restricted();
       await pumpGate(tester, controller);
@@ -572,9 +597,12 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets(
-        'markRestricted, gate shows, back does nothing, submit lifts the gate',
-        (tester) async {
+    const thanks = 'Thanks. We are reviewing your details. '
+        'You can keep using the app while we check.';
+
+    /// Restricts via markRestricted, opens the real form and walks to the
+    /// review step.
+    Future<void> restrictAndOpenForm(WidgetTester tester) async {
       service.statusResult = kycStatus(status: 'IN_PROGRESS');
       await pumpGate(tester, controller);
       await controller.refresh();
@@ -609,16 +637,75 @@ void main() {
         await tester.tap(find.widgetWithText(FilledButton, 'Next'));
         await tester.pumpAndSettle();
       }
-      service.statusResult = kycStatus(status: 'PENDING_REVIEW');
+    }
+
+    Future<void> submit(WidgetTester tester) async {
       await tester.tap(find.widgetWithText(FilledButton, 'Submit for review'));
       await tester.pumpAndSettle();
-      expect(service.submits, 1);
-      expect(find.byType(MandatoryKycView), findsNothing);
-      expect(find.byType(KycFormView), findsNothing);
-      expect(find.text('App button 0'), findsOneWidget);
+    }
+
+    Future<void> finish(WidgetTester tester) async {
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(seconds: 1));
+    }
+
+    testWidgets(
+        'markRestricted, gate shows, back does nothing, submit shows thanks, '
+        'Done lifts the gate', (tester) async {
+      await restrictAndOpenForm(tester);
+      service.statusResult = kycStatus(status: 'PENDING_REVIEW');
+      await submit(tester);
+      expect(service.submits, 1);
+      expect(controller.status!.isPendingReview, isTrue);
+      // The gate stays up on the thanks state until Done.
+      expect(find.text(thanks), findsOneWidget);
+      expect(find.byType(KycFormView), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Done'));
+      await tester.pumpAndSettle();
+      expect(find.byType(MandatoryKycView), findsNothing);
+      expect(find.byType(KycFormView), findsNothing);
+      expect(find.text('App button 0'), findsOneWidget);
+      await tester.tap(find.text('App button 0'));
+      await tester.pump();
+      expect(find.text('App button 1'), findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('back on the thanks state also lifts the gate', (tester) async {
+      await restrictAndOpenForm(tester);
+      service.statusResult = kycStatus(status: 'PENDING_REVIEW');
+      await submit(tester);
+      expect(find.text(thanks), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(MandatoryKycView), findsNothing);
+      expect(find.byType(KycFormView), findsNothing);
+      expect(find.text('App button 0'), findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('a failed submit releases the hold; the gate stays',
+        (tester) async {
+      await restrictAndOpenForm(tester);
+      service.submitError = KycApiException(500, 'Could not send.');
+      await submit(tester);
+      expect(find.text('Could not send.'), findsOneWidget);
+      // Still restricted: back closes the form, the mandatory screen stays.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(KycFormView), findsNothing);
+      expect(find.byType(MandatoryKycView), findsOneWidget);
+      await finish(tester);
     });
   });
 }

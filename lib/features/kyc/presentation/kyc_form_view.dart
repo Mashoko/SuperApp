@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import '../../../core/di/inject.dart';
 import '../data/kyc_service.dart';
 import 'kyc_form_viewmodel.dart';
+import 'kyc_gate_scope.dart';
 import 'kyc_labels.dart';
 import 'kyc_status_controller.dart';
 import 'kyc_theme.dart';
@@ -53,8 +54,28 @@ class _KycFormViewState extends State<KycFormView> {
     });
   }
 
+  /// The KYC gate holding itself up for the thanks state, if this form is
+  /// inside it.
+  KycGateScope? _gateHold;
+
+  /// Inside the KYC gate, submitting lifts the restriction and the gate
+  /// would close at once. Hold it so the thanks state is seen until Done.
+  Future<void> _submit() async {
+    final gate = KycGateScope.maybeOf(context);
+    gate?.holdUntilDone();
+    _gateHold = gate;
+    await _vm.submit();
+    if (!_vm.submitted) _releaseGate();
+  }
+
+  void _releaseGate() {
+    _gateHold?.release();
+    _gateHold = null;
+  }
+
   @override
   void dispose() {
+    _releaseGate();
     for (final c in _controllers.values) {
       c.dispose();
     }
@@ -83,6 +104,7 @@ class _KycFormViewState extends State<KycFormView> {
           return PopScope(
             canPop: !inSteps || _vm.step == 0,
             onPopInvokedWithResult: (didPop, _) {
+              if (didPop && _vm.submitted) _releaseGate();
               if (!didPop && inSteps) _vm.back();
             },
             child: Scaffold(
@@ -131,7 +153,10 @@ class _KycFormViewState extends State<KycFormView> {
         text: 'Thanks. We are reviewing your details. '
             'You can keep using the app while we check.',
         action: FilledButton(
-          onPressed: () => Navigator.of(context).maybePop(true),
+          onPressed: () {
+            _releaseGate();
+            Navigator.of(context).maybePop(true);
+          },
           child: const Text('Done'),
         ),
       );
@@ -497,7 +522,7 @@ class _KycFormViewState extends State<KycFormView> {
                   onPressed: busy
                       ? null
                       : onReview
-                          ? () => unawaited(_vm.submit())
+                          ? () => unawaited(_submit())
                           : () {
                               if (!_vm.next()) _announceErrors(context);
                             },
