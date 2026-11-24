@@ -94,15 +94,21 @@ class _KycGateState extends State<KycGate> {
     super.dispose();
   }
 
-  void _onCallChanged() {
-    if (mounted) setState(() {});
-  }
+  /// May be called mid-frame: CallView reports `viewClosed` from its
+  /// dispose, while the tree is locked.
+  void _onCallChanged() => _rebuildSafely();
 
   void _hold() => _held = true;
 
   void _release() {
     if (!_held) return;
     _held = false;
+    _rebuildSafely();
+  }
+
+  /// setState now when the framework allows it, otherwise right after the
+  /// current frame (for example when called from a dispose).
+  void _rebuildSafely() {
     if (!mounted) return;
     final phase = SchedulerBinding.instance.schedulerPhase;
     if (phase == SchedulerPhase.idle ||

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mvvm_sip_demo/core/di/inject.dart';
+import 'package:mvvm_sip_demo/core/managers/call_activity.dart';
 import 'package:mvvm_sip_demo/features/call/presentation/viewmodels/call_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/kyc/domain/emergency_numbers.dart';
 import 'package:mvvm_sip_demo/features/kyc/data/kyc_models.dart';
@@ -48,6 +49,35 @@ class _AppHomeState extends State<_AppHome> {
           ),
         ),
       );
+}
+
+/// Reports to [CallActivity] exactly like CallView: viewOpened in initState,
+/// viewClosed in dispose.
+class _FakeCallScreen extends StatefulWidget {
+  const _FakeCallScreen({required this.activity});
+
+  final CallActivity activity;
+
+  @override
+  State<_FakeCallScreen> createState() => _FakeCallScreenState();
+}
+
+class _FakeCallScreenState extends State<_FakeCallScreen> {
+  @override
+  void initState() {
+    super.initState();
+    widget.activity.viewOpened();
+  }
+
+  @override
+  void dispose() {
+    widget.activity.viewClosed();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      const Scaffold(body: Text('Call screen'));
 }
 
 class _FakeCallViewModel implements CallViewModel {
@@ -251,6 +281,35 @@ void main() {
       // Back is blocked again.
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
+      expect(find.byType(MandatoryKycView), findsOneWidget);
+    });
+
+    testWidgets(
+        'the gate returns when a call screen closes (viewClosed in dispose)',
+        (tester) async {
+      final activity = CallActivity();
+      callActive = activity;
+      controller.status = _restricted();
+      await pumpGate(tester, controller);
+      expect(find.byType(MandatoryKycView), findsOneWidget);
+
+      activity.callStarted('c1');
+      unawaited(rootKey.currentState!.push(MaterialPageRoute<void>(
+          builder: (_) => _FakeCallScreen(activity: activity))));
+      await tester.pumpAndSettle();
+      expect(find.byType(MandatoryKycView), findsNothing);
+      expect(find.text('Call screen'), findsOneWidget);
+
+      // The call ends; the end screen stays until the view closes.
+      activity.callFinished('c1');
+      await tester.pumpAndSettle();
+      expect(find.byType(MandatoryKycView), findsNothing);
+
+      // Like CallView's auto-pop: dispose calls viewClosed mid-frame.
+      rootKey.currentState!.pop();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(activity.value, isFalse);
       expect(find.byType(MandatoryKycView), findsOneWidget);
     });
 
