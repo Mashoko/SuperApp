@@ -72,6 +72,22 @@ void main() {
     await finish(tester);
   });
 
+  testWidgets('bottom bar hugs the bottom and leaves the form visible',
+      (tester) async {
+    await pumpForm(tester, size: const Size(375, 812));
+    final bar = find
+        .ancestor(
+            of: find.widgetWithText(FilledButton, 'Next'),
+            matching: find.byType(SafeArea))
+        .first;
+    expect(tester.getSize(bar).height, lessThan(120));
+    expect(tester.getRect(bar).bottom, 812);
+    expect(find.text('Verify your number').hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'First name').hitTestable(),
+        findsOneWidget);
+    await finish(tester);
+  });
+
   testWidgets('walks every step with labels and keyboards', (tester) async {
     await pumpForm(tester);
     Future<void> next() async {

@@ -72,7 +72,10 @@ class KycConstrained extends StatelessWidget {
   final EdgeInsets padding;
 
   @override
+  // heightFactor 1: centre horizontally only. Without it, a bounded parent
+  // (such as Scaffold.bottomNavigationBar) makes this fill the full height.
   Widget build(BuildContext context) => Center(
+        heightFactor: 1,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: kycMaxContentWidth),
           child: Padding(padding: padding, child: child),
