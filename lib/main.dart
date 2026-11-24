@@ -31,6 +31,9 @@ import 'shared/theme/theme_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+/// Tells the KYC gate about root navigator changes (see [KycGate]).
+final kycGateNavigatorObserver = KycGateNavigatorObserver();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -98,6 +101,7 @@ class MyApp extends StatelessWidget {
         builder: (context, theme, child) {
           return MaterialApp(
             navigatorKey: navigatorKey,
+            navigatorObservers: [kycGateNavigatorObserver],
             title: 'Super App',
             debugShowCheckedModeBanner: false,
         
@@ -109,6 +113,7 @@ class MyApp extends StatelessWidget {
             builder: (context, child) => KycGate(
               navigatorKey: navigatorKey,
               callActive: getIt<CallActivity>(),
+              navigatorObserver: kycGateNavigatorObserver,
               child: child ?? const SizedBox.shrink(),
             ),
             onGenerateRoute: (settings) {

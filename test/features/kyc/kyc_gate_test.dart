@@ -71,11 +71,13 @@ void main() {
   late GlobalKey<NavigatorState> rootKey;
   late int signOuts;
   late ValueNotifier<bool> callActive;
+  late KycGateNavigatorObserver observer;
 
   setUp(() {
     rootKey = GlobalKey<NavigatorState>();
     signOuts = 0;
     callActive = ValueNotifier<bool>(false);
+    observer = KycGateNavigatorObserver();
   });
 
   Future<void> pumpGate(
@@ -92,6 +94,7 @@ void main() {
       value: controller,
       child: MaterialApp(
         navigatorKey: rootKey,
+        navigatorObservers: [observer],
         theme: ThemeData(
             useMaterial3: true,
             brightness: dark ? Brightness.dark : Brightness.light),
@@ -99,6 +102,7 @@ void main() {
         builder: (context, child) => KycGate(
           navigatorKey: rootKey,
           callActive: callActive,
+          navigatorObserver: observer,
           supportBuilder: (_) => Scaffold(
             appBar: AppBar(title: const Text('Support page')),
           ),
@@ -358,6 +362,64 @@ void main() {
           handle.dispose();
         });
       }
+    });
+
+    group('back stays blocked when the app changes its navigator', () {
+      Future<void> expectBackBlocked(WidgetTester tester) async {
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.byType(MandatoryKycView), findsOneWidget);
+      }
+
+      testWidgets('pushReplacement of the top route (login race)',
+          (tester) async {
+        controller.status = _restricted();
+        await pumpGate(tester, controller);
+        // Like LoginView: replaces whatever is on top with home.
+        unawaited(rootKey.currentState!.pushReplacement(MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(body: Text('Home page')))));
+        await tester.pumpAndSettle();
+        await expectBackBlocked(tester);
+        await expectBackBlocked(tester);
+        controller.status = kycStatus(status: 'PENDING_REVIEW');
+        controller.notifyListeners();
+        await tester.pumpAndSettle();
+        expect(find.text('Home page'), findsOneWidget,
+            reason: 'back did not pop the app page under the gate');
+      });
+
+      testWidgets('an app route pushed while gated', (tester) async {
+        controller.status = _restricted();
+        await pumpGate(tester, controller);
+        unawaited(rootKey.currentState!.push(MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(body: Text('Late page')))));
+        await tester.pumpAndSettle();
+        await expectBackBlocked(tester);
+        controller.status = kycStatus(status: 'PENDING_REVIEW');
+        controller.notifyListeners();
+        await tester.pumpAndSettle();
+        expect(find.text('Late page'), findsOneWidget);
+      });
+
+      testWidgets('a forced pop of the top route', (tester) async {
+        controller.status = kycStatus(status: 'IN_PROGRESS');
+        await pumpGate(tester, controller);
+        unawaited(rootKey.currentState!.push(MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(body: Text('Detail page')))));
+        await tester.pumpAndSettle();
+        controller.status = _restricted();
+        controller.notifyListeners();
+        await tester.pumpAndSettle();
+        // Something in the app calls pop() directly (not maybePop).
+        rootKey.currentState!.pop();
+        await tester.pumpAndSettle();
+        await expectBackBlocked(tester);
+        controller.status = kycStatus(status: 'PENDING_REVIEW');
+        controller.notifyListeners();
+        await tester.pumpAndSettle();
+        expect(find.text('Detail page'), findsOneWidget,
+            reason: 'only the blocker was popped, then restored');
+      });
     });
 
     testWidgets('Contact support opens help inside the gate', (tester) async {

@@ -25,6 +25,7 @@ class KycGate extends StatefulWidget {
     required this.child,
     this.navigatorKey,
     this.callActive,
+    this.navigatorObserver,
     this.onSignOut,
     this.supportBuilder,
   });
@@ -38,6 +39,11 @@ class KycGate extends StatefulWidget {
 
   /// True while a call (incoming or outgoing) is in progress.
   final ValueListenable<bool>? callActive;
+
+  /// Must also be in the app's `MaterialApp.navigatorObservers`. Lets the
+  /// gate put its back blocker back on top whenever the app changes its
+  /// navigator while the gate is shown (a replace, push or forced pop).
+  final KycGateNavigatorObserver? navigatorObserver;
 
   /// For tests. Defaults to the app's logout path.
   final Future<void> Function()? onSignOut;
@@ -58,6 +64,7 @@ class _KycGateState extends State<KycGate> {
   void initState() {
     super.initState();
     widget.callActive?.addListener(_onCallChanged);
+    widget.navigatorObserver?.addListener(_onRootChanged);
   }
 
   @override
@@ -67,17 +74,31 @@ class _KycGateState extends State<KycGate> {
       oldWidget.callActive?.removeListener(_onCallChanged);
       widget.callActive?.addListener(_onCallChanged);
     }
+    if (!identical(oldWidget.navigatorObserver, widget.navigatorObserver)) {
+      oldWidget.navigatorObserver?.removeListener(_onRootChanged);
+      widget.navigatorObserver?.addListener(_onRootChanged);
+    }
   }
 
   @override
   void dispose() {
     widget.callActive?.removeListener(_onCallChanged);
+    widget.navigatorObserver?.removeListener(_onRootChanged);
     _removeBlocker();
     super.dispose();
   }
 
   void _onCallChanged() {
     if (mounted) setState(() {});
+  }
+
+  /// The app pushed, popped, removed or replaced a root route. While the
+  /// gate is shown, make sure the blocker is still there and on top.
+  void _onRootChanged() {
+    if (!mounted || !_active) return;
+    final blocker = _blocker;
+    if (blocker != null && blocker.isActive && blocker.isCurrent) return;
+    _syncBlocker();
   }
 
   void _syncBlocker() {
@@ -92,11 +113,13 @@ class _KycGateState extends State<KycGate> {
     });
   }
 
+  /// Idempotent: keeps exactly one blocker, on top of the root navigator.
   void _addBlocker() {
     final blocker = _blocker;
-    if (blocker != null && blocker.isActive) return;
+    if (blocker != null && blocker.isActive && blocker.isCurrent) return;
     final root = widget.navigatorKey?.currentState;
     if (root == null) return;
+    if (blocker != null && blocker.isActive) root.removeRoute(blocker);
     final route = _BackBlockerRoute(onBack: _handleBack);
     _blocker = route;
     unawaited(root.push(route));
@@ -184,6 +207,25 @@ class _KycGateState extends State<KycGate> {
       ],
     );
   }
+}
+
+/// Reports every change to the app's root navigator to the [KycGate].
+class KycGateNavigatorObserver extends NavigatorObserver with ChangeNotifier {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      notifyListeners();
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      notifyListeners();
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      notifyListeners();
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) =>
+      notifyListeners();
 }
 
 /// An invisible route pushed on the app's root navigator while the gate is
