@@ -1,6 +1,6 @@
 # KYC (subscriber registration)
 
-POTRAZ requires us to know who owns each registered number. Every app user must submit their personal details, an ID number and photos of their ID (or passport), and have them approved by a reviewer. Users get reminders in the app. Once the deadline passes without a verified or pending submission, protected routes (cart, shop, payments, posts) return `403 KYC_RESTRICTED`. This document covers setup, operation and retention for the backend. The app screens come in Stage 2b, the admin page in Stage 3.
+POTRAZ requires us to know who owns each registered number. Every app user must submit their personal details, an ID number and photos of their ID (or passport), and have them approved by a reviewer. Users get reminders in the app. Once the deadline passes without a verified or pending submission, protected routes (cart, shop, payments, posts) return `403 KYC_RESTRICTED`. This document covers setup, operation and retention for the backend. The app screens are in Stage 2b. Reviewers work in the admin panel's KYC page (see "Admin page").
 
 KYC never blocks calls on the server. The app-side call lock is Stage 2b, and emergency calls are never blocked.
 
@@ -58,7 +58,7 @@ curl -s -X PUT https://<HOST>/api/admin/kyc/settings \
   -d '{"enforcementDays": 90, "reminderIntervalDays": 21}'
 ```
 
-An admin page for these settings arrives in Stage 3.
+Super admins can also change these on the Settings tab of the KYC admin page.
 
 ## Launching KYC
 
@@ -70,6 +70,8 @@ Launch is a deliberate rollout step. Do it only after all of these are true:
 2. `KYC_ENCRYPTION_KEY` is set on every instance (the endpoint returns 503 without it).
 3. The Stage 2b app, with the KYC screens, has shipped to users.
 4. `LEGACY_USERID_ROUTES=false`, if restriction should apply (see Enforcement).
+
+A super_admin can launch from the Settings tab of the KYC admin page (see "Admin page"), or with:
 
 ```
 curl -s -X POST https://<HOST>/api/admin/kyc/settings/launch \
@@ -106,7 +108,72 @@ Users who are approved, pending review, or hold an active exemption are not rest
 | `super_admin` | Everything below, plus changing settings and launching KYC. |
 | `kyc_reviewer` | View the KYC list, details, documents and audit trail. Approve, reject, request correction, expire, grant exemptions, send manual reminders. Cannot change settings. |
 
-Create a reviewer as a staff `User` with `role: 'kyc_reviewer'`, either by a super_admin, or with a script in the style of `scripts/create-super-admin.js`. Staff sign in at `POST /api/auth/login` and use the returned token as `<ADMIN_TOKEN>`.
+Staff sign in at `POST /api/auth/login` and use the returned token as `<ADMIN_TOKEN>`. To create a reviewer, see "Creating a kyc_reviewer" under "Admin page".
+
+## Admin page
+
+The admin panel has a KYC page (`kyc.html`, linked as "KYC" in the sidebar of every admin page). Where the admin panel is hosted is outside this document.
+
+### Who can see it
+
+Only `super_admin` and `kyc_reviewer` accounts. For any other role the KYC link is hidden and the page shows "You don't have access to this." Hiding the link is only for convenience: the server checks the role on every `/api/admin/kyc` request and returns 403 to anyone else.
+
+The role is read from the sign-in token, which lasts one day. A role change takes effect the next time that person signs in, so after removing someone's access, expect their current session to keep working for up to a day.
+
+If a session ends while the page is open (the server returns 401), the page says "Your session ended. Sign in again." Anything typed in an open form stays on screen so it can be copied before signing in.
+
+### Creating a kyc_reviewer
+
+`POST /api/auth/register` (super_admin only) takes `username` and `password` and nothing else. It does **not** accept a `role`, so every account it creates is `staff`, which cannot open the KYC page. There is no endpoint or admin screen that changes a staff member's role.
+
+To make someone a reviewer, an operator with database access has to set the role:
+
+1. Create the account with the register endpoint, as a super_admin:
+   ```
+   curl -s -X POST https://<HOST>/api/auth/register \
+     -H "Authorization: Bearer <ADMIN_TOKEN>" -H "Content-Type: application/json" \
+     -d '{"username": "<REVIEWER_USERNAME>", "password": "<TEMPORARY_PASSWORD>"}'
+   ```
+2. Change its role, either with a one-off update in MongoDB on the `users` collection:
+   ```
+   db.users.updateOne({ username: "<REVIEWER_USERNAME>" }, { $set: { role: "kyc_reviewer" } })
+   ```
+   or with a small script written like `scripts/create-super-admin.js` that sets `role` to `kyc_reviewer` instead of `super_admin`.
+3. The reviewer signs in to the admin panel. Share the temporary password over a private channel and ask them to change it. There is no self-service password change yet.
+
+`[OWNER TO DECIDE: keep role changes as an operator step, or add a reviewer script or a super_admin endpoint]`
+
+### What each tab does
+
+**Review queue.** The large number at the top is how many users are waiting for review. Below it are the counts for every status; select one to filter the list. Search by phone number or name, or filter by status. Each row shows the user's status, when they submitted, their last reminder and their deadline. On a phone each row becomes a card.
+
+Select "Review" to open a user's panel. It shows their account, the latest submission (personal details, address, identification, documents and the decision so far), earlier submissions and recent activity. Depending on the user's status, the actions are:
+
+| Status | Actions |
+|---|---|
+| Under review | Approve, Request correction, Reject |
+| Verified | Mark expired |
+| Not started, In progress, Not approved, Needs a correction, Expired | Send reminder (only if the user has a deadline), Grant exemption |
+
+A restricted user gets the actions for the status underneath the restriction (for example Not approved).
+
+Reject, Request correction and Mark expired need a reason of 5 to 500 characters. The user sees the reason for a rejection or correction in their notification. An exemption needs an end date (up to 90 days ahead) and a reason. If another reviewer changed the same user first, the action stops, the dialog says so and the panel reloads.
+
+**Settings.** Shows whether KYC is launched and the reminder and deadline settings (see "Settings" above). A `kyc_reviewer` can read them only. A `super_admin` can edit and save them, and sees the Launch section while KYC is not launched.
+
+**Audit log.** Every KYC event, newest first. Filter by event type, or by a user's 24-character ID (shown on each event). "Open in audit log" in a user's panel opens this tab filtered to that user.
+
+### Launching from the page
+
+While KYC is not launched, a super_admin sees a "Launch KYC" section on the Settings tab. Type `LAUNCH` and select "Launch KYC". The button stays disabled while there are unsaved settings changes.
+
+Launching cannot be undone. It does the same as the launch endpoint: everyone who has not verified or submitted gets the deadline from today. Check every item in "Launching KYC" first. `KYC_ENCRYPTION_KEY` must be set, or the launch fails (the server returns 503) and nothing changes.
+
+### Documents and ID numbers
+
+- Every document the page loads is recorded in the audit log as `DOCUMENT_VIEWED`, with the reviewer and the document. This includes the small previews in the panel, so opening a user's panel records one event per image document, and expanding an earlier submission records its images too. The panel's activity list groups these into one line; the audit log keeps every event.
+- ID numbers are masked. "Reveal" asks for confirmation, records `ID_REVEALED`, and shows the number until the panel closes. It is not stored in the browser.
+- Images open in a viewer inside the page. PDFs open in a new browser tab, because the page does not run the browser's PDF viewer inside itself. That tab shows a temporary copy that stops working once the document viewer is closed. To see the PDF again, open it again from the panel (this is recorded again).
 
 ## Endpoints
 
