@@ -1579,7 +1579,13 @@
     setAlert('');
     try {
       await api.post(`/users/${encodeURIComponent(id)}/remind`);
-      if (review.id === id) actionDone('Reminder sent.');
+      if (review.id === id) {
+        actionDone('Reminder sent.');
+      } else {
+        // The panel closed while the request ran; the reminder still went out.
+        loadList();
+        loadStats();
+      }
     } catch (err) {
       trigger.disabled = false;
       if (err && err.status === 401) return;
