@@ -1209,15 +1209,18 @@
     return out;
   };
 
+  // The server records automatic events with the actor 'system'.
+  const actorName = (actor) => (!actor || actor === 'system' ? 'System' : actor);
+
   const eventLabel = (e) =>
     e.type === 'DOCUMENT_VIEWED' && e.count > 1
-      ? `Documents viewed by ${e.actor || 'System'} (${e.count})`
+      ? `Documents viewed by ${actorName(e.actor)} (${e.count})`
       : eventTypeLabel(e.type);
 
   const eventMeta = (e) =>
     e.type === 'DOCUMENT_VIEWED' && e.count > 1
       ? formatDateTime(e.createdAt)
-      : `${e.actor || 'System'}, ${formatDateTime(e.createdAt)}`;
+      : `${actorName(e.actor)}, ${formatDateTime(e.createdAt)}`;
 
   const eventsView = (events, userId) =>
     el(
@@ -2349,7 +2352,7 @@
       el(
         'p',
         { className: 'kyc-audit-meta' },
-        el('span', {}, `By ${e.actor || 'system'}`),
+        el('span', {}, `By ${actorName(e.actor)}`),
         typeof e.appUserId === 'string' && e.appUserId
           ? el('span', {}, 'User ', el('code', { className: 'kyc-audit-user' }, e.appUserId))
           : null
