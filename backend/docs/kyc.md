@@ -136,13 +136,13 @@ To make someone a reviewer, an operator with database access has to set the role
      -H "Authorization: Bearer <ADMIN_TOKEN>" -H "Content-Type: application/json" \
      -d '{"username": "<REVIEWER_USERNAME>", "password": "<TEMPORARY_PASSWORD>"}'
    ```
-   Your shell may save this command, including the password, in its history. Run it from a shell that doesn't keep history, or change the password right after the first sign-in.
+   Your shell may save this command, including the password, in its history. Run it from a shell that doesn't keep history, or delete the line from the history file afterwards. There is no self-service password change yet, so the password you set here stays the reviewer's password until an operator replaces it.
 2. Change its role, either with a one-off update in MongoDB on the `users` collection:
    ```
    db.users.updateOne({ username: "<REVIEWER_USERNAME>" }, { $set: { role: "kyc_reviewer" } })
    ```
    or with a small script written like `scripts/create-super-admin.js` that sets `role` to `kyc_reviewer` instead of `super_admin`.
-3. The reviewer signs in to the admin panel. Share the temporary password over a private channel and ask them to change it. There is no self-service password change yet.
+3. The reviewer signs in to the admin panel. Share the password over a private channel. There is no self-service password change yet, so they keep this password until an operator replaces it.
 
 `[OWNER TO DECIDE: keep role changes as an operator step, or add a reviewer script or a super_admin endpoint]`
 
