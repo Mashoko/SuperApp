@@ -121,14 +121,54 @@
 
   setUpTopBar();
 
+  // Overlays (panel, dialogs, viewer) close through closeOverlay, which runs the overlay's
+  // cleanup straight away. The native close event is queued and can be held back while the page
+  // is hidden (for example after a PDF opens in a new tab); object URLs must not wait for it.
+  const overlayStack = [];
+  const overlayCleanup = new Map();
+  const closeOverlay = (dialog) => {
+    const i = overlayStack.indexOf(dialog);
+    if (i !== -1) overlayStack.splice(i, 1);
+    if (dialog.open) dialog.close();
+    const cleanup = overlayCleanup.get(dialog);
+    overlayCleanup.delete(dialog);
+    if (cleanup) cleanup();
+  };
+  const showOverlay = (dialog, cleanup) => {
+    dialog.showModal();
+    overlayStack.push(dialog);
+    if (cleanup) overlayCleanup.set(dialog, cleanup);
+    // Any other way the browser closes it still runs the same cleanup, once.
+    dialog.addEventListener(
+      'close',
+      () => {
+        if (!dialog.open) closeOverlay(dialog);
+      },
+      { once: true }
+    );
+  };
+  // Closes every overlay except a locked one (the session notice), topmost first. Closing the
+  // review panel and the viewer aborts their requests.
+  const closeAllOverlays = () => {
+    for (const dialog of [...overlayStack].reverse()) {
+      if (!dialog.hasAttribute('data-locked')) closeOverlay(dialog);
+    }
+  };
+
   // --- Access gate -------------------------------------------------------------
 
   let blocked = false;
   let listController = null;
+  let statsController = null;
+  // Sections defined further down register how to abort their own requests.
+  const abortOnBlock = [];
 
   const renderNoAccess = () => {
     blocked = true;
+    closeAllOverlays();
     if (listController) listController.abort();
+    if (statsController) statsController.abort();
+    for (const abort of abortOnBlock) abort();
     root.replaceChildren(
       el('div', { className: 'kyc-notice', role: 'alert' }, el('p', {}, NO_ACCESS))
     );
@@ -311,11 +351,21 @@
   };
 
   async function loadStats() {
+    if (blocked) return;
+    if (statsController) statsController.abort();
+    const controller = new AbortController();
+    statsController = controller;
     renderOverviewLoading();
     try {
-      stats = await api.get('/stats');
+      const data = await api.get('/stats', { signal: controller.signal });
+      if (controller !== statsController) return;
+      statsController = null;
+      stats = data;
       if (!blocked) renderOverview();
     } catch (err) {
+      if (err && err.name === 'AbortError') return;
+      if (controller !== statsController) return;
+      statsController = null;
       handleFailure(err, renderOverviewError);
     }
   }
@@ -685,32 +735,6 @@
 
   let dialogSeq = 0;
 
-  // Overlays (panel, dialogs, viewer) close through closeOverlay, which runs the overlay's
-  // cleanup straight away. The native close event is queued and can be held back while the page
-  // is hidden (for example after a PDF opens in a new tab); object URLs must not wait for it.
-  const overlayStack = [];
-  const overlayCleanup = new Map();
-  const closeOverlay = (dialog) => {
-    const i = overlayStack.indexOf(dialog);
-    if (i !== -1) overlayStack.splice(i, 1);
-    if (dialog.open) dialog.close();
-    const cleanup = overlayCleanup.get(dialog);
-    overlayCleanup.delete(dialog);
-    if (cleanup) cleanup();
-  };
-  const showOverlay = (dialog, cleanup) => {
-    dialog.showModal();
-    overlayStack.push(dialog);
-    if (cleanup) overlayCleanup.set(dialog, cleanup);
-    // Any other way the browser closes it still runs the same cleanup, once.
-    dialog.addEventListener(
-      'close',
-      () => {
-        if (!dialog.open) closeOverlay(dialog);
-      },
-      { once: true }
-    );
-  };
   // Esc closes only the topmost overlay (a dialog before the panel). Chrome can group close
   // requests for dialogs opened without a user gesture and close several at once, so the key
   // is handled here instead.
@@ -1770,6 +1794,9 @@
   const dayText = (n) => `${formatCount(n)} ${Number(n) === 1 ? 'day' : 'days'}`;
 
   const settingsView = { data: null, controller: null, saving: false, launching: false, attempted: false };
+  abortOnBlock.push(() => {
+    if (settingsView.controller) settingsView.controller.abort();
+  });
 
   const settingsStatus = el('p', { className: 'kyc-settings-status' });
   const settingsMessage = el('p', { className: 'kyc-message', tabindex: -1 });
@@ -2160,6 +2187,9 @@
   const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
 
   const auditView = { controller: null };
+  abortOnBlock.push(() => {
+    if (auditView.controller) auditView.controller.abort();
+  });
 
   const auditTypeSelect = el(
     'select',
