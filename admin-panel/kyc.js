@@ -541,7 +541,7 @@
   searchInput.addEventListener('input', () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
-      const q = searchInput.value.slice(0, MAX_QUERY);
+      const q = searchInput.value.slice(0, MAX_QUERY).trim();
       if (q === state.q) return;
       state.q = q;
       state.page = 1;
@@ -625,6 +625,7 @@
     proof_of_residence: 'Proof of residence',
   };
   const ID_TYPES = { national_id: 'National ID', passport: 'Passport' };
+  const GENDERS = { male: 'Male', female: 'Female', other: 'Other' };
   const DECISIONS = {
     pending: 'Waiting for review',
     approved: 'Approved',
@@ -685,7 +686,7 @@
   document.addEventListener(
     'keydown',
     (event) => {
-      if (event.key !== 'Escape' || overlayStack.length === 0) return;
+      if (event.isComposing || event.key !== 'Escape' || overlayStack.length === 0) return;
       event.preventDefault();
       const top = overlayStack[overlayStack.length - 1];
       if (!top.hasAttribute('data-locked')) closeOverlay(top);
@@ -1078,7 +1079,7 @@
         ['First name', p.firstName],
         ['Last name', p.lastName],
         ['Date of birth', formatDay(p.dateOfBirth)],
-        ['Gender', p.gender],
+        ['Gender', GENDERS[p.gender] || p.gender],
         ['Nationality', p.nationality],
       ]),
       group('Address', [
@@ -1138,6 +1139,31 @@
     return parts.length ? el('p', { className: 'kyc-event-detail' }, parts.join('. ')) : null;
   };
 
+  // Runs of DOCUMENT_VIEWED by the same reviewer become one line (newest first, so the first
+  // event in a run has the latest time). The audit log keeps every event.
+  const groupEvents = (events) => {
+    const out = [];
+    for (const e of events) {
+      const last = out[out.length - 1];
+      if (e.type === 'DOCUMENT_VIEWED' && last && last.type === 'DOCUMENT_VIEWED' && last.actor === e.actor) {
+        last.count += 1;
+      } else {
+        out.push({ ...e, count: 1 });
+      }
+    }
+    return out;
+  };
+
+  const eventLabel = (e) =>
+    e.type === 'DOCUMENT_VIEWED' && e.count > 1
+      ? `Documents viewed by ${e.actor || 'System'} (${e.count})`
+      : EVENT_LABELS[e.type] || e.type || '';
+
+  const eventMeta = (e) =>
+    e.type === 'DOCUMENT_VIEWED' && e.count > 1
+      ? formatDateTime(e.createdAt)
+      : `${e.actor || 'System'}, ${formatDateTime(e.createdAt)}`;
+
   const eventsView = (events) =>
     el(
       'section',
@@ -1147,12 +1173,12 @@
         ? el(
             'ol',
             { className: 'kyc-events' },
-            events.map((e) =>
+            groupEvents(events).map((e) =>
               el(
                 'li',
                 {},
-                el('span', { className: 'kyc-event-type' }, EVENT_LABELS[e.type] || e.type || ''),
-                el('span', { className: 'kyc-event-meta' }, `${e.actor || 'System'}, ${formatDateTime(e.createdAt)}`),
+                el('span', { className: 'kyc-event-type' }, eventLabel(e)),
+                el('span', { className: 'kyc-event-meta' }, eventMeta(e)),
                 eventDetail(e)
               )
             )
@@ -1255,10 +1281,19 @@
         success(result);
       } catch (err) {
         busy = false;
-        if (!ended) confirmButton.disabled = false;
         if (err && err.status === 401) return;
         formError.textContent = messageOf(err);
-        if (err && err.status === 409) refreshAfterChange();
+        if (err && err.status === 409) {
+          // Someone else changed this user first, so the action can no longer succeed. Only
+          // Close is left; anything typed stays in the form so it can be copied.
+          ended = true;
+          confirmButton.remove();
+          cancelButton.textContent = 'Close';
+          cancelButton.focus();
+          refreshAfterChange();
+          return;
+        }
+        if (!ended) confirmButton.disabled = false;
       }
     };
 
@@ -1427,11 +1462,11 @@
     const dateField = el(
       'div',
       { className: 'kyc-field kyc-field-block' },
-      el('label', { for: `${base}-date` }, 'Exempt until'),
+      el('label', { for: `${base}-date` }, 'Exemption ends on'),
       el(
         'p',
         { className: 'kyc-field-hint', id: `${base}-date-hint` },
-        `No reminders or restrictions before this date. Up to ${MAX_EXEMPTION_DAYS} days from today.`
+        `The exemption ends at the start of this day. Up to ${MAX_EXEMPTION_DAYS} days from today.`
       ),
       dateInput,
       dateError
@@ -1506,6 +1541,7 @@
       { className: 'kyc-viewer-state' },
       el('p', { className: 'kyc-state-title' }, 'PDFs open in a new tab.'),
       el('p', {}, 'Your browser shows the file in its own PDF viewer.'),
+      el('p', {}, 'The tab stops working after you close this viewer.'),
       button('Open PDF in a new tab', () => window.open(url, '_blank', 'noopener'), 'kyc-btn kyc-btn-primary')
     );
 
