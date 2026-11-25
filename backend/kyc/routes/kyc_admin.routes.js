@@ -186,6 +186,12 @@ const settingsDto = (s) => {
 
 router.use(requireAdmin(['super_admin', 'kyc_reviewer']));
 
+// Reads can carry personal data (and a revealed ID number): never let a cache keep them.
+router.use((req, res, next) => {
+  if (req.method === 'GET') res.set('Cache-Control', 'no-store');
+  next();
+});
+
 // --- Stats and search -----------------------------------------------------
 
 // Users who could be restricted right now; the deadline check runs in code.

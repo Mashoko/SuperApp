@@ -236,7 +236,8 @@
       const token = getToken();
       if (!token) throw unauthorized();
       const headers = { Authorization: `Bearer ${token}` };
-      const init = { method, headers };
+      // Responses can carry revealed ID numbers: keep them out of the HTTP cache.
+      const init = { method, headers, cache: 'no-store' };
       if (body !== undefined) {
         headers['Content-Type'] = 'application/json';
         init.body = JSON.stringify(body);

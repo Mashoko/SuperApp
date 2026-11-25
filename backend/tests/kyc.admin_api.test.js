@@ -501,13 +501,23 @@ describe('detail, documents and audit', () => {
     expect(masked.body.events.map((e) => e.type)).toContain('SUBMITTED');
     expect(await KycEvent.countDocuments({ type: 'ID_REVEALED' })).toBe(0);
 
+    expect(masked.headers['cache-control']).toBe('no-store');
     const revealed = await get(`/users/${appUser._id}?reveal=1`, reviewer());
+    expect(revealed.headers['cache-control']).toBe('no-store');
     expect(revealed.body.submissions[0].identification.idNumber).toBe(ID_NUMBER.toUpperCase());
     const event = await KycEvent.findOne({ appUserId: appUser._id, type: 'ID_REVEALED' });
     expect(event.actor).toBe('rudo.reviewer');
     expect(JSON.stringify(event.data)).not.toContain(ID_NUMBER.toUpperCase());
 
     expect((await get(`/users/${new mongoose.Types.ObjectId()}`, reviewer())).status).toBe(404);
+  });
+
+  test('list, stats, audit and settings reads are not cacheable', async () => {
+    for (const url of ['/users', '/stats', '/audit', '/settings']) {
+      const res = await get(url, superAdmin());
+      expect(res.status).toBe(200);
+      expect(res.headers['cache-control']).toBe('no-store');
+    }
   });
 
   test('audit lists events newest first and filters by user and type', async () => {

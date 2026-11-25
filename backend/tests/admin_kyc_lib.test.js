@@ -344,6 +344,16 @@ describe('createApi', () => {
     expect(fetchImpl.mock.calls[1][1].method).toBe('PUT');
   });
 
+  test('every request asks fetch not to cache (get, post, put, blob)', async () => {
+    const { api, fetchImpl } = make(async () => jsonRes(200, { ok: 1 }));
+    await api.get('/g');
+    await api.post('/p', {});
+    await api.put('/q', {});
+    await api.blob('/b');
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    for (const [, opts] of fetchImpl.mock.calls) expect(opts.cache).toBe('no-store');
+  });
+
   test('204 and empty bodies give null', async () => {
     const { api } = make(async () => jsonRes(204));
     await expect(api.post('/p', {})).resolves.toBeNull();
