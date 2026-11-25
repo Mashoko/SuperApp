@@ -106,7 +106,7 @@ Users who are approved, pending review, or hold an active exemption are not rest
 | Role | Can do |
 |---|---|
 | `super_admin` | Everything below, plus changing settings and launching KYC. |
-| `kyc_reviewer` | View the KYC list, details, documents and audit trail. Approve, reject, request correction, expire, grant exemptions, send manual reminders. Cannot change settings. |
+| `kyc_reviewer` | View the KYC list, details, documents and audit trail. Approve, reject, request correction, expire, grant exemptions, send manual reminders. Cannot change settings. Cannot manage shop data (products, categories, shops, banners, vouchers, FAQs, uploads or order status): those routes return 403. Signs in straight to the KYC page. |
 
 Staff sign in at `POST /api/auth/login` and use the returned token as `<ADMIN_TOKEN>`. To create a reviewer, see "Creating a kyc_reviewer" under "Admin page".
 

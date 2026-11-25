@@ -64,6 +64,31 @@ describe('token audiences', () => {
   });
 });
 
+describe('shop admin routes', () => {
+  const shopWrites = [
+    ['post', '/api/products'],
+    ['post', '/api/categories'],
+    ['patch', `/api/orders/${new mongoose.Types.ObjectId()}/status`],
+  ];
+
+  test.each(shopWrites)('kyc_reviewer gets 403 on %s %s', async (method, url) => {
+    const res = await request(app)
+      [method](url)
+      .set('Authorization', `Bearer ${adminToken('kyc_reviewer')}`)
+      .send({});
+    expect(res.status).toBe(403);
+  });
+
+  test.each(shopWrites)('staff is still allowed on %s %s', async (method, url) => {
+    const res = await request(app)
+      [method](url)
+      .set('Authorization', `Bearer ${adminToken('staff')}`)
+      .send({});
+    expect(res.status).not.toBe(401);
+    expect(res.status).not.toBe(403);
+  });
+});
+
 describe('POST /api/auth/register', () => {
   test('public staff registration is closed', async () => {
     const res = await request(app)

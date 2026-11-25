@@ -40,6 +40,10 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const { requireAdmin, signAdminToken } = require('./middleware/auth.middleware');
+
+// Staff roles that manage the shop: catalogue, shops, banners, vouchers, FAQs, uploads and
+// order status. kyc_reviewer is deliberately left out.
+const SHOP_ADMIN_ROLES = ['super_admin', 'shop_manager', 'staff'];
 const { resolveUser, getLegacyUsage } = require('./middleware/resolve_user.middleware');
 const { requireKycAccess } = require('./kyc/require_kyc_access.middleware');
 
@@ -110,7 +114,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/uploads', express.static('uploads'));
 
 // Routes
-app.post('/api/upload', requireAdmin(), upload.single('image'), (req, res) => {
+app.post('/api/upload', requireAdmin(SHOP_ADMIN_ROLES), upload.single('image'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded.' });
     }
@@ -260,7 +264,7 @@ app.get('/api/products', resolveUser({ field: 'userId', required: false }), asyn
 });
 
 // Create a product
-app.post('/api/products', requireAdmin(), async (req, res) => {
+app.post('/api/products', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     const product = new Product({
         name: req.body.name,
         description: req.body.description,
@@ -281,7 +285,7 @@ app.post('/api/products', requireAdmin(), async (req, res) => {
 });
 
 // Update a product
-app.put('/api/products/:id', requireAdmin(), async (req, res) => {
+app.put('/api/products/:id', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     try {
         const allowed = ['name', 'description', 'price', 'imageUrl', 'category', 'stock', 'discountPrice', 'isAvailable'];
         const update = {};
@@ -303,7 +307,7 @@ app.put('/api/products/:id', requireAdmin(), async (req, res) => {
 });
 
 // Soft Delete a product
-app.delete('/api/products/:id', requireAdmin(), async (req, res) => {
+app.delete('/api/products/:id', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     try {
         await Product.findByIdAndUpdate(req.params.id, { isDeleted: true });
         res.json({ message: 'Product deleted' });
@@ -338,7 +342,7 @@ app.get('/api/categories', async (req, res) => {
 });
 
 // Create Category
-app.post('/api/categories', requireAdmin(), async (req, res) => {
+app.post('/api/categories', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     const category = new Category(req.body);
     try {
         const newCategory = await category.save();
@@ -349,7 +353,7 @@ app.post('/api/categories', requireAdmin(), async (req, res) => {
 });
 
 // Update Category
-app.put('/api/categories/:id', requireAdmin(), async (req, res) => {
+app.put('/api/categories/:id', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     try {
         const updatedCategory = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
         res.json(updatedCategory);
@@ -359,7 +363,7 @@ app.put('/api/categories/:id', requireAdmin(), async (req, res) => {
 });
 
 // Delete Category
-app.delete('/api/categories/:id', requireAdmin(), async (req, res) => {
+app.delete('/api/categories/:id', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     try {
         await Category.findByIdAndDelete(req.params.id);
         res.json({ message: 'Category deleted' });
@@ -380,7 +384,7 @@ app.get('/api/faqs', async (req, res) => {
 });
 
 // Create FAQ category
-app.post('/api/faqs', requireAdmin(), async (req, res) => {
+app.post('/api/faqs', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     const faq = new Faq(req.body);
     try {
         const newFaq = await faq.save();
@@ -391,7 +395,7 @@ app.post('/api/faqs', requireAdmin(), async (req, res) => {
 });
 
 // Update FAQ category
-app.put('/api/faqs/:id', requireAdmin(), async (req, res) => {
+app.put('/api/faqs/:id', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     try {
         const updatedFaq = await Faq.findByIdAndUpdate(req.params.id, req.body, { new: true });
         res.json(updatedFaq);
@@ -401,7 +405,7 @@ app.put('/api/faqs/:id', requireAdmin(), async (req, res) => {
 });
 
 // Delete FAQ category
-app.delete('/api/faqs/:id', requireAdmin(), async (req, res) => {
+app.delete('/api/faqs/:id', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     try {
         await Faq.findByIdAndDelete(req.params.id);
         res.json({ message: 'FAQ category deleted' });
@@ -422,7 +426,7 @@ app.get('/api/shops', async (req, res) => {
 });
 
 // Create Shop
-app.post('/api/shops', requireAdmin(), async (req, res) => {
+app.post('/api/shops', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     const shop = new Shop(req.body);
     try {
         const newShop = await shop.save();
@@ -433,7 +437,7 @@ app.post('/api/shops', requireAdmin(), async (req, res) => {
 });
 
 // Update Shop
-app.put('/api/shops/:id', requireAdmin(), async (req, res) => {
+app.put('/api/shops/:id', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     try {
         const updatedShop = await Shop.findByIdAndUpdate(req.params.id, req.body, { new: true });
         res.json(updatedShop);
@@ -443,7 +447,7 @@ app.put('/api/shops/:id', requireAdmin(), async (req, res) => {
 });
 
 // Delete Shop
-app.delete('/api/shops/:id', requireAdmin(), async (req, res) => {
+app.delete('/api/shops/:id', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     try {
         await Shop.findByIdAndDelete(req.params.id);
         res.json({ message: 'Shop deleted' });
@@ -466,7 +470,7 @@ app.get('/api/banners', async (req, res) => {
 });
 
 // Create Banner
-app.post('/api/banners', requireAdmin(), async (req, res) => {
+app.post('/api/banners', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     const banner = new Banner(req.body);
     try {
         const newBanner = await banner.save();
@@ -477,7 +481,7 @@ app.post('/api/banners', requireAdmin(), async (req, res) => {
 });
 
 // Update Banner
-app.put('/api/banners/:id', requireAdmin(), async (req, res) => {
+app.put('/api/banners/:id', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     try {
         const updatedBanner = await Banner.findByIdAndUpdate(req.params.id, req.body, { new: true });
         res.json(updatedBanner);
@@ -487,7 +491,7 @@ app.put('/api/banners/:id', requireAdmin(), async (req, res) => {
 });
 
 // Delete Banner
-app.delete('/api/banners/:id', requireAdmin(), async (req, res) => {
+app.delete('/api/banners/:id', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
     try {
         await Banner.findByIdAndDelete(req.params.id);
         res.json({ message: 'Banner deleted' });
@@ -510,7 +514,7 @@ app.get('/api/vouchers', async (req, res) => {
 });
 
 // Create Voucher
-app.post('/api/vouchers', requireAdmin(), async (req, res) => { // Auth required for creation
+app.post('/api/vouchers', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => { // Auth required for creation
     const voucher = new Voucher(req.body);
     try {
         const newVoucher = await voucher.save();
@@ -783,7 +787,7 @@ app.get('/api/orders', resolveUser({ field: 'userId' }), requireKycAccess, async
 });
 
 // PATCH /api/orders/:id/status  (admin)
-app.patch('/api/orders/:id/status', requireAdmin(), async (req, res) => {
+app.patch('/api/orders/:id/status', requireAdmin(SHOP_ADMIN_ROLES), async (req, res) => {
   try {
     const { status } = req.body;
     const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];

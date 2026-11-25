@@ -177,6 +177,17 @@
 
     <script src="config.js"></script>
     <script>
+        // KYC reviewers can't use the shop pages, so they start on the KYC page.
+        function homePage() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                if (user && user.role === 'kyc_reviewer') return 'kyc.html';
+            } catch (err) {
+                // fall through to the default page
+            }
+            return 'index.html';
+        }
+
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('username').value;
@@ -201,7 +212,7 @@
                 if (response.ok) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
-                    window.location.href = 'index.html';
+                    window.location.href = homePage();
                 } else {
                     errorMsg.textContent = data.message || 'Login failed';
                     errorMsg.style.display = 'block';
@@ -219,7 +230,7 @@
 
         // Redirect if already logged in
         if (localStorage.getItem('token')) {
-            window.location.href = 'index.html';
+            window.location.href = homePage();
         }
     </script>
 </body>
