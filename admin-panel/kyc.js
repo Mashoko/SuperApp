@@ -1619,12 +1619,13 @@
     const stage = el('div', { className: 'kyc-viewer-stage' });
     let controller = null;
     let url = null;
+    // An image shows the panel's thumbnail URL, which the panel revokes when it closes.
+    let ownsUrl = false;
 
     const revoke = () => {
-      if (url) {
-        URL.revokeObjectURL(url);
-        url = null;
-      }
+      if (url && ownsUrl) URL.revokeObjectURL(url);
+      url = null;
+      ownsUrl = false;
     };
 
     const zoomButton = isImage
@@ -1642,6 +1643,24 @@
       : null;
     if (zoomButton) zoomButton.hidden = true;
     const closeButton = button('Close', () => closeOverlay(dialog), 'kyc-btn');
+
+    const showImage = () => {
+      stage.replaceChildren(
+        el('img', {
+          src: url,
+          alt: label,
+          className: 'kyc-viewer-image',
+          on: {
+            error: () => {
+              // Fetch afresh on retry instead of reusing the URL that failed.
+              review.thumbs.delete(doc.id);
+              showError('The image could not be displayed.', load);
+            },
+          },
+        })
+      );
+      zoomButton.hidden = false;
+    };
 
     const showError = (message, retry) => {
       stage.classList.remove('is-zoomed');
@@ -1672,32 +1691,32 @@
         )
       );
       try {
+        if (isImage) {
+          // The panel has already fetched this image for its thumbnail: reuse it, so opening
+          // it is not a second download (or a second "Document viewed" audit entry).
+          const shared = await thumbnailUrl(doc);
+          if (current !== controller || !dialog.open) return;
+          controller = null;
+          url = shared;
+          showImage();
+          return;
+        }
         const blob = await api.blob(`/documents/${encodeURIComponent(doc.id)}`, { signal: current.signal });
         if (current !== controller || !dialog.open) return;
         controller = null;
-        if (!isImage && !isPdf) {
+        if (!isPdf) {
           showError('This file type cannot be shown here.', null);
           return;
         }
         // Re-typed from the allowlist, so a blob URL is never created with an HTML type.
-        url = URL.createObjectURL(new Blob([blob], { type: isPdf ? PDF_TYPE : doc.mime }));
-        if (isImage) {
-          stage.replaceChildren(
-            el('img', {
-              src: url,
-              alt: label,
-              className: 'kyc-viewer-image',
-              on: { error: () => showError('The image could not be displayed.', load) },
-            })
-          );
-          zoomButton.hidden = false;
-        } else {
-          stage.replaceChildren(pdfView(url));
-        }
+        url = URL.createObjectURL(new Blob([blob], { type: PDF_TYPE }));
+        ownsUrl = true;
+        stage.replaceChildren(pdfView(url));
       } catch (err) {
         if (err && err.name === 'AbortError') return;
         if (current !== controller) return;
         controller = null;
+        if (isImage) review.thumbs.delete(doc.id);
         if (err && err.status === 401) return;
         showError(messageOf(err), load);
       }
