@@ -625,6 +625,7 @@
   );
 
   function selectTab(id, push) {
+    const previous = state.tab;
     state.tab = id;
     tabButtons.forEach((b, i) => {
       const selected = TABS[i].id === id;
@@ -635,6 +636,11 @@
     if (push) writeUrl('push');
     if (id === 'settings') showSettings();
     if (id === 'audit') showAudit();
+    // Coming back to the queue: settings or other reviewers may have changed it meanwhile.
+    if (id === 'queue' && previous !== 'queue') {
+      loadStats();
+      loadList();
+    }
   }
 
   const onTabKey = (event) => {
@@ -1916,6 +1922,11 @@
       syncLaunch();
       showSettingsMessage('Settings saved.');
       settingsMessage.focus();
+      // New day settings move deadlines, so the counts and the queue change.
+      if (keys.some((k) => DAY_KEYS.includes(k))) {
+        loadStats();
+        loadList();
+      }
     } catch (err) {
       settingsView.saving = false;
       syncSaveButton();
@@ -2441,11 +2452,13 @@
   window.addEventListener('popstate', () => {
     if (blocked) return;
     clearTimeout(searchTimer);
+    const previousTab = state.tab;
     Object.assign(state, readUrl());
     if (state.tab === 'queue') {
       searchInput.value = state.q;
       statusSelect.value = state.status;
       syncPressed();
+      if (previousTab !== 'queue') loadStats();
       loadList();
     }
     selectTab(state.tab, false);
