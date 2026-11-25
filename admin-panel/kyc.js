@@ -1,4 +1,4 @@
-// KYC admin page: overview and review queue. Builds every node with KycLib.el(),
+// KYC admin page: overview, review queue, settings and audit log. Builds every node with KycLib.el(),
 // so server and user data only ever reach the page as text.
 (function () {
   'use strict';
@@ -11,6 +11,7 @@
     formatDateTime,
     validateReason,
     validateExemption,
+    validateSettings,
     createApi,
     currentRole,
   } = window.KycLib;
@@ -50,6 +51,29 @@
     { id: 'settings', label: 'Settings' },
     { id: 'audit', label: 'Audit log' },
   ];
+
+  const OBJECT_ID = /^[0-9a-f]{24}$/i;
+
+  const EVENT_LABELS = {
+    DRAFT_SAVED: 'Draft saved',
+    DOCUMENT_UPLOADED: 'Document uploaded',
+    SUBMITTED: 'Submitted for review',
+    REMINDER_SENT: 'Reminder sent',
+    REMINDER_SKIPPED: 'Reminder skipped',
+    RESTRICTED: 'Restricted',
+    UNRESTRICTED: 'Restriction lifted',
+    APPROVED: 'Approved',
+    REJECTED: 'Not approved',
+    CORRECTION_REQUESTED: 'Correction requested',
+    EXPIRED: 'Marked as expired',
+    EXEMPTION_GRANTED: 'Exemption granted',
+    SETTINGS_CHANGED: 'Settings changed',
+    DOCUMENT_VIEWED: 'Document viewed',
+    ID_REVEALED: 'ID number revealed',
+    MANUAL_REMINDER: 'Reminder sent by a reviewer',
+  };
+  const AUDIT_TYPES = Object.keys(EVENT_LABELS);
+  const eventTypeLabel = (type) => (AUDIT_TYPES.includes(type) ? EVENT_LABELS[type] : String(type || ''));
 
   const numberFormat = new Intl.NumberFormat('en-GB');
   const formatCount = (n) => numberFormat.format(Number(n) || 0);
@@ -134,27 +158,48 @@
 
   // --- URL state ---------------------------------------------------------------
 
+  // Each tab owns its own query parameters; `page` belongs to whichever tab is open. Values
+  // for the other tabs stay in memory.
   const readUrl = () => {
     const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    const tab = TABS.some((t) => t.id === tabParam) ? tabParam : 'queue';
+    const pageParam = Number(params.get('page'));
+    const page = Number.isInteger(pageParam) && pageParam >= 1 ? pageParam : 1;
+    if (tab === 'settings') return { tab };
+    if (tab === 'audit') {
+      const type = params.get('type');
+      const user = (params.get('user') || '').trim();
+      return {
+        tab,
+        auditType: AUDIT_TYPES.includes(type) ? type : '',
+        auditUser: OBJECT_ID.test(user) ? user.toLowerCase() : '',
+        auditPage: page,
+      };
+    }
     const status = params.get('status');
-    const page = Number(params.get('page'));
-    const tab = params.get('tab');
     return {
+      tab,
       q: (params.get('q') || '').slice(0, MAX_QUERY),
       status: STATUS_CODES.includes(status) ? status : '',
-      page: Number.isInteger(page) && page >= 1 ? page : 1,
-      tab: TABS.some((t) => t.id === tab) ? tab : 'queue',
+      page,
     };
   };
 
-  const state = readUrl();
+  const state = { q: '', status: '', page: 1, auditType: '', auditUser: '', auditPage: 1, ...readUrl() };
 
   const writeUrl = (mode) => {
     const params = new URLSearchParams();
     if (state.tab !== 'queue') params.set('tab', state.tab);
-    if (state.q) params.set('q', state.q);
-    if (state.status) params.set('status', state.status);
-    if (state.page > 1) params.set('page', String(state.page));
+    if (state.tab === 'queue') {
+      if (state.q) params.set('q', state.q);
+      if (state.status) params.set('status', state.status);
+      if (state.page > 1) params.set('page', String(state.page));
+    } else if (state.tab === 'audit') {
+      if (state.auditType) params.set('type', state.auditType);
+      if (state.auditUser) params.set('user', state.auditUser);
+      if (state.auditPage > 1) params.set('page', String(state.auditPage));
+    }
     const query = params.toString();
     const url = window.location.pathname + (query ? `?${query}` : '');
     if (url === window.location.pathname + window.location.search) return;
@@ -554,17 +599,14 @@
 
   // --- Tabs --------------------------------------------------------------------
 
-  const placeholderPanel = (id, text) =>
-    el(
-      'section',
-      { className: 'kyc-panel', id: `panel-${id}`, role: 'tabpanel', 'aria-labelledby': `tab-${id}` },
-      el('div', { className: 'kyc-state' }, el('p', {}, text))
-    );
+  // Settings and audit panels are filled in by their sections below.
+  const emptyPanel = (id) =>
+    el('section', { className: 'kyc-panel', id: `panel-${id}`, role: 'tabpanel', 'aria-labelledby': `tab-${id}` });
 
   const panels = {
     queue: queuePanel,
-    settings: placeholderPanel('settings', 'Settings are not available yet.'),
-    audit: placeholderPanel('audit', 'The audit log is not available yet.'),
+    settings: emptyPanel('settings'),
+    audit: emptyPanel('audit'),
   };
 
   const tabButtons = TABS.map((t) =>
@@ -591,6 +633,8 @@
     });
     for (const [key, panel] of Object.entries(panels)) panel.hidden = key !== id;
     if (push) writeUrl('push');
+    if (id === 'settings') showSettings();
+    if (id === 'audit') showAudit();
   }
 
   const onTabKey = (event) => {
@@ -608,7 +652,6 @@
 
   // --- Review panel ------------------------------------------------------------
 
-  const OBJECT_ID = /^[0-9a-f]{24}$/i;
   const REASON_MAX = 500;
   const MAX_EXEMPTION_DAYS = 90;
   const IMAGE_TYPES = ['image/png', 'image/jpeg'];
@@ -632,24 +675,6 @@
     rejected: 'Not approved',
     correction_requested: 'Correction requested',
     expired: 'Expired',
-  };
-  const EVENT_LABELS = {
-    DRAFT_SAVED: 'Draft saved',
-    DOCUMENT_UPLOADED: 'Document uploaded',
-    SUBMITTED: 'Submitted for review',
-    REMINDER_SENT: 'Reminder sent',
-    REMINDER_SKIPPED: 'Reminder skipped',
-    RESTRICTED: 'Restricted',
-    UNRESTRICTED: 'Restriction lifted',
-    APPROVED: 'Approved',
-    REJECTED: 'Not approved',
-    CORRECTION_REQUESTED: 'Correction requested',
-    EXPIRED: 'Marked as expired',
-    EXEMPTION_GRANTED: 'Exemption granted',
-    SETTINGS_CHANGED: 'Settings changed',
-    DOCUMENT_VIEWED: 'Document viewed',
-    ID_REVEALED: 'ID number revealed',
-    MANUAL_REMINDER: 'Reminder sent by a reviewer',
   };
 
   let dialogSeq = 0;
@@ -1157,18 +1182,23 @@
   const eventLabel = (e) =>
     e.type === 'DOCUMENT_VIEWED' && e.count > 1
       ? `Documents viewed by ${e.actor || 'System'} (${e.count})`
-      : EVENT_LABELS[e.type] || e.type || '';
+      : eventTypeLabel(e.type);
 
   const eventMeta = (e) =>
     e.type === 'DOCUMENT_VIEWED' && e.count > 1
       ? formatDateTime(e.createdAt)
       : `${e.actor || 'System'}, ${formatDateTime(e.createdAt)}`;
 
-  const eventsView = (events) =>
+  const eventsView = (events, userId) =>
     el(
       'section',
       { className: 'kyc-section', 'aria-labelledby': 'kyc-events-title' },
-      el('h3', { className: 'kyc-section-title', id: 'kyc-events-title' }, 'Recent activity'),
+      el(
+        'div',
+        { className: 'kyc-section-head' },
+        el('h3', { className: 'kyc-section-title', id: 'kyc-events-title' }, 'Recent activity'),
+        button('Open in audit log', () => openAuditFor(userId), 'kyc-link kyc-link-inline')
+      ),
       events.length
         ? el(
             'ol',
@@ -1217,7 +1247,7 @@
             earlier.map(earlierView)
           )
         : null,
-      eventsView(events),
+      eventsView(events, review.id),
     ];
     drawerBody.replaceChildren(...sections.filter(Boolean));
     renderActions(user);
@@ -1664,6 +1694,702 @@
     load();
   }
 
+  // --- Settings ------------------------------------------------------------------
+
+  const isSuperAdmin = currentRole() === 'super_admin';
+  const RANGE_ERROR = 'Enter a whole number from 1 to 365.';
+  const LAUNCH_WORD = 'LAUNCH';
+  const ALREADY_LAUNCHED = 'KYC has already been launched.';
+
+  const DAY_SETTINGS = [
+    {
+      key: 'firstNudgeDays',
+      label: 'First reminder (days after start)',
+      hint: "Days after a user's KYC period starts before the first reminder.",
+    },
+    {
+      key: 'secondNudgeDays',
+      label: 'Second reminder (days)',
+      hint: 'Days after the start for the second reminder. Must be later than the first.',
+    },
+    {
+      key: 'reminderIntervalDays',
+      label: 'Reminder interval (days)',
+      hint: 'Days between the repeat reminders that follow.',
+    },
+    {
+      key: 'warningBeforeDays',
+      label: 'Final warning (days before deadline)',
+      hint: 'Must be shorter than the deadline and the resubmission window.',
+    },
+    {
+      key: 'enforcementDays',
+      label: 'Deadline (days to complete KYC)',
+      hint: 'Users who have not verified by then are restricted.',
+    },
+    {
+      key: 'resubmitGraceDays',
+      label: 'Resubmission window (days)',
+      hint: 'Days a user gets to resubmit after a rejection, correction request or expiry.',
+    },
+  ];
+  const DAY_KEYS = DAY_SETTINGS.map((f) => f.key);
+  const REMINDERS_LABEL = 'Reminders on';
+  const REMINDERS_HINT = 'Turn off to stop sending reminders. Deadlines and restriction still apply.';
+
+  // The ordering rules, worded with this page's labels.
+  const ORDER_ERRORS = {
+    secondNudgeDays: 'The second reminder must come after the first.',
+    warningBeforeDays: 'The final warning must come before the deadline.',
+    resubmitGraceDays: 'The resubmission window must be longer than the final warning.',
+    remindersEnabled: 'Choose on or off.',
+  };
+
+  // Server messages (validateSettings in kyc_admin.routes.js) mapped back to their field.
+  const SERVER_ORDER_ERRORS = new Map([
+    ['The second nudge must come after the first.', 'secondNudgeDays'],
+    ['The warning must come before the enforcement deadline.', 'warningBeforeDays'],
+    ['The resubmission grace period must be longer than the warning period.', 'resubmitGraceDays'],
+    ['remindersEnabled must be true or false.', 'remindersEnabled'],
+  ]);
+
+  const serverFieldError = (message) => {
+    const field = SERVER_ORDER_ERRORS.get(message);
+    if (field) return { field, text: ORDER_ERRORS[field] };
+    const m = /^(\w+) must be a whole number from 1 to 365\.$/.exec(String(message));
+    if (m && DAY_KEYS.includes(m[1])) return { field: m[1], text: RANGE_ERROR };
+    return null;
+  };
+
+  const dayText = (n) => `${formatCount(n)} ${Number(n) === 1 ? 'day' : 'days'}`;
+
+  const settingsView = { data: null, controller: null, saving: false, launching: false, attempted: false };
+
+  const settingsStatus = el('p', { className: 'kyc-settings-status' });
+  const settingsMessage = el('p', { className: 'kyc-message', tabindex: -1 });
+  const settingsAlert = el('div', { className: 'kyc-message kyc-message-error', role: 'alert' });
+  const settingsBody = el('div', { className: 'kyc-settings-body' });
+
+  const showSettingsMessage = (text) => {
+    settingsMessage.textContent = text;
+    announce(text);
+  };
+
+  // Editable form (super_admin). Built once so typed values survive a tab switch.
+  const settingInputs = {};
+  const settingErrors = {};
+
+  const readNumber = (input) => {
+    const v = input.value.trim();
+    return /^\d+$/.test(v) ? Number(v) : NaN;
+  };
+
+  const formValues = () => {
+    const values = {};
+    for (const key of DAY_KEYS) values[key] = readNumber(settingInputs[key]);
+    values.remindersEnabled = settingInputs.remindersEnabled.checked;
+    return values;
+  };
+
+  const changedKeys = () => {
+    if (!settingsView.data) return [];
+    const values = formValues();
+    return Object.keys(values).filter((k) => values[k] !== settingsView.data[k]);
+  };
+
+  const setFieldError = (key, text) => {
+    const input = settingInputs[key];
+    if (text) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+    settingErrors[key].textContent = text || '';
+  };
+
+  const fieldErrorText = (key, message) => (message === RANGE_ERROR ? RANGE_ERROR : ORDER_ERRORS[key] || message);
+
+  const showFieldErrors = (errors) => {
+    for (const key of [...DAY_KEYS, 'remindersEnabled']) {
+      setFieldError(key, errors[key] ? fieldErrorText(key, errors[key]) : '');
+    }
+  };
+
+  const saveButton = el('button', { type: 'submit', className: 'kyc-btn kyc-btn-primary', disabled: true }, 'Save changes');
+
+  const syncSaveButton = () => {
+    saveButton.disabled = settingsView.saving || changedKeys().length === 0;
+  };
+
+  const onSettingsInput = () => {
+    settingsMessage.textContent = '';
+    if (settingsView.attempted) showFieldErrors(validateSettings(formValues()).errors);
+    syncSaveButton();
+  };
+
+  const numberField = (f) => {
+    const id = `kyc-set-${f.key}`;
+    const input = el('input', {
+      type: 'number',
+      id,
+      name: f.key,
+      min: '1',
+      max: '365',
+      inputmode: 'numeric',
+      'aria-describedby': `${id}-hint ${id}-error`,
+      on: { input: onSettingsInput },
+    });
+    const error = el('p', { className: 'kyc-field-error', id: `${id}-error` });
+    settingInputs[f.key] = input;
+    settingErrors[f.key] = error;
+    return el(
+      'div',
+      { className: 'kyc-field kyc-setting' },
+      el('label', { for: id }, f.label),
+      el('p', { className: 'kyc-field-hint', id: `${id}-hint` }, f.hint),
+      input,
+      error
+    );
+  };
+
+  const remindersField = () => {
+    const id = 'kyc-set-remindersEnabled';
+    const input = el('input', {
+      type: 'checkbox',
+      id,
+      name: 'remindersEnabled',
+      'aria-describedby': `${id}-hint ${id}-error`,
+      on: { change: onSettingsInput },
+    });
+    const error = el('p', { className: 'kyc-field-error', id: `${id}-error` });
+    settingInputs.remindersEnabled = input;
+    settingErrors.remindersEnabled = error;
+    return el(
+      'div',
+      { className: 'kyc-field kyc-setting kyc-setting-check' },
+      el('div', { className: 'kyc-check' }, input, el('label', { for: id }, REMINDERS_LABEL)),
+      el('p', { className: 'kyc-field-hint', id: `${id}-hint` }, REMINDERS_HINT),
+      error
+    );
+  };
+
+  const fillForm = (data) => {
+    for (const key of DAY_KEYS) settingInputs[key].value = String(data[key]);
+    settingInputs.remindersEnabled.checked = data.remindersEnabled === true;
+    settingsView.attempted = false;
+    showFieldErrors({});
+    syncSaveButton();
+  };
+
+  async function onSave(event) {
+    event.preventDefault();
+    if (settingsView.saving || !settingsView.data) return;
+    const keys = changedKeys();
+    if (keys.length === 0) return;
+    const values = formValues();
+    const result = validateSettings(values);
+    settingsView.attempted = true;
+    settingsMessage.textContent = '';
+    settingsAlert.textContent = '';
+    showFieldErrors(result.errors);
+    if (!result.ok) {
+      const first = [...DAY_KEYS, 'remindersEnabled'].find((k) => result.errors[k]);
+      if (first) settingInputs[first].focus();
+      return;
+    }
+    const body = {};
+    for (const k of keys) body[k] = values[k];
+    settingsView.saving = true;
+    syncSaveButton();
+    try {
+      const data = await api.put('/settings', body);
+      settingsView.saving = false;
+      settingsView.data = data;
+      fillForm(data);
+      renderSettingsStatus();
+      showSettingsMessage('Settings saved.');
+      settingsMessage.focus();
+    } catch (err) {
+      settingsView.saving = false;
+      syncSaveButton();
+      if (err && err.status === 401) return;
+      const mapped = err && err.status === 400 ? serverFieldError(err.message) : null;
+      if (mapped) {
+        setFieldError(mapped.field, mapped.text);
+        settingInputs[mapped.field].focus();
+      } else {
+        settingsAlert.textContent = messageOf(err);
+      }
+    }
+  }
+
+  const settingsForm = isSuperAdmin
+    ? el(
+        'form',
+        { className: 'kyc-card kyc-settings-form', 'aria-labelledby': 'kyc-settings-title', on: { submit: onSave } },
+        el('h2', { className: 'kyc-card-title', id: 'kyc-settings-title' }, 'Reminders and deadline'),
+        el('div', { className: 'kyc-settings-grid' }, DAY_SETTINGS.map(numberField)),
+        remindersField(),
+        el('div', { className: 'kyc-card-actions' }, saveButton)
+      )
+    : null;
+  if (settingsForm) settingsForm.noValidate = true;
+
+  // Read-only list (kyc_reviewer).
+  const settingsList = (data) =>
+    el(
+      'section',
+      { className: 'kyc-card', 'aria-labelledby': 'kyc-settings-title' },
+      el('h2', { className: 'kyc-card-title', id: 'kyc-settings-title' }, 'Reminders and deadline'),
+      el('p', { className: 'kyc-card-note' }, 'Only a super admin can change these.'),
+      el(
+        'dl',
+        { className: 'kyc-settings-list' },
+        DAY_SETTINGS.map((f) =>
+          el(
+            'div',
+            { className: 'kyc-settings-item' },
+            el('dt', {}, f.label, el('span', { className: 'kyc-field-hint' }, f.hint)),
+            el('dd', {}, dayText(data[f.key]))
+          )
+        ),
+        el(
+          'div',
+          { className: 'kyc-settings-item' },
+          el('dt', {}, REMINDERS_LABEL, el('span', { className: 'kyc-field-hint' }, REMINDERS_HINT)),
+          el('dd', {}, data.remindersEnabled === true ? 'On' : 'Off')
+        )
+      )
+    );
+
+  function renderSettingsStatus() {
+    const data = settingsView.data;
+    const launchedOn = data ? formatDate(data.rolloutAt) : '';
+    settingsStatus.textContent = launchedOn ? `Launched on ${launchedOn}` : 'KYC is not launched. Nobody has a deadline yet.';
+    settingsStatus.classList.toggle('is-launched', !!launchedOn);
+  }
+
+  const launchSection = (data) => {
+    const input = el('input', {
+      type: 'text',
+      id: 'kyc-launch-confirm',
+      name: 'confirm',
+      autocomplete: 'off',
+      spellcheck: 'false',
+      'aria-describedby': 'kyc-launch-text',
+    });
+    const launchButton = el('button', { type: 'submit', className: 'kyc-btn kyc-btn-strong', disabled: true }, 'Launch KYC');
+    const error = el('div', { className: 'kyc-message kyc-message-error', role: 'alert' });
+    const confirmed = () => input.value.trim() === LAUNCH_WORD;
+    input.addEventListener('input', () => {
+      launchButton.disabled = settingsView.launching || !confirmed();
+    });
+
+    const onLaunch = async (event) => {
+      event.preventDefault();
+      if (settingsView.launching || !confirmed()) return;
+      settingsView.launching = true;
+      launchButton.disabled = true;
+      error.textContent = '';
+      settingsMessage.textContent = '';
+      settingsAlert.textContent = '';
+      try {
+        const updated = await api.post('/settings/launch');
+        settingsView.launching = false;
+        settingsView.data = updated;
+        renderSettings();
+        showSettingsMessage('KYC launched.');
+        settingsMessage.focus();
+        // Deadlines exist now, so the counts and the queue change.
+        loadStats();
+        loadList();
+      } catch (err) {
+        settingsView.launching = false;
+        if (err && err.status === 401) return;
+        if (err && err.status === 409) {
+          settingsAlert.textContent = err.message || ALREADY_LAUNCHED;
+          loadSettings({ keepMessages: true });
+          return;
+        }
+        error.textContent = messageOf(err);
+        launchButton.disabled = !confirmed();
+      }
+    };
+
+    const form = el(
+      'form',
+      { className: 'kyc-card kyc-launch', 'aria-labelledby': 'kyc-launch-title', on: { submit: onLaunch } },
+      el('h2', { className: 'kyc-card-title', id: 'kyc-launch-title' }, 'Launch KYC'),
+      el(
+        'p',
+        { className: 'kyc-launch-text', id: 'kyc-launch-text' },
+        `Launching starts everyone's ${data.enforcementDays}-day deadline today. Reminders begin and users who don't verify in time will be restricted. This can't be undone.`
+      ),
+      el('div', { className: 'kyc-field kyc-field-block' }, el('label', { for: 'kyc-launch-confirm' }, `Type ${LAUNCH_WORD} to confirm`), input),
+      error,
+      el('div', { className: 'kyc-card-actions' }, launchButton)
+    );
+    form.noValidate = true;
+    return form;
+  };
+
+  function renderSettings() {
+    const data = settingsView.data;
+    settingsBody.removeAttribute('aria-busy');
+    renderSettingsStatus();
+    const parts = [el('div', { className: 'kyc-card kyc-settings-head' }, settingsStatus)];
+    parts.push(settingsMessage, settingsAlert);
+    parts.push(isSuperAdmin ? settingsForm : settingsList(data));
+    if (isSuperAdmin && !data.rolloutAt) parts.push(launchSection(data));
+    settingsBody.replaceChildren(...parts);
+  }
+
+  const renderSettingsLoading = () => {
+    settingsBody.setAttribute('aria-busy', 'true');
+    settingsBody.replaceChildren(
+      el(
+        'div',
+        { className: 'kyc-card kyc-settings-loading', 'aria-hidden': 'true' },
+        skeleton('kyc-skeleton-wide'),
+        skeleton(),
+        skeleton('kyc-skeleton-wide'),
+        skeleton()
+      )
+    );
+    announce('Loading settings');
+  };
+
+  const renderSettingsError = (message) => {
+    settingsBody.removeAttribute('aria-busy');
+    settingsBody.replaceChildren(
+      el(
+        'div',
+        { className: 'kyc-card kyc-state', role: 'alert' },
+        el('h2', { className: 'kyc-state-title' }, "We couldn't load the settings."),
+        el('p', {}, message),
+        button('Try again', () => loadSettings(), 'kyc-btn kyc-btn-primary')
+      )
+    );
+  };
+
+  async function loadSettings({ keepMessages = false } = {}) {
+    if (blocked) return;
+    if (settingsView.controller) settingsView.controller.abort();
+    const controller = new AbortController();
+    settingsView.controller = controller;
+    if (!keepMessages) {
+      settingsMessage.textContent = '';
+      settingsAlert.textContent = '';
+    }
+    // Unsaved edits are kept when the settings are reloaded.
+    const dirty = isSuperAdmin && changedKeys().length > 0;
+    if (!settingsView.data) renderSettingsLoading();
+    try {
+      const data = await api.get('/settings', { signal: controller.signal });
+      if (controller !== settingsView.controller) return;
+      settingsView.controller = null;
+      if (!data || typeof data !== 'object') throw new Error(GENERIC);
+      settingsView.data = data;
+      if (isSuperAdmin && !dirty) fillForm(data);
+      else if (isSuperAdmin) syncSaveButton();
+      renderSettings();
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+      if (controller !== settingsView.controller) return;
+      settingsView.controller = null;
+      handleFailure(err, (message) => {
+        if (settingsView.data) settingsAlert.textContent = message;
+        else renderSettingsError(message);
+      });
+    }
+  }
+
+  // Reloaded each time the tab opens, unless there are unsaved changes.
+  function showSettings() {
+    if (settingsView.data && isSuperAdmin && changedKeys().length > 0) return;
+    loadSettings();
+  }
+
+  panels.settings.append(settingsBody);
+
+  // --- Audit log -----------------------------------------------------------------
+
+  const AUDIT_SUMMARY_KEYS = 8;
+  const AUDIT_VALUE_MAX = 200;
+  const USER_ID_ERROR = 'Enter a 24-character user ID, or leave it empty.';
+  const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+
+  const auditView = { controller: null };
+
+  const auditTypeSelect = el(
+    'select',
+    { id: 'kyc-audit-type', name: 'type' },
+    el('option', { value: '' }, 'All events'),
+    AUDIT_TYPES.map((t) => el('option', { value: t }, EVENT_LABELS[t]))
+  );
+  const auditUserInput = el('input', {
+    type: 'text',
+    id: 'kyc-audit-user',
+    name: 'user',
+    autocomplete: 'off',
+    spellcheck: 'false',
+    maxLength: 64,
+    'aria-describedby': 'kyc-audit-user-hint kyc-audit-user-error',
+  });
+  const auditUserError = el('p', { className: 'kyc-field-error', id: 'kyc-audit-user-error' });
+
+  const setUserError = (text) => {
+    if (text) auditUserInput.setAttribute('aria-invalid', 'true');
+    else auditUserInput.removeAttribute('aria-invalid');
+    auditUserError.textContent = text || '';
+  };
+
+  const applyAuditFilters = () => {
+    const user = auditUserInput.value.trim();
+    if (user && !OBJECT_ID.test(user)) {
+      setUserError(USER_ID_ERROR);
+      auditUserInput.focus();
+      return;
+    }
+    setUserError('');
+    state.auditType = auditTypeSelect.value;
+    state.auditUser = user.toLowerCase();
+    state.auditPage = 1;
+    writeUrl('replace');
+    loadAudit();
+  };
+
+  auditTypeSelect.addEventListener('change', applyAuditFilters);
+  auditUserInput.addEventListener('input', () => {
+    if (auditUserInput.getAttribute('aria-invalid') !== 'true') return;
+    const user = auditUserInput.value.trim();
+    if (!user || OBJECT_ID.test(user)) setUserError('');
+  });
+
+  const auditFilters = el(
+    'form',
+    {
+      className: 'kyc-toolbar kyc-audit-filters',
+      'aria-label': 'Filter events',
+      on: {
+        submit: (event) => {
+          event.preventDefault();
+          applyAuditFilters();
+        },
+      },
+    },
+    el('div', { className: 'kyc-field' }, el('label', { for: 'kyc-audit-type' }, 'Type'), auditTypeSelect),
+    el(
+      'div',
+      { className: 'kyc-field kyc-field-search' },
+      el('label', { for: 'kyc-audit-user' }, 'User ID'),
+      el('p', { className: 'kyc-field-hint', id: 'kyc-audit-user-hint' }, 'Optional. The 24-character ID shown on each event.'),
+      auditUserInput,
+      auditUserError
+    ),
+    el('div', { className: 'kyc-audit-apply' }, el('button', { type: 'submit', className: 'kyc-btn' }, 'Apply'))
+  );
+  auditFilters.noValidate = true;
+
+  const auditList = el('ol', { className: 'kyc-audit-list', 'aria-label': 'Events, newest first' });
+  const auditStateBox = el('div', { className: 'kyc-state-slot' });
+  const auditPrev = button('Previous', () => goToAuditPage(state.auditPage - 1), 'kyc-btn');
+  const auditNext = button('Next', () => goToAuditPage(state.auditPage + 1), 'kyc-btn');
+  const auditPageText = el('span', { className: 'kyc-page-text' });
+  const auditTotal = el('p', { className: 'kyc-total' });
+  const auditPagination = el(
+    'nav',
+    { className: 'kyc-pagination', 'aria-label': 'Event pages' },
+    auditTotal,
+    el('div', { className: 'kyc-pager' }, auditPrev, auditPageText, auditNext)
+  );
+  auditPagination.hidden = true;
+
+  const auditHasFilters = () => state.auditType !== '' || state.auditUser !== '';
+
+  const truncate = (text, max) => (text.length > max ? `${text.slice(0, max)}…` : text);
+
+  // Event data is shown as plain "key: value" text; nested values as JSON text.
+  const summaryValue = (value) => {
+    let text;
+    if (value === null || value === undefined) text = String(value);
+    else if (typeof value === 'object') {
+      try {
+        text = JSON.stringify(value);
+      } catch (err) {
+        text = '(unreadable)';
+      }
+    } else if (typeof value === 'string' && ISO_INSTANT.test(value) && formatDateTime(value)) {
+      text = formatDateTime(value);
+    } else text = String(value);
+    return truncate(text, AUDIT_VALUE_MAX);
+  };
+
+  const dataSummary = (data) => {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    const entries = Object.entries(data);
+    if (entries.length === 0) return null;
+    const shown = entries.slice(0, AUDIT_SUMMARY_KEYS);
+    const rest = entries.length - shown.length;
+    return el(
+      'ul',
+      { className: 'kyc-audit-data' },
+      shown.map(([key, value]) =>
+        el('li', {}, el('span', { className: 'kyc-audit-key' }, `${truncate(key, 60)}: `), summaryValue(value))
+      ),
+      rest > 0 ? el('li', { className: 'kyc-muted' }, `and ${rest} more`) : null
+    );
+  };
+
+  const auditRow = (e) =>
+    el(
+      'li',
+      { className: 'kyc-audit-row' },
+      el(
+        'div',
+        { className: 'kyc-audit-head' },
+        el('span', { className: 'kyc-audit-type' }, eventTypeLabel(e.type)),
+        el('span', { className: 'kyc-audit-time' }, formatDateTime(e.createdAt))
+      ),
+      el(
+        'p',
+        { className: 'kyc-audit-meta' },
+        el('span', {}, `By ${e.actor || 'system'}`),
+        typeof e.appUserId === 'string' && e.appUserId
+          ? el('span', {}, 'User ', el('code', { className: 'kyc-audit-user' }, e.appUserId))
+          : null
+      ),
+      dataSummary(e.data)
+    );
+
+  const renderAuditLoading = () => {
+    auditList.setAttribute('aria-busy', 'true');
+    auditList.hidden = false;
+    auditStateBox.replaceChildren();
+    const rows = [];
+    for (let i = 0; i < SKELETON_ROWS; i += 1) {
+      rows.push(el('li', { className: 'kyc-audit-row', 'aria-hidden': 'true' }, skeleton('kyc-skeleton-wide'), skeleton()));
+    }
+    auditList.replaceChildren(...rows);
+    announce('Loading events');
+  };
+
+  const renderAuditError = (message) => {
+    auditList.removeAttribute('aria-busy');
+    auditList.hidden = true;
+    auditList.replaceChildren();
+    auditPagination.hidden = true;
+    auditStateBox.replaceChildren(
+      el(
+        'div',
+        { className: 'kyc-state', role: 'alert' },
+        el('h2', { className: 'kyc-state-title' }, "We couldn't load the audit log."),
+        el('p', {}, message),
+        button('Try again', loadAudit, 'kyc-btn kyc-btn-primary')
+      )
+    );
+  };
+
+  const clearAuditFilters = () => {
+    auditTypeSelect.value = '';
+    auditUserInput.value = '';
+    setUserError('');
+    applyAuditFilters();
+    auditTypeSelect.focus();
+  };
+
+  const renderAuditEmpty = () => {
+    auditList.hidden = true;
+    auditList.replaceChildren();
+    auditPagination.hidden = true;
+    const text = auditHasFilters() ? 'No events match these filters.' : 'No events yet.';
+    auditStateBox.replaceChildren(
+      el(
+        'div',
+        { className: 'kyc-state' },
+        el('h2', { className: 'kyc-state-title' }, text),
+        auditHasFilters() ? button('Clear filters', clearAuditFilters, 'kyc-btn kyc-btn-primary') : null
+      )
+    );
+    announce(text);
+  };
+
+  const renderAudit = (data) => {
+    auditList.removeAttribute('aria-busy');
+    const items = Array.isArray(data.items) ? data.items : [];
+    if (items.length === 0) {
+      renderAuditEmpty();
+      return;
+    }
+    auditStateBox.replaceChildren();
+    auditList.hidden = false;
+    auditList.replaceChildren(...items.map(auditRow));
+    const totalPages = Math.max(1, Number(data.totalPages) || 1);
+    const total = Number(data.total) || items.length;
+    const hadFocus = document.activeElement;
+    auditTotal.textContent = `${formatCount(total)} ${total === 1 ? 'event' : 'events'}`;
+    auditPageText.textContent = `Page ${formatCount(state.auditPage)} of ${formatCount(totalPages)}`;
+    auditPrev.disabled = state.auditPage <= 1;
+    auditNext.disabled = state.auditPage >= totalPages;
+    auditPagination.hidden = false;
+    if (hadFocus === auditPrev && auditPrev.disabled && !auditNext.disabled) auditNext.focus();
+    if (hadFocus === auditNext && auditNext.disabled && !auditPrev.disabled) auditPrev.focus();
+    announce(`${auditTotal.textContent}. ${auditPageText.textContent}.`);
+  };
+
+  async function loadAudit() {
+    if (blocked) return;
+    if (auditView.controller) auditView.controller.abort();
+    const controller = new AbortController();
+    auditView.controller = controller;
+    renderAuditLoading();
+    const params = new URLSearchParams({ page: String(state.auditPage) });
+    if (state.auditType) params.set('type', state.auditType);
+    if (state.auditUser) params.set('appUserId', state.auditUser);
+    try {
+      const data = await api.get(`/audit?${params.toString()}`, { signal: controller.signal });
+      if (controller !== auditView.controller) return;
+      auditView.controller = null;
+      const totalPages = Number(data && data.totalPages) || 0;
+      if (data && Array.isArray(data.items) && data.items.length === 0 && totalPages > 0 && state.auditPage > totalPages) {
+        state.auditPage = totalPages;
+        writeUrl('replace');
+        loadAudit();
+        return;
+      }
+      renderAudit(data || {});
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+      if (controller !== auditView.controller) return;
+      auditView.controller = null;
+      handleFailure(err, renderAuditError);
+    }
+  }
+
+  function goToAuditPage(page) {
+    if (page < 1 || page === state.auditPage) return;
+    state.auditPage = page;
+    writeUrl('push');
+    loadAudit();
+  }
+
+  function showAudit() {
+    auditTypeSelect.value = state.auditType;
+    auditUserInput.value = state.auditUser;
+    setUserError('');
+    loadAudit();
+  }
+
+  // From a user's review panel: close it and show that user's events.
+  function openAuditFor(userId) {
+    if (blocked || typeof userId !== 'string' || !OBJECT_ID.test(userId)) return;
+    if (drawer.open) closeOverlay(drawer);
+    state.auditType = '';
+    state.auditUser = userId.toLowerCase();
+    state.auditPage = 1;
+    selectTab('audit', true);
+    focusIfPossible(tabButtons[TABS.findIndex((t) => t.id === 'audit')]);
+  }
+
+  panels.audit.append(el('div', { className: 'kyc-queue' }, auditFilters, auditList, auditStateBox, auditPagination));
+
   // --- Page --------------------------------------------------------------------
 
   root.replaceChildren(
@@ -1684,11 +2410,13 @@
     if (blocked) return;
     clearTimeout(searchTimer);
     Object.assign(state, readUrl());
-    searchInput.value = state.q;
-    statusSelect.value = state.status;
-    syncPressed();
+    if (state.tab === 'queue') {
+      searchInput.value = state.q;
+      statusSelect.value = state.status;
+      syncPressed();
+      loadList();
+    }
     selectTab(state.tab, false);
-    loadList();
   });
 
   selectTab(state.tab, false);
