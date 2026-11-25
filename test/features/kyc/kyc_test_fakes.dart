@@ -25,7 +25,7 @@ KycStatus kycStatus({
       'outstanding': outstanding,
       'draft': draft ?? const {},
       'documents': documents,
-      'phone': '263771234567',
+      'phone': '263770000000',
       if (deadline != null) 'deadline': deadline,
       'progress': progress,
       'history': history,

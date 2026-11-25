@@ -100,12 +100,12 @@ describe('resolveUser on user-scoped routes', () => {
 
     const add = await request(app)
       .post('/api/cart/add')
-      .send({ userId: '263771234567', productId: String(product._id) });
+      .send({ userId: '263770000000', productId: String(product._id) });
     expect(add.status).toBe(200);
-    expect(await Cart.findOne({ userId: '+263771234567' })).not.toBeNull();
-    expect(await Cart.findOne({ userId: '263771234567' })).toBeNull();
+    expect(await Cart.findOne({ userId: '+263770000000' })).not.toBeNull();
+    expect(await Cart.findOne({ userId: '263770000000' })).toBeNull();
 
-    const res = await request(app).get('/api/cart?userId=%2B263771234567');
+    const res = await request(app).get('/api/cart?userId=%2B263770000000');
     expect(res.body.items).toHaveLength(1);
   });
 
@@ -227,21 +227,21 @@ describe('req.auth from resolveUser', () => {
 
   test('token request: via token with the token subject', async () => {
     const id = new mongoose.Types.ObjectId();
-    const token = mw.signAppToken({ _id: id, sipUsername: '+263771234567' });
+    const token = mw.signAppToken({ _id: id, sipUsername: '+263770000000' });
     const out = await call(
       { field: 'userId' },
       { headers: { authorization: `Bearer ${token}` } }
     );
     expect(out.next).toBe(true);
-    expect(out.req.userId).toBe('+263771234567');
+    expect(out.req.userId).toBe('+263770000000');
     expect(out.req.auth).toEqual({ via: 'token', appUserId: String(id) });
   });
 
   test('legacy request: via legacy, no app user id', async () => {
     process.env.LEGACY_USERID_ROUTES = 'true';
-    const out = await call({ field: 'userId' }, { body: { userId: '263771234567' } });
+    const out = await call({ field: 'userId' }, { body: { userId: '263770000000' } });
     expect(out.next).toBe(true);
-    expect(out.req.userId).toBe('+263771234567');
+    expect(out.req.userId).toBe('+263770000000');
     expect(out.req.auth).toEqual({ via: 'legacy' });
   });
 

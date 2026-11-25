@@ -26,7 +26,7 @@ afterAll(async () => {
 const adminToken = (role) =>
   mw.signAdminToken({ _id: new mongoose.Types.ObjectId(), role, username: 'admin1' });
 const appToken = () =>
-  mw.signAppToken({ _id: new mongoose.Types.ObjectId(), sipUsername: '263771234567' });
+  mw.signAppToken({ _id: new mongoose.Types.ObjectId(), sipUsername: '263770000000' });
 
 describe('token audiences', () => {
   test('admin token can create a product', async () => {
@@ -56,8 +56,8 @@ describe('token audiences', () => {
 
   test('verifyAppToken accepts app tokens only', () => {
     const id = new mongoose.Types.ObjectId();
-    const t = mw.signAppToken({ _id: id, sipUsername: '263771234567' });
-    expect(mw.verifyAppToken(t)).toEqual({ id: String(id), username: '263771234567' });
+    const t = mw.signAppToken({ _id: id, sipUsername: '263770000000' });
+    expect(mw.verifyAppToken(t)).toEqual({ id: String(id), username: '263770000000' });
     expect(mw.verifyAppToken(adminToken('staff'))).toBeNull();
     expect(mw.verifyAppToken('garbage')).toBeNull();
     expect(mw.verifyAppToken(undefined)).toBeNull();

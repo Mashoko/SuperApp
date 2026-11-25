@@ -225,7 +225,7 @@ describe('before launch (rolloutAt null)', () => {
 describe('AppUser.kyc defaults', () => {
   test('a new AppUser starts NOT_STARTED in cycle 0 and computes cleanly', () => {
     const AppUser = require('../models/app_user.model');
-    const u = new AppUser({ sipUsername: '263771234567' });
+    const u = new AppUser({ sipUsername: '263770000000' });
     expect(u.kyc.status).toBe('NOT_STARTED');
     expect(u.kyc.cycle).toBe(0);
     expect(u.kyc.lastReminderStage).toBeNull();

@@ -29,7 +29,7 @@ void main() {
 
     test('refresh() posts stored credentials and stores token', () async {
       final prefs = await _prefs({
-        AppConstants.keyAuthUser: '+263771234567',
+        AppConstants.keyAuthUser: '+263770000000',
         AppConstants.keyPassword: 'pw',
         AppConstants.keyDisplayName: 'Rose',
       });
@@ -44,7 +44,7 @@ void main() {
       expect(seen.url.toString(),
           'https://superapp-diht.onrender.com/api/app-auth/session');
       expect(jsonDecode(seen.body), {
-        'username': '+263771234567',
+        'username': '+263770000000',
         'password': 'pw',
         'displayName': 'Rose',
       });

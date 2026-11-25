@@ -65,18 +65,18 @@ describe('POST /api/app-auth/session', () => {
     // Mimics the real verifier on an account Afri Com knows without '+':
     // it accepts the bare number and, for '+…', retries and returns the stripped form.
     verifier.setVerifierForTests(async (u) => ({ ok: true, username: u.replace(/^\+/, '') }));
-    const a = await session({ username: '263771234567', password: 'pw' });
-    const b = await session({ username: '+263771234567', password: 'pw' });
+    const a = await session({ username: '263770000000', password: 'pw' });
+    const b = await session({ username: '+263770000000', password: 'pw' });
     expect(a.status).toBe(200);
     expect(b.status).toBe(200);
     expect(b.body.user.id).toBe(a.body.user.id);
-    expect(a.body.user.username).toBe('+263771234567');
-    expect(b.body.user.username).toBe('+263771234567');
+    expect(a.body.user.username).toBe('+263770000000');
+    expect(b.body.user.username).toBe('+263770000000');
     for (const res of [a, b]) {
-      expect(jwt.verify(res.body.token, process.env.JWT_SECRET).username).toBe('+263771234567');
+      expect(jwt.verify(res.body.token, process.env.JWT_SECRET).username).toBe('+263770000000');
     }
     expect(await AppUser.countDocuments()).toBe(1);
-    expect((await AppUser.findOne()).sipUsername).toBe('+263771234567');
+    expect((await AppUser.findOne()).sipUsername).toBe('+263770000000');
   });
 
   test('verifier is called with the submitted form, not the canonical one', async () => {
@@ -106,15 +106,15 @@ describe('POST /api/app-auth/session', () => {
     verifier.setVerifierForTests(spy);
     for (const body of [
       {},
-      { username: '263771234567' },
+      { username: '263770000000' },
       { password: 'pw' },
       { username: '   ', password: 'pw' },
       { username: '+', password: 'pw' },
       { username: { $ne: '' }, password: 'pw' },
-      { username: '263771234567', password: { $ne: '' } },
-      { username: '263771234567', password: 'pw', displayName: 5 },
+      { username: '263770000000', password: { $ne: '' } },
+      { username: '263770000000', password: 'pw', displayName: 5 },
       { username: '2'.repeat(33), password: 'pw' },
-      { username: '263771234567', password: 'p'.repeat(129) },
+      { username: '263770000000', password: 'p'.repeat(129) },
     ]) {
       const res = await session(body);
       expect(res.status).toBe(400);

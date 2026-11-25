@@ -59,8 +59,8 @@ void main() {
         find.text(
             'POTRAZ requires us to confirm who owns each number. It takes about 5 minutes.'),
         findsOneWidget);
-    expect(find.text('263771234567'), findsOneWidget);
-    expect(find.widgetWithText(TextField, '263771234567'), findsNothing,
+    expect(find.text('263770000000'), findsOneWidget);
+    expect(find.widgetWithText(TextField, '263770000000'), findsNothing,
         reason: 'phone is never an editable field');
     expect(field(tester, 'First name').keyboardType, TextInputType.name);
     expect(field(tester, 'Last name').keyboardType, TextInputType.name);

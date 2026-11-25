@@ -117,7 +117,7 @@ void main() {
     });
 
     test('outgoing non emergency call that fails is not reported', () {
-      run(_call('c1', '0771234567'),
+      run(_call('c1', '0770000000'),
           [CallStateEnum.CALL_INITIATION, CallStateEnum.FAILED]);
       expect(failures.value, isNull);
     });

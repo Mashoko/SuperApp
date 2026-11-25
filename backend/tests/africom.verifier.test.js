@@ -50,10 +50,10 @@ beforeEach(() => {
 
 describe('verifyCredentials', () => {
   test('returns ok for SUCCESS status', async () => {
-    const r = await verifier.verifyCredentials('263771234567', 'secret');
-    expect(r).toEqual({ ok: true, username: '263771234567' });
+    const r = await verifier.verifyCredentials('263770000000', 'secret');
+    expect(r).toEqual({ ok: true, username: '263770000000' });
     expect(seen[0]).toMatchObject({
-      username: '263771234567',
+      username: '263770000000',
       password: 'secret',
       package_id: 'org.duri.maswerasei',
       domain: 'localvoip.ai.co.zw',
@@ -62,23 +62,23 @@ describe('verifyCredentials', () => {
 
   test('returns invalid for ERROR status', async () => {
     handler = (call, cb) => cb(null, { status: 'ERROR' });
-    const r = await verifier.verifyCredentials('263771234567', 'bad');
+    const r = await verifier.verifyCredentials('263770000000', 'bad');
     expect(r).toEqual({ ok: false, reason: 'invalid' });
   });
 
   test('retries without plus and returns stripped username', async () => {
     handler = (call, cb) => {
       seen.push(call.request);
-      cb(null, { status: call.request.username === '263771234567' ? 'SUCCESS' : 'ERROR' });
+      cb(null, { status: call.request.username === '263770000000' ? 'SUCCESS' : 'ERROR' });
     };
-    const r = await verifier.verifyCredentials('+263771234567', 'secret');
-    expect(r).toEqual({ ok: true, username: '263771234567' });
-    expect(seen.map((s) => s.username)).toEqual(['+263771234567', '263771234567']);
+    const r = await verifier.verifyCredentials('+263770000000', 'secret');
+    expect(r).toEqual({ ok: true, username: '263770000000' });
+    expect(seen.map((s) => s.username)).toEqual(['+263770000000', '263770000000']);
   });
 
   test('treats server-side gRPC faults as unavailable, not invalid', async () => {
     handler = (call, cb) => cb({ code: grpc.status.INTERNAL, message: 'boom' });
-    const r = await verifier.verifyCredentials('+263771234567', 'secret');
+    const r = await verifier.verifyCredentials('+263770000000', 'secret');
     expect(r).toEqual({ ok: false, reason: 'unavailable' });
   });
 
@@ -87,7 +87,7 @@ describe('verifyCredentials', () => {
     const closedPort = await bind(tmp);
     await new Promise((r) => tmp.tryShutdown(() => r()));
     process.env.AFRICOM_GRPC_PORT = String(closedPort);
-    const r = await verifier.verifyCredentials('263771234567', 'secret', { deadlineMs: 1500 });
+    const r = await verifier.verifyCredentials('263770000000', 'secret', { deadlineMs: 1500 });
     expect(r).toEqual({ ok: false, reason: 'unavailable' });
   });
 
@@ -95,6 +95,6 @@ describe('verifyCredentials', () => {
     verifier.setVerifierForTests(async () => ({ ok: false, reason: 'invalid' }));
     expect(await verifier.verifyCredentials('x', 'y')).toEqual({ ok: false, reason: 'invalid' });
     verifier.setVerifierForTests(null);
-    expect((await verifier.verifyCredentials('263771234567', 's')).ok).toBe(true);
+    expect((await verifier.verifyCredentials('263770000000', 's')).ok).toBe(true);
   });
 });

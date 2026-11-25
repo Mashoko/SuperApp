@@ -25,7 +25,7 @@ void main() {
       () async {
     final repo = _FakeRepo();
     final r = await MakeCall(repo, isKycRestricted: () => true)
-        .call('0771234567', voiceOnly: true);
+        .call('0770000000', voiceOnly: true);
     expect(r, isA<Failure<void>>());
     expect((r as Failure<void>).message, _msg);
     expect(repo.dialled, isEmpty);
@@ -42,14 +42,14 @@ void main() {
   test('not restricted calls through', () async {
     final repo = _FakeRepo();
     final r = await MakeCall(repo, isKycRestricted: () => false)
-        .call('0771234567', voiceOnly: true);
+        .call('0770000000', voiceOnly: true);
     expect(r, isA<Success<void>>());
-    expect(repo.dialled, ['0771234567']);
+    expect(repo.dialled, ['0770000000']);
   });
 
   test('no closure means not restricted', () async {
     final repo = _FakeRepo();
-    await MakeCall(repo).call('0771234567', voiceOnly: true);
-    expect(repo.dialled, ['0771234567']);
+    await MakeCall(repo).call('0770000000', voiceOnly: true);
+    expect(repo.dialled, ['0770000000']);
   });
 }

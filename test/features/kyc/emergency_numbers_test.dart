@@ -3,17 +3,17 @@ import 'package:mvvm_sip_demo/features/kyc/domain/emergency_numbers.dart';
 
 void main() {
   test('kycCallBlockReason', () {
-    expect(kycCallBlockReason('0771234567', isRestricted: () => true),
+    expect(kycCallBlockReason('0770000000', isRestricted: () => true),
         kKycCallBlockedMessage);
     expect(kycCallBlockReason('999', isRestricted: () => true), isNull);
     expect(
-        kycCallBlockReason('0771234567', isRestricted: () => false), isNull);
+        kycCallBlockReason('0770000000', isRestricted: () => false), isNull);
   });
 
   test('fails open and never consults restriction for emergency numbers', () {
     bool boom() => throw StateError('controller failed');
     expect(kycCallBlockReason('999', isRestricted: boom), isNull);
-    expect(kycCallBlockReason('0771234567', isRestricted: boom), isNull);
+    expect(kycCallBlockReason('0770000000', isRestricted: boom), isNull);
   });
 
   test('recognises emergency numbers ignoring allowed formatting', () {
@@ -58,7 +58,7 @@ void main() {
 
     test('returns null for anything that is not an emergency number', () {
       for (final identity in [
-        null, '', '   ', 'sip:0999123@x', 'sip:alice@x', '0771234567',
+        null, '', '   ', 'sip:0999123@x', 'sip:alice@x', '0770000000',
         'sip:9990@x', '<sip:@x>', 'sip:*999@x', 'http:999', 'sip:', '<>',
       ]) {
         expect(emergencyNumberFromSipIdentity(identity), isNull,

@@ -44,7 +44,7 @@ const _me = {
   ],
   'rejectionReason': 'Photo is blurry.',
   'correctionNotes': null,
-  'phone': '263771234567',
+  'phone': '263770000000',
 };
 
 KycService _svc(Future<http.Response> Function(http.Request) h) =>
@@ -78,7 +78,7 @@ void main() {
     expect(s.history.single.decision, 'rejected');
     expect(s.history.single.reason, 'Photo is blurry.');
     expect(s.rejectionReason, 'Photo is blurry.');
-    expect(s.phone, '263771234567');
+    expect(s.phone, '263770000000');
     expect(s.canEdit, isTrue);
     expect(s.isRestricted, isFalse);
   });

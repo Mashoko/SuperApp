@@ -43,7 +43,7 @@ void main() {
       expect(vm.idType, 'national_id');
       expect(vm.idNumberMasked, '*********A42');
       expect(vm.newIdNumber, isNull);
-      expect(vm.phone, '263771234567');
+      expect(vm.phone, '263770000000');
       expect(vm.documents.single.kind, 'id_front');
       expect(vm.step, 0);
     });
