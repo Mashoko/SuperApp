@@ -31,3 +31,23 @@ window.toggleSidebar = () => {
         }
     }
 };
+
+// Remove elements whose data-requires-role list does not include the signed-in role.
+// UI only: the server enforces access. Must not throw when there is no stored user.
+(function hideByRole() {
+    const apply = () => {
+        let role = null;
+        try {
+            const user = JSON.parse(localStorage.getItem('user'));
+            role = user && typeof user.role === 'string' ? user.role : null;
+        } catch (err) {
+            role = null;
+        }
+        document.querySelectorAll('[data-requires-role]').forEach((node) => {
+            const allowed = (node.getAttribute('data-requires-role') || '').split(/\s+/).filter(Boolean);
+            if (!role || !allowed.includes(role)) node.remove();
+        });
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply);
+    else apply();
+})();

@@ -77,6 +77,27 @@ describe('el', () => {
     expect(node.listeners.click).toBe(fn);
   });
 
+  test('sets form and table attributes used by the KYC page', () => {
+    const node = el('input', {
+      for: 'q',
+      autocomplete: 'off',
+      inputmode: 'search',
+      spellcheck: 'false',
+      scope: 'col',
+      tabindex: -1,
+      maxLength: 64,
+    });
+    expect(node.maxLength).toBe(64);
+    expect(node.attributes).toMatchObject({
+      for: 'q',
+      autocomplete: 'off',
+      inputmode: 'search',
+      spellcheck: 'false',
+      scope: 'col',
+      tabindex: '-1',
+    });
+  });
+
   test('throws for innerHTML, outerHTML and unknown props', () => {
     expect(() => el('div', { innerHTML: '<b>x</b>' })).toThrow();
     expect(() => el('div', { outerHTML: '<b>x</b>' })).toThrow();

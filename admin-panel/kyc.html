@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KYC - Admin</title>
+    <meta name="description" content="Review identity checks for app users.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="kyc.css">
+    <style>
+        body {
+            display: none;
+        }
+    </style>
+    <script>
+        if (!localStorage.getItem('token')) window.location.href = 'login.html';
+        else document.addEventListener('DOMContentLoaded', () => document.body.style.display = 'flex');
+        window.logout = () => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        };
+    </script>
+</head>
+
+<body class="kyc-page">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">Shop Admin</div>
+        </div>
+        <nav class="nav-links" aria-label="Main">
+            <a href="index.html" class="nav-item">Products</a>
+            <a href="categories.html" class="nav-item">Categories</a>
+            <a href="shops.html" class="nav-item">Shops</a>
+            <a href="banners.html" class="nav-item">Banners</a>
+            <a href="vouchers.html" class="nav-item">Vouchers</a>
+            <a href="faqs.html" class="nav-item">FAQs</a>
+            <a href="kyc.html" class="nav-item active" aria-current="page" data-requires-role="super_admin kyc_reviewer">KYC</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <button type="button" class="mobile-menu-btn" id="menuButton" aria-label="Open menu" aria-controls="sidebar">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="4" y1="6" x2="20" y2="6"></line>
+                    <line x1="4" y1="12" x2="20" y2="12"></line>
+                    <line x1="4" y1="18" x2="20" y2="18"></line>
+                </svg>
+            </button>
+            <div class="user-info" id="userInfo"></div>
+            <button type="button" class="logout-btn" id="logoutButton">Log out</button>
+        </div>
+
+        <main class="kyc-main" id="kycRoot" tabindex="-1"></main>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="kyc-lib.js"></script>
+    <script src="kyc.js"></script>
+</body>
+
+</html>

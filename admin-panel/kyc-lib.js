@@ -9,8 +9,21 @@
 
   // --- DOM builder: never parses HTML ---------------------------------------
 
-  const ATTRIBUTE_PROPS = new Set(['role', 'href', 'type', 'name', 'id', 'title']);
-  const PROPERTY_PROPS = new Set(['className', 'value', 'disabled', 'hidden', 'checked']);
+  const ATTRIBUTE_PROPS = new Set([
+    'role',
+    'href',
+    'type',
+    'name',
+    'id',
+    'title',
+    'for',
+    'autocomplete',
+    'inputmode',
+    'spellcheck',
+    'scope',
+    'tabindex',
+  ]);
+  const PROPERTY_PROPS = new Set(['className', 'value', 'disabled', 'hidden', 'checked', 'maxLength']);
 
   const BLOCKED_TAGS = new Set(['script', 'object', 'embed']);
   const SAFE_SCHEMES = new Set(['http', 'https', 'mailto', 'tel', 'blob']);
