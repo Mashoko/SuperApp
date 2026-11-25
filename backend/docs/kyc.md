@@ -114,6 +114,8 @@ Staff sign in at `POST /api/auth/login` and use the returned token as `<ADMIN_TO
 
 The admin panel has a KYC page (`kyc.html`, linked as "KYC" in the sidebar of every admin page). Where the admin panel is hosted is outside this document.
 
+Opening the admin panel as a local file (file://) does not work because the API only accepts requests from allowed origins; serve it over http(s) and add its origin to ALLOWED_ORIGINS.
+
 ### Who can see it
 
 Only `super_admin` and `kyc_reviewer` accounts. For any other role the KYC link is hidden and the page shows "You don't have access to this." Hiding the link is only for convenience: the server checks the role on every `/api/admin/kyc` request and returns 403 to anyone else.
@@ -134,6 +136,7 @@ To make someone a reviewer, an operator with database access has to set the role
      -H "Authorization: Bearer <ADMIN_TOKEN>" -H "Content-Type: application/json" \
      -d '{"username": "<REVIEWER_USERNAME>", "password": "<TEMPORARY_PASSWORD>"}'
    ```
+   Your shell may save this command, including the password, in its history. Run it from a shell that doesn't keep history, or change the password right after the first sign-in.
 2. Change its role, either with a one-off update in MongoDB on the `users` collection:
    ```
    db.users.updateOne({ username: "<REVIEWER_USERNAME>" }, { $set: { role: "kyc_reviewer" } })
@@ -171,7 +174,7 @@ Launching cannot be undone. It does the same as the launch endpoint: everyone wh
 
 ### Documents and ID numbers
 
-- Every document the page loads is recorded in the audit log as `DOCUMENT_VIEWED`, with the reviewer and the document. This includes the small previews in the panel, so opening a user's panel records one event per image document, and expanding an earlier submission records its images too. The panel's activity list groups these into one line; the audit log keeps every event.
+- Every document the page loads is recorded in the audit log as `DOCUMENT_VIEWED`, with the reviewer and the document. This includes the small previews in the panel, so opening a user's panel records one event per image document, and expanding an earlier submission records its images too. Opening an image in the viewer reuses that preview, so it is not recorded a second time. The panel's activity list groups these into one line; the audit log keeps every event.
 - ID numbers are masked. "Reveal" asks for confirmation, records `ID_REVEALED`, and shows the number until the panel closes. It is not stored in the browser.
 - Images open in a viewer inside the page. PDFs open in a new browser tab, because the page does not run the browser's PDF viewer inside itself. That tab shows a temporary copy that stops working once the document viewer is closed. To see the PDF again, open it again from the panel (this is recorded again).
 
