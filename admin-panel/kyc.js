@@ -1715,7 +1715,7 @@
     {
       key: 'reminderIntervalDays',
       label: 'Reminder interval (days)',
-      hint: 'Days between the repeat reminders that follow.',
+      hint: 'Repeat reminders every this many days from the start, including during a resubmission window.',
     },
     {
       key: 'warningBeforeDays',
@@ -1725,7 +1725,7 @@
     {
       key: 'enforcementDays',
       label: 'Deadline (days to complete KYC)',
-      hint: 'Users who have not verified by then are restricted.',
+      hint: "Users who haven't submitted by then are restricted.",
     },
     {
       key: 'resubmitGraceDays',
@@ -1822,6 +1822,7 @@
     settingsMessage.textContent = '';
     if (settingsView.attempted) showFieldErrors(validateSettings(formValues()).errors);
     syncSaveButton();
+    syncLaunch();
   };
 
   const numberField = (f) => {
@@ -1904,6 +1905,7 @@
       settingsView.data = data;
       fillForm(data);
       renderSettingsStatus();
+      syncLaunch();
       showSettingsMessage('Settings saved.');
       settingsMessage.focus();
     } catch (err) {
@@ -1966,69 +1968,83 @@
     settingsStatus.classList.toggle('is-launched', !!launchedOn);
   }
 
-  const launchSection = (data) => {
-    const input = el('input', {
-      type: 'text',
-      id: 'kyc-launch-confirm',
-      name: 'confirm',
-      autocomplete: 'off',
-      spellcheck: 'false',
-      'aria-describedby': 'kyc-launch-text',
-    });
-    const launchButton = el('button', { type: 'submit', className: 'kyc-btn kyc-btn-strong', disabled: true }, 'Launch KYC');
-    const error = el('div', { className: 'kyc-message kyc-message-error', role: 'alert' });
-    const confirmed = () => input.value.trim() === LAUNCH_WORD;
-    input.addEventListener('input', () => {
-      launchButton.disabled = settingsView.launching || !confirmed();
-    });
+  // One launch form for the page's lifetime (super_admin only). It reads the saved settings
+  // each time it syncs, so a re-render never detaches it or duplicates it while a request is
+  // in flight. Results go to the persistent settings alert and message above the form.
+  const launchInput = el('input', {
+    type: 'text',
+    id: 'kyc-launch-confirm',
+    name: 'confirm',
+    autocomplete: 'off',
+    spellcheck: 'false',
+    'aria-describedby': 'kyc-launch-text kyc-launch-hint',
+  });
+  const launchText = el('p', { className: 'kyc-launch-text', id: 'kyc-launch-text' });
+  const launchHint = el('p', { className: 'kyc-field-hint kyc-launch-hint', id: 'kyc-launch-hint' });
+  const launchButton = el('button', { type: 'submit', className: 'kyc-btn kyc-btn-strong', disabled: true }, 'Launch KYC');
+  const launchConfirmed = () => launchInput.value.trim() === LAUNCH_WORD;
 
-    const onLaunch = async (event) => {
-      event.preventDefault();
-      if (settingsView.launching || !confirmed()) return;
-      settingsView.launching = true;
-      launchButton.disabled = true;
-      error.textContent = '';
-      settingsMessage.textContent = '';
-      settingsAlert.textContent = '';
-      try {
-        const updated = await api.post('/settings/launch');
-        settingsView.launching = false;
-        settingsView.data = updated;
-        renderSettings();
-        showSettingsMessage('KYC launched.');
-        settingsMessage.focus();
-        // Deadlines exist now, so the counts and the queue change.
-        loadStats();
-        loadList();
-      } catch (err) {
-        settingsView.launching = false;
-        if (err && err.status === 401) return;
-        if (err && err.status === 409) {
-          settingsAlert.textContent = err.message || ALREADY_LAUNCHED;
-          loadSettings({ keepMessages: true });
-          return;
-        }
-        error.textContent = messageOf(err);
-        launchButton.disabled = !confirmed();
+  function syncLaunch() {
+    if (!isSuperAdmin) return;
+    const data = settingsView.data;
+    if (data) {
+      launchText.textContent = `Launching starts the ${data.enforcementDays}-day deadline today for everyone who hasn't verified or submitted. Reminders begin, and anyone who hasn't submitted in time will be restricted. This can't be undone.`;
+    }
+    const dirty = changedKeys().length > 0;
+    launchHint.textContent = dirty ? 'Save your changes first.' : '';
+    launchButton.disabled = settingsView.launching || dirty || !launchConfirmed();
+  }
+
+  async function onLaunch(event) {
+    event.preventDefault();
+    if (settingsView.launching || !launchConfirmed() || changedKeys().length > 0) return;
+    settingsView.launching = true;
+    syncLaunch();
+    settingsMessage.textContent = '';
+    settingsAlert.textContent = '';
+    try {
+      const updated = await api.post('/settings/launch');
+      settingsView.launching = false;
+      settingsView.data = updated;
+      launchInput.value = '';
+      renderSettings();
+      showSettingsMessage('KYC launched.');
+      settingsMessage.focus();
+      // Deadlines exist now, so the counts and the queue change.
+      loadStats();
+      loadList();
+    } catch (err) {
+      settingsView.launching = false;
+      syncLaunch();
+      if (err && err.status === 401) return;
+      if (err && err.status === 409) {
+        settingsAlert.textContent = err.message || ALREADY_LAUNCHED;
+        loadSettings({ keepMessages: true });
+        return;
       }
-    };
+      settingsAlert.textContent = messageOf(err);
+    }
+  }
 
-    const form = el(
-      'form',
-      { className: 'kyc-card kyc-launch', 'aria-labelledby': 'kyc-launch-title', on: { submit: onLaunch } },
-      el('h2', { className: 'kyc-card-title', id: 'kyc-launch-title' }, 'Launch KYC'),
-      el(
-        'p',
-        { className: 'kyc-launch-text', id: 'kyc-launch-text' },
-        `Launching starts everyone's ${data.enforcementDays}-day deadline today. Reminders begin and users who don't verify in time will be restricted. This can't be undone.`
-      ),
-      el('div', { className: 'kyc-field kyc-field-block' }, el('label', { for: 'kyc-launch-confirm' }, `Type ${LAUNCH_WORD} to confirm`), input),
-      error,
-      el('div', { className: 'kyc-card-actions' }, launchButton)
-    );
-    form.noValidate = true;
-    return form;
-  };
+  launchInput.addEventListener('input', syncLaunch);
+
+  const launchForm = isSuperAdmin
+    ? el(
+        'form',
+        { className: 'kyc-card kyc-launch', 'aria-labelledby': 'kyc-launch-title', on: { submit: onLaunch } },
+        el('h2', { className: 'kyc-card-title', id: 'kyc-launch-title' }, 'Launch KYC'),
+        launchText,
+        el(
+          'div',
+          { className: 'kyc-field kyc-field-block' },
+          el('label', { for: 'kyc-launch-confirm' }, `Type ${LAUNCH_WORD} to confirm`),
+          launchInput,
+          launchHint
+        ),
+        el('div', { className: 'kyc-card-actions' }, launchButton)
+      )
+    : null;
+  if (launchForm) launchForm.noValidate = true;
 
   function renderSettings() {
     const data = settingsView.data;
@@ -2037,8 +2053,9 @@
     const parts = [el('div', { className: 'kyc-card kyc-settings-head' }, settingsStatus)];
     parts.push(settingsMessage, settingsAlert);
     parts.push(isSuperAdmin ? settingsForm : settingsList(data));
-    if (isSuperAdmin && !data.rolloutAt) parts.push(launchSection(data));
+    if (isSuperAdmin && !data.rolloutAt) parts.push(launchForm);
     settingsBody.replaceChildren(...parts);
+    syncLaunch();
   }
 
   const renderSettingsLoading = () => {
@@ -2103,6 +2120,7 @@
 
   // Reloaded each time the tab opens, unless there are unsaved changes.
   function showSettings() {
+    if (settingsView.launching) return;
     if (settingsView.data && isSuperAdmin && changedKeys().length > 0) return;
     loadSettings();
   }

@@ -1615,10 +1615,6 @@ button.kyc-doc:hover {
     max-width: 240px;
 }
 
-.kyc-launch .kyc-message {
-    margin: 16px 0 0;
-}
-
 /* Audit log */
 .kyc-audit-filters {
     align-items: flex-start;
