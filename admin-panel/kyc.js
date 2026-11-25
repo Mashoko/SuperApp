@@ -1767,12 +1767,20 @@
 
   const settingsStatus = el('p', { className: 'kyc-settings-status' });
   const settingsMessage = el('p', { className: 'kyc-message', tabindex: -1 });
-  const settingsAlert = el('div', { className: 'kyc-message kyc-message-error', role: 'alert' });
+  const settingsAlert = el('div', { className: 'kyc-message kyc-message-error', role: 'alert', tabindex: -1 });
   const settingsBody = el('div', { className: 'kyc-settings-body' });
 
   const showSettingsMessage = (text) => {
     settingsMessage.textContent = text;
     announce(text);
+  };
+
+  // The alert sits above the form, far from the Launch card on small screens: bring it into
+  // view and focus it so a failure is seen, not only announced.
+  const revealSettingsAlert = () => {
+    if (!settingsAlert.isConnected || !settingsAlert.textContent) return;
+    settingsAlert.scrollIntoView({ block: 'center' });
+    settingsAlert.focus({ preventScroll: true });
   };
 
   // Editable form (super_admin). Built once so typed values survive a tab switch.
@@ -2019,10 +2027,14 @@
       if (err && err.status === 401) return;
       if (err && err.status === 409) {
         settingsAlert.textContent = err.message || ALREADY_LAUNCHED;
-        loadSettings({ keepMessages: true });
+        revealSettingsAlert();
+        // The reload re-renders the settings, which moves the alert and drops its focus.
+        await loadSettings({ keepMessages: true });
+        revealSettingsAlert();
         return;
       }
       settingsAlert.textContent = messageOf(err);
+      revealSettingsAlert();
     }
   }
 
@@ -2112,8 +2124,10 @@
       if (controller !== settingsView.controller) return;
       settingsView.controller = null;
       handleFailure(err, (message) => {
-        if (settingsView.data) settingsAlert.textContent = message;
-        else renderSettingsError(message);
+        if (settingsView.data) {
+          settingsAlert.textContent = message;
+          revealSettingsAlert();
+        } else renderSettingsError(message);
       });
     }
   }
