@@ -5,13 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/managers/emergency_call_failures.dart';
 import '../../help_support/presentation/views/help_support_view.dart';
 import '../../login/presentation/sign_out.dart';
 import 'kyc_form_view.dart';
 import 'kyc_gate_scope.dart';
 import 'kyc_status_controller.dart';
 import 'mandatory_kyc_view.dart';
-import 'widgets/kyc_emergency_sheet.dart' show KycDialerLauncher;
+import 'widgets/kyc_emergency_sheet.dart'
+    show KycDialerLauncher, showEmergencyCallFailedDialog;
 
 /// Covers the whole app with [MandatoryKycView] while verification is
 /// launched and the account is restricted, except while a call is active:
@@ -28,6 +30,7 @@ class KycGate extends StatefulWidget {
     required this.child,
     this.navigatorKey,
     this.callActive,
+    this.emergencyCallFailures,
     this.navigatorObserver,
     this.onSignOut,
     this.supportBuilder,
@@ -43,6 +46,11 @@ class KycGate extends StatefulWidget {
 
   /// True while a call (incoming or outgoing) is in progress.
   final ValueListenable<bool>? callActive;
+
+  /// Outgoing emergency calls that started and then failed. Once no call is
+  /// active, the gate offers the phone's own dialer for the latest one: on
+  /// the gate's navigator while the gate is shown, otherwise on the app's.
+  final EmergencyCallFailures? emergencyCallFailures;
 
   /// Must also be in the app's `MaterialApp.navigatorObservers`. Lets the
   /// gate put its back blocker back on top whenever the app changes its
@@ -76,7 +84,9 @@ class _KycGateState extends State<KycGate> {
   void initState() {
     super.initState();
     widget.callActive?.addListener(_onCallChanged);
+    widget.emergencyCallFailures?.addListener(_scheduleEmergencyFailure);
     widget.navigatorObserver?.addListener(_onRootChanged);
+    _scheduleEmergencyFailure();
   }
 
   @override
@@ -85,6 +95,13 @@ class _KycGateState extends State<KycGate> {
     if (!identical(oldWidget.callActive, widget.callActive)) {
       oldWidget.callActive?.removeListener(_onCallChanged);
       widget.callActive?.addListener(_onCallChanged);
+    }
+    if (!identical(
+        oldWidget.emergencyCallFailures, widget.emergencyCallFailures)) {
+      oldWidget.emergencyCallFailures
+          ?.removeListener(_scheduleEmergencyFailure);
+      widget.emergencyCallFailures?.addListener(_scheduleEmergencyFailure);
+      _scheduleEmergencyFailure();
     }
     if (!identical(oldWidget.navigatorObserver, widget.navigatorObserver)) {
       oldWidget.navigatorObserver?.removeListener(_onRootChanged);
@@ -95,6 +112,7 @@ class _KycGateState extends State<KycGate> {
   @override
   void dispose() {
     widget.callActive?.removeListener(_onCallChanged);
+    widget.emergencyCallFailures?.removeListener(_scheduleEmergencyFailure);
     widget.navigatorObserver?.removeListener(_onRootChanged);
     _removeBlocker();
     super.dispose();
@@ -102,7 +120,56 @@ class _KycGateState extends State<KycGate> {
 
   /// May be called mid-frame: CallView reports `viewClosed` from its
   /// dispose, while the tree is locked.
-  void _onCallChanged() => _rebuildSafely();
+  void _onCallChanged() {
+    _rebuildSafely();
+    _scheduleEmergencyFailure();
+  }
+
+  bool get _inCall => widget.callActive?.value ?? false;
+
+  bool _emergencyFailureScheduled = false;
+
+  /// When an emergency call failure is pending and no call is active, shows
+  /// the "Call not started" dialog after the current frame, once the gate
+  /// has rebuilt for the call ending (so it lands on the right navigator).
+  void _scheduleEmergencyFailure() {
+    if (_emergencyFailureScheduled || !mounted || _inCall) return;
+    if (widget.emergencyCallFailures?.value == null) return;
+    _emergencyFailureScheduled = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _emergencyFailureScheduled = false;
+      _showEmergencyFailure();
+    });
+    SchedulerBinding.instance.ensureVisualUpdate();
+  }
+
+  void _showEmergencyFailure() {
+    final failures = widget.emergencyCallFailures;
+    if (!mounted || _inCall || failures == null || failures.value == null) {
+      return;
+    }
+    final gated = _shouldBeActive(context.read<KycStatusController>());
+    final navigator = gated
+        ? _gateNavigatorKey.currentState
+        : widget.navigatorKey?.currentState;
+    if (gated != _active || navigator == null || !navigator.mounted) {
+      // The failure stays pending. If the gate has not caught up yet (it is
+      // opening or closing), rebuild and look again after the next frame.
+      // Without an app navigator there is nowhere to show it.
+      if (gated || _active) {
+        _rebuildSafely();
+        _scheduleEmergencyFailure();
+      }
+      return;
+    }
+    final number = failures.take();
+    if (number == null) return;
+    unawaited(showEmergencyCallFailedDialog(navigator.context, number,
+        launchDialer: widget.launchDialer));
+  }
+
+  bool _shouldBeActive(KycStatusController controller) =>
+      !_inCall && (_held || (controller.launched && controller.isRestricted));
 
   void _hold() => _held = true;
 
@@ -218,9 +285,7 @@ class _KycGateState extends State<KycGate> {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<KycStatusController>();
-    final inCall = widget.callActive?.value ?? false;
-    final active =
-        !inCall && (_held || (controller.launched && controller.isRestricted));
+    final active = _shouldBeActive(controller);
     final blocker = _blocker;
     final blockerMissing = blocker == null || !blocker.isActive;
     if (active != _active || (active && blockerMissing)) {

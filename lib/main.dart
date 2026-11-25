@@ -115,6 +115,7 @@ class MyApp extends StatelessWidget {
             builder: (context, child) => KycGate(
               navigatorKey: navigatorKey,
               callActive: getIt<CallActivity>(),
+              emergencyCallFailures: getIt<EmergencyCallFailures>(),
               navigatorObserver: kycGateNavigatorObserver,
               child: child ?? const SizedBox.shrink(),
             ),

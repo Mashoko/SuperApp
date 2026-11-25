@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mvvm_sip_demo/core/di/inject.dart';
 import 'package:mvvm_sip_demo/core/managers/call_activity.dart';
+import 'package:mvvm_sip_demo/core/managers/emergency_call_failures.dart';
 import 'package:mvvm_sip_demo/features/call/presentation/viewmodels/call_viewmodel.dart';
 import 'package:mvvm_sip_demo/features/kyc/domain/emergency_numbers.dart';
 import 'package:mvvm_sip_demo/features/kyc/data/kyc_models.dart';
@@ -108,6 +109,7 @@ void main() {
   late KycGateNavigatorObserver observer;
   late List<Uri> launches;
   late Future<bool> Function(Uri) launchResult;
+  late EmergencyCallFailures failures;
 
   setUp(() {
     rootKey = GlobalKey<NavigatorState>();
@@ -116,6 +118,7 @@ void main() {
     observer = KycGateNavigatorObserver();
     launches = [];
     launchResult = (_) async => true;
+    failures = EmergencyCallFailures();
   });
 
   Future<void> pumpGate(
@@ -140,6 +143,7 @@ void main() {
         builder: (context, child) => KycGate(
           navigatorKey: rootKey,
           callActive: callActive,
+          emergencyCallFailures: failures,
           navigatorObserver: observer,
           launchDialer: (uri) {
             launches.add(uri);
@@ -538,6 +542,111 @@ void main() {
           handle.dispose();
         });
       }
+    });
+
+    group('an emergency call that started and then failed', () {
+      const body999 = 'We could not start the call. '
+          "Use your phone's dialer to call 999.";
+
+      NavigatorState dialogNavigator(WidgetTester tester) =>
+          Navigator.of(tester.element(find.text('Call not started')));
+
+      testWidgets(
+          'restricted: shown on the gate once the call screen has closed, '
+          'and only once', (tester) async {
+        final activity = CallActivity();
+        callActive = activity;
+        controller.status = _restricted();
+        await pumpGate(tester, controller);
+
+        activity.callStarted('c1');
+        unawaited(rootKey.currentState!.push(MaterialPageRoute<void>(
+            builder: (_) => _FakeCallScreen(activity: activity))));
+        await tester.pumpAndSettle();
+
+        // Like SipCallManager on FAILED: report, then the call finishes.
+        failures.report('999');
+        activity.callFinished('c1');
+        await tester.pumpAndSettle();
+        expect(find.text('Call not started'), findsNothing,
+            reason: 'the call screen is still showing');
+        expect(failures.value, '999');
+
+        // Like CallView's auto-pop: dispose calls viewClosed mid-frame.
+        rootKey.currentState!.pop();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.byType(MandatoryKycView), findsOneWidget);
+        expect(find.byType(AlertDialog), findsOneWidget);
+        expect(find.text('Call not started'), findsOneWidget);
+        expect(find.text(body999), findsOneWidget);
+        expect(identical(dialogNavigator(tester), rootKey.currentState),
+            isFalse,
+            reason: 'shown inside the gate, above the app');
+        expect(failures.value, isNull);
+
+        // Persistent: tapping outside does not close it.
+        await tester.tapAt(const Offset(5, 5));
+        await tester.pumpAndSettle();
+        expect(find.text('Call not started'), findsOneWidget);
+
+        await tester.tap(find.text('Close'));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsNothing);
+
+        // Another call coming and going does not bring it back.
+        activity.callStarted('c2');
+        await tester.pumpAndSettle();
+        activity.callFinished('c2');
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(find.byType(MandatoryKycView), findsOneWidget);
+      });
+
+      testWidgets('not restricted: shown on the app navigator; dialer opens',
+          (tester) async {
+        controller.status = kycStatus(status: 'RESTRICTED', launched: false);
+        await pumpGate(tester, controller);
+        callActive.value = true;
+        await tester.pumpAndSettle();
+
+        failures.report('112');
+        await tester.pumpAndSettle();
+        expect(find.text('Call not started'), findsNothing);
+
+        callActive.value = false;
+        await tester.pumpAndSettle();
+        expect(find.byType(MandatoryKycView), findsNothing);
+        expect(find.byType(AlertDialog), findsOneWidget);
+        expect(
+            find.text('We could not start the call. '
+                "Use your phone's dialer to call 112."),
+            findsOneWidget);
+        expect(identical(dialogNavigator(tester), rootKey.currentState),
+            isTrue);
+
+        await tester.tap(find.text('Open phone dialer'));
+        await tester.pumpAndSettle();
+        expect(launches, [Uri(scheme: 'tel', path: '112')]);
+        expect(find.byType(AlertDialog), findsNothing);
+
+        callActive.value = true;
+        await tester.pumpAndSettle();
+        callActive.value = false;
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsNothing);
+      });
+
+      testWidgets('reported with no call active: shown straight away',
+          (tester) async {
+        controller.status = _restricted();
+        await pumpGate(tester, controller);
+        failures.report('999');
+        await tester.pumpAndSettle();
+        expect(find.text(body999), findsOneWidget);
+        expect(identical(dialogNavigator(tester), rootKey.currentState),
+            isFalse);
+      });
     });
 
     group('back stays blocked when the app changes its navigator', () {

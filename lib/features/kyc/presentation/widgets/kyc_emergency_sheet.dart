@@ -35,16 +35,28 @@ Future<void> showKycEmergencySheet(BuildContext context,
   if (number == null) return;
   final error = await getIt<CallViewModel>().makeCall(number, voiceOnly: true);
   if (error == null || !context.mounted) return;
-  await showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    useRootNavigator: false,
-    builder: (_) => KycCallNotStartedDialog(
-      number: number,
-      launchDialer: launchDialer ?? _launchExternally,
-    ),
-  );
+  await showEmergencyCallFailedDialog(context, number,
+      launchDialer: launchDialer);
 }
+
+/// Shows [KycCallNotStartedDialog] for [number] on [context]'s nearest
+/// navigator (not the root one), offering the phone's own dialer through
+/// [launchDialer] (defaults to url_launcher). Tapping outside does not close
+/// it. Completes when it closes.
+Future<void> showEmergencyCallFailedDialog(
+  BuildContext context,
+  String number, {
+  KycDialerLauncher? launchDialer,
+}) =>
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: false,
+      builder: (_) => KycCallNotStartedDialog(
+        number: number,
+        launchDialer: launchDialer ?? _launchExternally,
+      ),
+    );
 
 /// Shown when an emergency call could not be started. Stays open until the
 /// user closes it or the dialer opens.
