@@ -125,6 +125,41 @@ describe('el', () => {
     for (const href of ok) expect(el('a', { href }).attributes.href).toBe(href);
   });
 
+  test('src accepts blob: URLs and same-origin relative paths', () => {
+    const ok = ['blob:http://localhost:8098/0b1c', 'BLOB:http://x/1', 'img/a.png', '/img/a.png', './a.png', '?v=1'];
+    for (const src of ok) expect(el('img', { src }).attributes.src).toBe(src);
+  });
+
+  test('src rejects every other scheme and protocol-relative URLs', () => {
+    const bad = [
+      'javascript:alert(1)',
+      'java\tscript:alert(1)',
+      ' javascript:alert(1)',
+      'data:image/png;base64,AAAA',
+      'data:text/html,<script>1</script>',
+      'http://evil.example/x.png',
+      'https://evil.example/x.png',
+      'file:///etc/passwd',
+      '//evil.example/x.png',
+      '\\\\evil.example/x.png',
+      '/\\evil.example/x.png',
+      '\u0001//evil.example',
+    ];
+    for (const src of bad) expect(() => el('img', { src })).toThrow('Unsafe src');
+  });
+
+  test('sets sandbox as an attribute, including the empty (most restrictive) value', () => {
+    expect(el('iframe', { sandbox: '' }).attributes.sandbox).toBe('');
+    expect(el('iframe', { sandbox: 'allow-downloads' }).attributes.sandbox).toBe('allow-downloads');
+  });
+
+  test('sets alt, min, max and rows as attributes', () => {
+    expect(el('img', { alt: 'ID front' }).attributes.alt).toBe('ID front');
+    const date = el('input', { type: 'date', min: '2026-11-26', max: '2027-02-23' });
+    expect(date.attributes).toMatchObject({ min: '2026-11-26', max: '2027-02-23' });
+    expect(el('textarea', { rows: 4 }).attributes.rows).toBe('4');
+  });
+
   test('rejects script, object and embed tags but allows iframe', () => {
     for (const t of ['script', 'object', 'embed']) {
       expect(() => el(t)).toThrow(`Unsupported tag: ${t}`);

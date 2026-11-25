@@ -22,6 +22,11 @@
     'spellcheck',
     'scope',
     'tabindex',
+    'sandbox',
+    'alt',
+    'min',
+    'max',
+    'rows',
   ]);
   const PROPERTY_PROPS = new Set(['className', 'value', 'disabled', 'hidden', 'checked', 'maxLength']);
 
@@ -30,13 +35,27 @@
 
   // Allowlist: relative URLs and a few schemes. Browsers strip tabs and newlines
   // inside a scheme, so those are removed before checking.
-  const isSafeHref = (value) => {
-    const href = String(value)
+  const normaliseUrl = (value) =>
+    String(value)
       .replace(/[\t\n\r]/g, '')
       .replace(/^[\u0000-\u0020]+/, '');
-    const match = /^([^/?#:]*):/.exec(href);
-    if (!match) return true;
-    return SAFE_SCHEMES.has(match[1].toLowerCase());
+  const schemeOf = (url) => {
+    const match = /^([^/?#:]*):/.exec(url);
+    return match ? match[1].toLowerCase() : null;
+  };
+
+  const isSafeHref = (value) => {
+    const scheme = schemeOf(normaliseUrl(value));
+    return scheme === null || SAFE_SCHEMES.has(scheme);
+  };
+
+  // src (img, iframe): only blob: URLs and same-origin relative paths. Browsers read a
+  // leading pair of slashes or backslashes as another host, so those are refused too.
+  const isSafeSrc = (value) => {
+    const src = normaliseUrl(value);
+    const scheme = schemeOf(src);
+    if (scheme !== null) return scheme === 'blob';
+    return !/^[\\/]{2}/.test(src);
   };
 
   const createEl = (doc) =>
@@ -51,6 +70,9 @@
           for (const [type, fn] of Object.entries(value || {})) node.addEventListener(type, fn);
         } else if (key.startsWith('aria-') || key.startsWith('data-') || ATTRIBUTE_PROPS.has(key)) {
           if (key === 'href' && !isSafeHref(value)) throw new Error('Unsafe href');
+          node.setAttribute(key, value);
+        } else if (key === 'src') {
+          if (!isSafeSrc(value)) throw new Error('Unsafe src');
           node.setAttribute(key, value);
         } else if (PROPERTY_PROPS.has(key)) {
           node[key] = value;
