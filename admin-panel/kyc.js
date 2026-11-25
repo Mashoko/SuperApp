@@ -2481,6 +2481,8 @@
 
   window.addEventListener('popstate', () => {
     if (blocked) return;
+    // The panel, dialogs and viewer belong to the page being left.
+    closeAllOverlays();
     clearTimeout(searchTimer);
     const previousTab = state.tab;
     Object.assign(state, readUrl());
