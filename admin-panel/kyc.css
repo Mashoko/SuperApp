@@ -5,6 +5,8 @@ body.kyc-page {
     --kyc-bg: #F7F7F8;
     --kyc-surface: #FFFFFF;
     --kyc-border: #E4E4E7;
+    /* Form fields are white on white, so their edge is what shows where to type: 3.4:1 on white. */
+    --kyc-control-border: #8A8A93;
     --kyc-text: #18181B;
     --kyc-muted: #52525B;
     --kyc-subtle: #F4F4F5;
@@ -395,7 +397,7 @@ button.kyc-count:hover {
 .kyc-page .kyc-field input,
 .kyc-page .kyc-field select {
     background: var(--kyc-surface);
-    border: 1px solid var(--kyc-border);
+    border: 1px solid var(--kyc-control-border);
     border-radius: 6px;
     box-shadow: none;
     padding: 8px 12px;
@@ -1248,7 +1250,7 @@ button.kyc-doc:hover {
     width: 100%;
     box-sizing: border-box;
     padding: 8px 12px;
-    border: 1px solid var(--kyc-border);
+    border: 1px solid var(--kyc-control-border);
     border-radius: 6px;
     background: var(--kyc-surface);
     color: var(--kyc-text);
