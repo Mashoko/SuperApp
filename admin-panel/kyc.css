@@ -831,3 +831,640 @@ button.kyc-count:hover {
         min-height: 44px;
     }
 }
+
+/* --- Review panel, dialogs and document viewer ---------------------------------
+   Native <dialog> elements in the top layer. Only these overlays carry a shadow. */
+
+body.kyc-page:has(dialog[open]) {
+    overflow: hidden;
+}
+
+.kyc-page dialog {
+    color: var(--kyc-text);
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.kyc-page dialog::backdrop {
+    background: rgba(24, 24, 27, 0.4);
+}
+
+.kyc-page .kyc-drawer {
+    position: fixed;
+    inset: 0 0 0 auto;
+    margin: 0;
+    padding: 0;
+    width: min(600px, 100vw);
+    max-width: 100vw;
+    height: 100%;
+    max-height: 100%;
+    background: var(--kyc-surface);
+    border: 0;
+    border-left: 1px solid var(--kyc-border);
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+    box-sizing: border-box;
+}
+
+.kyc-page .kyc-drawer[open] {
+    display: flex;
+    flex-direction: column;
+}
+
+.kyc-drawer-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--kyc-border);
+}
+
+.kyc-drawer-heading {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.kyc-drawer-title {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.3;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.kyc-drawer-title:focus {
+    outline: none;
+}
+
+.kyc-drawer-scroll {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 16px 24px 24px;
+    overscroll-behavior: contain;
+}
+
+.kyc-drawer-body[aria-busy="true"] {
+    opacity: 0.6;
+}
+
+.kyc-drawer-loading {
+    padding: 8px 0;
+}
+
+.kyc-drawer-loading .kyc-skeleton {
+    margin: 12px 0;
+}
+
+.kyc-drawer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px 24px calc(16px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--kyc-border);
+    background: var(--kyc-surface);
+}
+
+.kyc-drawer-actions[hidden] {
+    display: none;
+}
+
+/* Inline status and error messages */
+.kyc-message {
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--kyc-border);
+    border-radius: 6px;
+    background: var(--kyc-subtle);
+    font-size: 15px;
+}
+
+.kyc-message:empty {
+    display: none;
+}
+
+.kyc-message-error {
+    background: #FEF2F2;
+    border-color: #FECACA;
+    color: #991B1B;
+}
+
+/* Sections inside the panel */
+.kyc-section {
+    padding: 20px 0;
+    border-top: 1px solid var(--kyc-border);
+}
+
+.kyc-drawer-body > .kyc-section:first-child {
+    border-top: 0;
+    padding-top: 4px;
+}
+
+.kyc-section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 12px;
+    margin-bottom: 8px;
+}
+
+.kyc-section-title {
+    margin: 0 0 8px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.kyc-section-head .kyc-section-title {
+    margin: 0;
+}
+
+.kyc-section-meta {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--kyc-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.kyc-group {
+    margin-top: 16px;
+}
+
+.kyc-group-title {
+    margin: 0 0 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--kyc-muted);
+}
+
+.kyc-facts {
+    display: grid;
+    grid-template-columns: minmax(120px, 34%) minmax(0, 1fr);
+    gap: 6px 16px;
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.kyc-facts dt {
+    color: var(--kyc-muted);
+    font-size: 15px;
+}
+
+.kyc-facts dd {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.kyc-reason {
+    white-space: pre-wrap;
+}
+
+.kyc-id-row {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.kyc-id-number {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+}
+
+.kyc-link.kyc-link-inline {
+    padding: 0;
+    font-size: 15px;
+}
+
+/* Documents */
+.kyc-docs {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.kyc-doc {
+    appearance: none;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px;
+    background: var(--kyc-surface);
+    border: 1px solid var(--kyc-border);
+    border-radius: 8px;
+    font: inherit;
+    color: var(--kyc-text);
+    text-align: left;
+    box-sizing: border-box;
+}
+
+button.kyc-doc {
+    cursor: zoom-in;
+}
+
+button.kyc-doc:hover {
+    background: var(--kyc-subtle);
+}
+
+.kyc-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 96px;
+    border-radius: 6px;
+    background: var(--kyc-subtle);
+    overflow: hidden;
+}
+
+.kyc-thumb-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.kyc-thumb-skeleton {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+.kyc-thumb-fallback,
+.kyc-thumb-file {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--kyc-muted);
+}
+
+.kyc-doc-label {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.kyc-doc-file .kyc-btn {
+    margin-top: auto;
+}
+
+/* Earlier submissions */
+.kyc-details {
+    border: 1px solid var(--kyc-border);
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
+.kyc-details summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.kyc-details-body {
+    padding: 0 12px 12px;
+}
+
+.kyc-details-body > .kyc-group:first-child {
+    margin-top: 4px;
+}
+
+/* Activity */
+.kyc-events {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.kyc-events li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 12px;
+    padding: 10px 0;
+    border-top: 1px solid var(--kyc-border);
+}
+
+.kyc-events li:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.kyc-event-type {
+    font-weight: 500;
+}
+
+.kyc-event-meta {
+    font-size: 14px;
+    color: var(--kyc-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.kyc-event-detail {
+    flex-basis: 100%;
+    margin: 2px 0 0;
+    font-size: 14px;
+    color: var(--kyc-muted);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+/* Dialogs */
+.kyc-page .kyc-dialog {
+    width: min(480px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    padding: 24px;
+    border: 1px solid var(--kyc-border);
+    border-radius: 8px;
+    background: var(--kyc-surface);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.kyc-dialog-title {
+    margin: 0 0 8px;
+    font-size: 18px;
+    line-height: 1.35;
+    font-weight: 600;
+}
+
+.kyc-dialog-text {
+    margin: 0 0 16px;
+    color: var(--kyc-muted);
+}
+
+.kyc-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.kyc-dialog .kyc-message {
+    margin: 12px 0 0;
+}
+
+/* Confirm button for destructive or secondary decisions: strong but not the accent. */
+.kyc-btn-strong {
+    background: var(--kyc-text);
+    border-color: var(--kyc-text);
+    color: #FFFFFF;
+}
+
+.kyc-btn-strong:hover:not(:disabled) {
+    background: #3F3F46;
+}
+
+.kyc-btn-strong:disabled {
+    background: #E4E4E7;
+    border-color: #E4E4E7;
+    color: #52525B;
+}
+
+.kyc-field-block {
+    min-width: 0;
+    margin-top: 16px;
+}
+
+.kyc-field-hint {
+    margin: -2px 0 0;
+    font-size: 14px;
+    color: var(--kyc-muted);
+}
+
+.kyc-page .kyc-field textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 1px solid var(--kyc-border);
+    border-radius: 6px;
+    background: var(--kyc-surface);
+    color: var(--kyc-text);
+    font: inherit;
+    font-size: 16px;
+    line-height: 1.5;
+    resize: vertical;
+    box-shadow: none;
+}
+
+.kyc-page .kyc-field textarea:focus {
+    border-color: var(--kyc-focus);
+    outline: 2px solid var(--kyc-focus);
+    outline-offset: 0;
+}
+
+.kyc-page .kyc-field [aria-invalid="true"] {
+    border-color: #B91C1C;
+}
+
+.kyc-char-count {
+    margin: 0;
+    font-size: 14px;
+    color: var(--kyc-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.kyc-char-count.is-over {
+    color: #B91C1C;
+}
+
+.kyc-field-error {
+    margin: 0;
+    font-size: 14px;
+    color: #B91C1C;
+}
+
+.kyc-field-error:empty {
+    display: none;
+}
+
+.kyc-session {
+    margin: 0 0 12px;
+    padding: 12px;
+    border: 1px solid #FECACA;
+    border-radius: 6px;
+    background: #FEF2F2;
+    color: #991B1B;
+}
+
+.kyc-session p {
+    margin: 0 0 8px;
+}
+
+.kyc-session-title {
+    font-weight: 600;
+}
+
+/* Document viewer */
+.kyc-page .kyc-viewer {
+    width: min(1000px, calc(100vw - 32px));
+    height: calc(100dvh - 32px);
+    max-width: none;
+    max-height: none;
+    padding: 0;
+    border: 1px solid var(--kyc-border);
+    border-radius: 8px;
+    background: var(--kyc-surface);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.kyc-page .kyc-viewer[open] {
+    display: flex;
+    flex-direction: column;
+}
+
+.kyc-viewer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--kyc-border);
+}
+
+.kyc-viewer-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.kyc-viewer-tools {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.kyc-viewer-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--kyc-subtle);
+    overflow: hidden;
+}
+
+.kyc-viewer-stage.is-zoomed {
+    display: block;
+    overflow: auto;
+}
+
+/* Fit: the whole image, as large as the stage allows. Zoomed: natural size, scrollable. */
+.kyc-viewer-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.kyc-viewer-stage.is-zoomed .kyc-viewer-image {
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+}
+
+.kyc-viewer-state {
+    padding: 24px;
+    text-align: center;
+    color: var(--kyc-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.kyc-viewer-state p {
+    margin: 0;
+}
+
+.kyc-spinner {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 3px solid var(--kyc-border);
+    border-top-color: var(--kyc-muted);
+    box-sizing: border-box;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .kyc-spinner {
+        animation: kyc-spin 0.8s linear infinite;
+    }
+}
+
+@keyframes kyc-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 767px) {
+    .kyc-page .kyc-drawer {
+        width: 100vw;
+        border-left: 0;
+        box-shadow: none;
+    }
+
+    .kyc-drawer-header,
+    .kyc-drawer-scroll,
+    .kyc-drawer-actions {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .kyc-drawer-actions .kyc-btn,
+    .kyc-dialog-actions .kyc-btn {
+        flex: 1 1 auto;
+    }
+
+    .kyc-facts {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+    }
+
+    .kyc-facts dd {
+        margin-bottom: 8px;
+    }
+
+    .kyc-docs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .kyc-page .kyc-viewer {
+        width: 100vw;
+        height: 100dvh;
+        border: 0;
+        border-radius: 0;
+    }
+
+    .kyc-page .kyc-dialog {
+        padding: 20px 16px;
+    }
+}
+
+@media (pointer: coarse) {
+    .kyc-page .kyc-details summary {
+        min-height: 44px;
+        box-sizing: border-box;
+    }
+
+    .kyc-page .kyc-link.kyc-link-inline {
+        min-height: 44px;
+        padding: 0 8px;
+    }
+}
