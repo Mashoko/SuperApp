@@ -662,18 +662,18 @@
   const GENERIC = 'Something went wrong. Please try again.';
 
   const DOC_KINDS = {
-    id_front: 'ID card, front',
-    id_back: 'ID card, back',
+    id_front: 'National ID, front',
+    id_back: 'National ID, back',
     passport_bio: 'Passport photo page',
     proof_of_residence: 'Proof of residence',
   };
   const ID_TYPES = { national_id: 'National ID', passport: 'Passport' };
   const GENDERS = { male: 'Male', female: 'Female', other: 'Other' };
   const DECISIONS = {
-    pending: 'Waiting for review',
-    approved: 'Approved',
+    pending: 'Under review',
+    approved: 'Verified',
     rejected: 'Not approved',
-    correction_requested: 'Correction requested',
+    correction_requested: 'Needs a correction',
     expired: 'Expired',
   };
 
