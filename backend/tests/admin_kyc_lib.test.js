@@ -83,10 +83,32 @@ describe('el', () => {
     expect(() => el('div', { onclick: () => {} })).toThrow('Unsupported prop: onclick');
   });
 
-  test('rejects javascript: hrefs but allows normal ones', () => {
-    expect(() => el('a', { href: 'javascript:alert(1)' })).toThrow();
-    expect(() => el('a', { href: ' JavaScript:alert(1)' })).toThrow();
-    expect(el('a', { href: '/x' }).attributes.href).toBe('/x');
+  test('rejects unsafe hrefs', () => {
+    const bad = [
+      'javascript:alert(1)',
+      ' JavaScript:alert(1)',
+      'JAVASCRIPT:alert(1)',
+      'java\tscript:alert(1)',
+      'java\nscript:alert(1)',
+      'java\rscript:alert(1)',
+      '\u0001\u0002javascript:alert(1)',
+      'data:text/html,<script>1</script>',
+      'vbscript:msgbox(1)',
+      'file:///etc/passwd',
+    ];
+    for (const href of bad) expect(() => el('a', { href })).toThrow('Unsafe href');
+  });
+
+  test('accepts relative and allowlisted scheme hrefs', () => {
+    const ok = ['/x', 'x.html', '?q=1', '#top', './a:b', 'http://a.b', 'HTTPS://a.b', 'mailto:a@b.c', 'tel:+263', 'blob:http://x/1'];
+    for (const href of ok) expect(el('a', { href }).attributes.href).toBe(href);
+  });
+
+  test('rejects script, object and embed tags but allows iframe', () => {
+    for (const t of ['script', 'object', 'embed']) {
+      expect(() => el(t)).toThrow(`Unsupported tag: ${t}`);
+    }
+    expect(el('iframe').tag).toBe('iframe');
   });
 
   test('skips null, undefined and false children', () => {
@@ -99,11 +121,11 @@ describe('status helpers', () => {
   const cases = {
     NOT_STARTED: ['Not started', 'neutral'],
     IN_PROGRESS: ['In progress', 'neutral'],
-    PENDING_REVIEW: ['Pending review', 'info'],
-    APPROVED: ['Approved', 'success'],
-    REQUIRES_CORRECTION: ['Needs correction', 'warning'],
+    PENDING_REVIEW: ['Under review', 'info'],
+    APPROVED: ['Verified', 'success'],
+    REQUIRES_CORRECTION: ['Needs a correction', 'warning'],
     EXPIRED: ['Expired', 'warning'],
-    REJECTED: ['Rejected', 'danger'],
+    REJECTED: ['Not approved', 'danger'],
     RESTRICTED: ['Restricted', 'danger'],
   };
   test.each(Object.entries(cases))('%s', (code, [label, tone]) => {
@@ -288,6 +310,32 @@ describe('createApi', () => {
     expect(err.status).toBe(409);
     expect(err.message).toBe('This KYC is not waiting for review.');
     expect(onUnauthorized).not.toHaveBeenCalled();
+  });
+
+  test('2xx with a non-JSON body throws a generic ApiError', async () => {
+    const { api } = make(async () => ({ ok: true, status: 200, text: async () => '<html>' }));
+    const err = await api.get('/x').catch((e) => e);
+    expect(err).toBeInstanceOf(lib.ApiError);
+    expect(err.status).toBe(200);
+    expect(err.message).toBe('Something went wrong. Please try again.');
+  });
+
+  test('onUnauthorized fires once across concurrent 401s', async () => {
+    const { api, onUnauthorized } = make(async () => jsonRes(401, {}));
+    const errs = await Promise.all([api.get('/a').catch((e) => e), api.get('/b').catch((e) => e)]);
+    expect(errs.map((e) => e.message)).toEqual(['Your session ended. Sign in again.', 'Your session ended. Sign in again.']);
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+  });
+
+  test('missing token: no network call, no header, session error', async () => {
+    const fetchImpl = jest.fn();
+    const onUnauthorized = jest.fn();
+    const api = lib.createApi({ baseUrl: 'http://x', getToken: () => null, onUnauthorized, fetchImpl });
+    const err = await api.get('/x').catch((e) => e);
+    expect(err.status).toBe(401);
+    expect(err.message).toBe('Your session ended. Sign in again.');
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
   });
 
   test('non-JSON error body falls back to generic message', async () => {

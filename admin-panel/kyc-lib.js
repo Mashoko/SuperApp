@@ -12,8 +12,23 @@
   const ATTRIBUTE_PROPS = new Set(['role', 'href', 'type', 'name', 'id', 'title']);
   const PROPERTY_PROPS = new Set(['className', 'value', 'disabled', 'hidden', 'checked']);
 
+  const BLOCKED_TAGS = new Set(['script', 'object', 'embed']);
+  const SAFE_SCHEMES = new Set(['http', 'https', 'mailto', 'tel', 'blob']);
+
+  // Allowlist: relative URLs and a few schemes. Browsers strip tabs and newlines
+  // inside a scheme, so those are removed before checking.
+  const isSafeHref = (value) => {
+    const href = String(value)
+      .replace(/[\t\n\r]/g, '')
+      .replace(/^[\u0000-\u0020]+/, '');
+    const match = /^([^/?#:]*):/.exec(href);
+    if (!match) return true;
+    return SAFE_SCHEMES.has(match[1].toLowerCase());
+  };
+
   const createEl = (doc) =>
     function el(tag, props, ...children) {
+      if (BLOCKED_TAGS.has(String(tag).toLowerCase())) throw new Error(`Unsupported tag: ${tag}`);
       const node = doc.createElement(tag);
       for (const [key, value] of Object.entries(props || {})) {
         if (key === 'innerHTML' || key === 'outerHTML') {
@@ -22,9 +37,7 @@
         if (key === 'on') {
           for (const [type, fn] of Object.entries(value || {})) node.addEventListener(type, fn);
         } else if (key.startsWith('aria-') || key.startsWith('data-') || ATTRIBUTE_PROPS.has(key)) {
-          if (key === 'href' && /^[\s\u0000-\u001f]*javascript:/i.test(String(value))) {
-            throw new Error('Unsupported href');
-          }
+          if (key === 'href' && !isSafeHref(value)) throw new Error('Unsafe href');
           node.setAttribute(key, value);
         } else if (PROPERTY_PROPS.has(key)) {
           node[key] = value;
@@ -46,11 +59,11 @@
   const STATUSES = {
     NOT_STARTED: ['Not started', 'neutral'],
     IN_PROGRESS: ['In progress', 'neutral'],
-    PENDING_REVIEW: ['Pending review', 'info'],
-    APPROVED: ['Approved', 'success'],
-    REQUIRES_CORRECTION: ['Needs correction', 'warning'],
+    PENDING_REVIEW: ['Under review', 'info'],
+    APPROVED: ['Verified', 'success'],
+    REQUIRES_CORRECTION: ['Needs a correction', 'warning'],
     EXPIRED: ['Expired', 'warning'],
-    REJECTED: ['Rejected', 'danger'],
+    REJECTED: ['Not approved', 'danger'],
     RESTRICTED: ['Restricted', 'danger'],
   };
 
@@ -175,8 +188,19 @@
   const createApi = ({ baseUrl, getToken, onUnauthorized, fetchImpl }) => {
     const doFetch = fetchImpl || ((...args) => fetch(...args));
 
+    let notified = false;
+    const unauthorized = () => {
+      if (!notified) {
+        notified = true;
+        if (onUnauthorized) onUnauthorized();
+      }
+      return new ApiError(401, SESSION_ERROR);
+    };
+
     const send = async (method, path, { body, signal } = {}) => {
-      const headers = { Authorization: `Bearer ${getToken()}` };
+      const token = getToken();
+      if (!token) throw unauthorized();
+      const headers = { Authorization: `Bearer ${token}` };
       const init = { method, headers };
       if (body !== undefined) {
         headers['Content-Type'] = 'application/json';
@@ -190,10 +214,7 @@
         if (err && err.name === 'AbortError') throw err;
         throw new ApiError(0, NETWORK_ERROR);
       }
-      if (res.status === 401) {
-        if (onUnauthorized) onUnauthorized();
-        throw new ApiError(401, SESSION_ERROR);
-      }
+      if (res.status === 401) throw unauthorized();
       return res;
     };
 
@@ -213,7 +234,8 @@
       if (!res.ok) throw await failure(res);
       if (res.status === 204) return null;
       const data = parseJson(await res.text());
-      return data === undefined ? null : data;
+      if (data === undefined) throw new ApiError(res.status, GENERIC_ERROR);
+      return data;
     };
 
     return {
