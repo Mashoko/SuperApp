@@ -25,6 +25,7 @@ import 'features/dash/presentation/viewmodels/dash_viewmodel.dart';
 import 'features/faq/presentation/viewmodels/faq_viewmodel.dart';
 import 'features/profile/presentation/viewmodels/profile_summary_viewmodel.dart';
 import 'core/managers/call_activity.dart';
+import 'core/managers/emergency_call_failures.dart';
 import 'features/kyc/presentation/kyc_gate.dart';
 import 'features/kyc/presentation/kyc_status_controller.dart';
 import 'shared/theme/theme_provider.dart';
@@ -68,6 +69,7 @@ void main() async {
     getIt<DialpadViewModel>(),
     balanceRefreshCoordinator,
     callActivity: getIt<CallActivity>(),
+    emergencyCallFailures: getIt<EmergencyCallFailures>(),
   );
 
   runApp(const MyApp());

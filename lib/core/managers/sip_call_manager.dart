@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:sip_ua/sip_ua.dart';
 import '../../features/call/presentation/views/call_view.dart';
 import '../../features/dialpad/presentation/viewmodels/dialpad_viewmodel.dart';
+import '../../features/kyc/domain/emergency_numbers.dart';
 import '../../features/recents/data/models/call_log_status.dart';
 import '../../features/recents/data/models/recent_call.dart';
 import '../services/balance_refresh_coordinator.dart';
 import '../utils/call_log_status_resolution.dart';
 import 'call_activity.dart';
+import 'emergency_call_failures.dart';
 
 class SipCallManager implements SipUaHelperListener {
   final SIPUAHelper _sipHelper;
@@ -17,6 +19,10 @@ class SipCallManager implements SipUaHelperListener {
   /// App-wide call flag (registered in get_it). Optional for tests.
   final CallActivity? callActivity;
 
+  /// Told about outgoing emergency calls that fail (registered in get_it).
+  /// Optional for tests.
+  final EmergencyCallFailures? emergencyCallFailures;
+
   /// Tracks when each call was answered so we can compute accurate duration.
   final Map<String, DateTime> _connectedAt = {};
 
@@ -26,6 +32,7 @@ class SipCallManager implements SipUaHelperListener {
     this._dialpadViewModel,
     this._balanceRefreshCoordinator, {
     this.callActivity,
+    this.emergencyCallFailures,
   }) {
     _sipHelper.addSipUaHelperListener(this);
   }
@@ -53,12 +60,14 @@ class SipCallManager implements SipUaHelperListener {
 
       // ── Log the call, either direction, exactly once, on end ───────────────
       case CallStateEnum.ENDED:
+        if (!_connectedAt.containsKey(callId)) _reportFailedEmergency(call);
         callActivity?.callFinished(callId);
         _handleCallEnded(call, callState, callId);
         _balanceRefreshCoordinator.refreshAfterCall();
 
       // ── Log the call, either direction, exactly once, on failure ───────────
       case CallStateEnum.FAILED:
+        _reportFailedEmergency(call);
         callActivity?.callFinished(callId);
         _connectedAt.remove(callId);
         if (_isSystemFailure(callState.cause)) {
@@ -79,6 +88,18 @@ class SipCallManager implements SipUaHelperListener {
         break;
     }
   }
+
+  /// An outgoing emergency call that did not connect: let the app offer the
+  /// phone's own dialer once the call screen has closed.
+  void _reportFailedEmergency(Call call) {
+    final failures = emergencyCallFailures;
+    if (failures == null || _isIncoming(call)) return;
+    final number = emergencyNumberFromSipIdentity(call.remote_identity);
+    if (number != null) failures.report(number);
+  }
+
+  static bool _isIncoming(Call call) =>
+      call.direction.toString().toUpperCase().contains('INCOMING');
 
   void _handleCallEnded(Call call, CallState callState, String callId) {
     final connectedTime = _connectedAt.remove(callId);
