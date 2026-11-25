@@ -1172,7 +1172,8 @@
     drawerTitle.classList.toggle('kyc-muted', !name);
     drawerBadge.replaceChildren(badge(user.status));
     const [latest, ...earlier] = submissions;
-    drawerBody.replaceChildren(
+    // replaceChildren() would turn null into the text "null", so empty sections are dropped first.
+    const sections = [
       factsView(user),
       latest
         ? latestView(latest)
@@ -1190,8 +1191,9 @@
             earlier.map(earlierView)
           )
         : null,
-      eventsView(events)
-    );
+      eventsView(events),
+    ];
+    drawerBody.replaceChildren(...sections.filter(Boolean));
     renderActions(user);
     // The focused control may have been replaced; keep focus inside the panel.
     if (focusInside && !drawer.contains(document.activeElement)) drawerTitle.focus();
