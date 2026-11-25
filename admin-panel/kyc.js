@@ -1440,6 +1440,13 @@
       const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateInput.value);
       return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toISOString() : '';
     };
+    dateInput.addEventListener('input', () => {
+      if (dateInput.getAttribute('aria-invalid') !== 'true') return;
+      if (!validateExemption({ until: untilIso() }).errors.until) {
+        dateInput.removeAttribute('aria-invalid');
+        dateError.textContent = '';
+      }
+    });
     openDialog({
       title: 'Grant an exemption',
       confirmLabel: 'Grant exemption',
